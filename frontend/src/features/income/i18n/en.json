@@ -1,0 +1,50 @@
+{
+  "income": {
+    "title": "Other income",
+    "subtitle": "Money received that is not from sales: interest, commission, rent, scrap sales and more.",
+    "new": "Record income",
+    "save": "Save income",
+    "no": "No.",
+    "category": "Category",
+    "chooseCategory": "Choose a category…",
+    "allCategories": "All categories",
+    "account": "Received into",
+    "receivedInto": "Received into",
+    "defaultCash": "Cash (default)",
+    "defaultCashNamed": "{{name}} (default)",
+    "source": "Received from",
+    "reference": "Reference",
+    "amount": "Amount",
+    "statuses": {
+      "posted": "Posted",
+      "voided": "Voided",
+      "all": "All"
+    },
+    "total": "Total income",
+    "totalHint": "For the selected filters",
+    "none": "No income for this filter.",
+    "void": "Void",
+    "voidNo": "Void income {{no}}",
+    "voidHint": "Voiding reverses this income of {{amount}} and takes the money back out of the account.",
+    "errors": {
+      "category": "Choose a category.",
+      "amount": "Enter an amount greater than 0.",
+      "futureDate": "The date cannot be in the future."
+    },
+    "categories": "Income categories",
+    "categoriesSubtitle": "Group other income, such as interest or commission.",
+    "categoryName": "Name",
+    "system": "System",
+    "incomeCount": "Entries",
+    "categoryStatuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "addCategory": "Add category",
+    "editCategory": "Edit category",
+    "editCategoryName": "Edit {{name}}",
+    "categoryActive": "Active",
+    "categoryActiveHint": "Inactive categories cannot be used for new income.",
+    "noCategories": "No income categories yet."
+  }
+}

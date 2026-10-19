@@ -1,0 +1,45 @@
+[package]
+name = "pos-api"
+description = "HTTP API server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-audit.workspace = true
+pos-catalog.workspace = true
+pos-auth.workspace = true
+pos-billing.workspace = true
+pos-tenancy.workspace = true
+pos-inventory.workspace = true
+pos-parties.workspace = true
+pos-money.workspace = true
+pos-accounting.workspace = true
+pos-sales.workspace = true
+pos-purchasing.workspace = true
+pos-reporting.workspace = true
+pos-platform.workspace = true
+zip = { version = "9", default-features = false, features = ["deflate"] }
+rust_decimal.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+actix-web.workspace = true
+actix-cors.workspace = true
+utoipa.workspace = true
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+actix-http = "3"
+
+[lints]
+workspace = true

@@ -1,0 +1,26 @@
+[package]
+name = "pos-inventory"
+description = "Stock posting (moving weighted average), balances, movements and adjustments"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-audit.workspace = true
+pos-tenancy.workspace = true
+pos-accounting.workspace = true
+pos-catalog.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+utoipa.workspace = true
+rust_decimal.workspace = true
+
+[lints]
+workspace = true

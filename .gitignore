@@ -1,0 +1,20 @@
+# Rust (target-run: the dev server's separate build dir)
+backend/target/
+backend/target-run/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+*.log

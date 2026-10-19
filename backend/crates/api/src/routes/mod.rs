@@ -1,0 +1,17 @@
+pub mod accounting;
+pub mod admin;
+pub mod audit;
+pub mod auth;
+pub mod catalog;
+pub mod health;
+pub mod inventory;
+pub mod meta;
+pub mod money;
+pub mod parties;
+pub mod purchasing;
+pub mod registers;
+pub mod reports;
+pub mod sales;
+pub mod subscription;
+pub mod tenancy;
+pub mod users;

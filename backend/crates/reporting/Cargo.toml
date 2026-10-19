@@ -1,0 +1,22 @@
+[package]
+name = "pos-reporting"
+description = "Read-only reports: dashboard, sales, purchases, expenses, payments and profit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-tenancy.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde.workspace = true
+utoipa.workspace = true
+rust_decimal.workspace = true
+
+[lints]
+workspace = true

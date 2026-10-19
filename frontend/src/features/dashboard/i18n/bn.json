@@ -1,0 +1,43 @@
+{
+  "dashboard": {
+    "quickActions": "দ্রুত কাজ",
+    "actions": {
+      "newSale": "নতুন বিক্রি",
+      "newPurchase": "নতুন ক্রয়",
+      "addExpense": "খরচ যোগ করুন",
+      "reports": "রিপোর্ট"
+    },
+    "today": "আজ",
+    "thisMonth": "এই মাস",
+    "sales": "বিক্রি",
+    "netSales": "নিট বিক্রি",
+    "cashReceived": "নগদ প্রাপ্তি",
+    "expenses": "খরচ",
+    "grossProfit": "মোট লাভ",
+    "netProfit": "নিট লাভ",
+    "invoices_one": "{{count}}টি ইনভয়েস",
+    "invoices_other": "{{count}}টি ইনভয়েস",
+    "balances": "ব্যালান্স",
+    "receivables": "গ্রাহকের কাছে পাওনা",
+    "payables": "সরবরাহকারীর দেনা",
+    "moneyBalance": "টাকার ব্যালান্স",
+    "lowStock": "কম স্টক",
+    "outOfStock": "স্টক শেষ",
+    "chart": {
+      "title": "বিক্রি, গত ১৪ দিন"
+    },
+    "topProducts": "এই মাসের সেরা পণ্য",
+    "recentSales": "সাম্প্রতিক বিক্রি",
+    "noSales": "এখনো কোনো বিক্রি নেই।",
+    "product": "পণ্য",
+    "invoice": "ইনভয়েস",
+    "customer": "গ্রাহক",
+    "due": "বাকি",
+    "saleStatuses": {
+      "completed": "সম্পন্ন",
+      "partially_returned": "আংশিক ফেরত",
+      "returned": "ফেরত",
+      "cancelled": "বাতিল"
+    }
+  }
+}

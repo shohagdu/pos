@@ -1,0 +1,25 @@
+[package]
+name = "pos-money"
+description = "Payment accounts and methods, payments with allocations, cash/bank book, transfers and expenses"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-audit.workspace = true
+pos-tenancy.workspace = true
+pos-accounting.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+utoipa.workspace = true
+rust_decimal.workspace = true
+
+[lints]
+workspace = true

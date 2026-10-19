@@ -1,0 +1,96 @@
+[
+  {
+    "name": "worked example (Requirement Analysis 8.2): 15% VAT exclusive, invoice discount 50, cash rounding 1.00",
+    "input": {
+      "lines": [
+        { "quantity": "2", "unit_price": "420.00", "tax_rate_pct": "15" },
+        { "quantity": "1", "unit_price": "190.00", "tax_rate_pct": "15", "discount": { "type": "amount", "value": "10" } },
+        { "quantity": "3", "unit_price": "60.00", "tax_rate_pct": "15" }
+      ],
+      "invoice_discount": { "type": "amount", "value": "50" },
+      "prices_include_tax": false,
+      "cash_rounding": "1.00"
+    },
+    "expected": {
+      "subtotal": "1210.00",
+      "item_discount_total": "10.00",
+      "invoice_discount": "50.00",
+      "tax_total": "172.51",
+      "rounding_adjustment": "0.49",
+      "grand_total": "1323.00",
+      "lines": [
+        { "invoice_discount": "35.00", "tax": "120.75", "line_total": "925.75" },
+        { "invoice_discount": "7.50", "tax": "25.88", "line_total": "198.38" },
+        { "invoice_discount": "7.50", "tax": "25.88", "line_total": "198.38" }
+      ]
+    }
+  },
+  {
+    "name": "tax-inclusive prices: VAT is extracted from the price",
+    "input": {
+      "lines": [{ "quantity": "2", "unit_price": "115.00", "tax_rate_pct": "15" }],
+      "prices_include_tax": true,
+      "cash_rounding": "0"
+    },
+    "expected": {
+      "subtotal": "230.00",
+      "item_discount_total": "0.00",
+      "invoice_discount": "0.00",
+      "tax_total": "30.00",
+      "rounding_adjustment": "0.00",
+      "grand_total": "230.00",
+      "lines": [{ "invoice_discount": "0.00", "tax": "30.00", "line_total": "230.00" }]
+    }
+  },
+  {
+    "name": "percent discounts, fractional quantity, shipping, cash rounding 0.50",
+    "input": {
+      "lines": [
+        { "quantity": "3", "unit_price": "33.33", "tax_rate_pct": "5", "discount": { "type": "percent", "value": "10" } },
+        { "quantity": "1.5", "unit_price": "80.00", "tax_rate_pct": "0" }
+      ],
+      "invoice_discount": { "type": "percent", "value": "5" },
+      "shipping": "20",
+      "prices_include_tax": false,
+      "cash_rounding": "0.50"
+    },
+    "expected": {
+      "subtotal": "219.99",
+      "item_discount_total": "10.00",
+      "invoice_discount": "10.50",
+      "tax_total": "4.27",
+      "rounding_adjustment": "0.24",
+      "grand_total": "224.00",
+      "lines": [
+        { "invoice_discount": "4.50", "tax": "4.27", "line_total": "89.76" },
+        { "invoice_discount": "6.00", "tax": "0.00", "line_total": "114.00" }
+      ]
+    }
+  },
+  {
+    "name": "cash rounding can round down",
+    "input": {
+      "lines": [{ "quantity": "1", "unit_price": "99.40", "tax_rate_pct": "0" }],
+      "prices_include_tax": false,
+      "cash_rounding": "1.00"
+    },
+    "expected": {
+      "subtotal": "99.40",
+      "item_discount_total": "0.00",
+      "invoice_discount": "0.00",
+      "tax_total": "0.00",
+      "rounding_adjustment": "-0.40",
+      "grand_total": "99.00",
+      "lines": [{ "invoice_discount": "0.00", "tax": "0.00", "line_total": "99.40" }]
+    }
+  },
+  {
+    "name": "a line discount larger than the line is refused",
+    "input": {
+      "lines": [{ "quantity": "1", "unit_price": "10.00", "tax_rate_pct": "0", "discount": { "type": "amount", "value": "11" } }],
+      "prices_include_tax": false,
+      "cash_rounding": "0"
+    },
+    "expected": { "error": "DISCOUNT_TOO_LARGE" }
+  }
+]

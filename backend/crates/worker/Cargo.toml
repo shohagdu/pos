@@ -1,0 +1,27 @@
+[package]
+name = "pos-worker"
+description = "Background jobs and scheduled maintenance"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-platform.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+chrono.workspace = true
+rust_decimal.workspace = true
+uuid.workspace = true
+anyhow.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+pos-core.workspace = true
+
+[lints]
+workspace = true

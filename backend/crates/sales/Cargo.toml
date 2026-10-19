@@ -1,0 +1,29 @@
+[package]
+name = "pos-sales"
+description = "POS pricing engine, sales, cancellations, returns, held carts and customer collections"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-audit.workspace = true
+pos-tenancy.workspace = true
+pos-accounting.workspace = true
+pos-catalog.workspace = true
+pos-inventory.workspace = true
+pos-parties.workspace = true
+pos-money.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+utoipa.workspace = true
+rust_decimal.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,213 @@
+{
+  "admin": {
+    "console": "Platform console",
+    "navLabel": "Console",
+    "staffOnlyTitle": "This area is for platform staff",
+    "staffOnlyBody": "Your account does not have access to the Super Admin console. If you think this is a mistake, ask the platform owner.",
+    "backToApp": "Back to app",
+    "pendingBadge_one": "{{count}} pending claim",
+    "pendingBadge_other": "{{count}} pending claims",
+    "on": "On",
+    "off": "Off",
+    "blankUnlimited": "Leave the limit blank for unlimited.",
+    "nav": {
+      "dashboard": "Dashboard",
+      "tenants": "Businesses",
+      "claims": "Payment claims",
+      "plans": "Plans",
+      "settings": "Settings"
+    },
+    "roles": {
+      "platform_owner": "Platform owner",
+      "billing": "Billing",
+      "support": "Support"
+    },
+    "states": {
+      "none": "No subscription",
+      "business_suspended": "Business suspended"
+    },
+    "businessStatus": {
+      "active": "Active",
+      "suspended": "Suspended"
+    },
+    "memberStatus": {
+      "active": "Active",
+      "disabled": "Disabled",
+      "inactive": "Inactive"
+    },
+    "claimStatus": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "invoiceStatus": {
+      "open": "Open",
+      "paid": "Paid",
+      "void": "Void"
+    },
+    "cycles": {
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "annual": "Annual"
+    },
+    "methods": {
+      "bkash": "bKash",
+      "nagad": "Nagad",
+      "rocket": "Rocket",
+      "bank_transfer": "Bank transfer",
+      "cash": "Cash",
+      "other": "Other"
+    },
+    "events": {
+      "status_changed": "Status changed",
+      "trial_started": "Trial started",
+      "payment_verified": "Payment verified",
+      "reminder": "Reminder ({{days}} days left)"
+    },
+    "actors": {
+      "system": "System",
+      "platform_staff": "Platform staff",
+      "tenant_user": "Business user"
+    },
+    "dashboard": {
+      "title": "Platform overview",
+      "headline": "Key numbers",
+      "businesses": "Businesses",
+      "mrr": "MRR",
+      "arr": "ARR",
+      "revenue30": "Revenue, last 30 days",
+      "signups7": "Sign-ups, last 7 days",
+      "signups30": "Sign-ups, last 30 days",
+      "pendingClaims": "Pending payment claims",
+      "reviewClaims": "Review claims →",
+      "byStatus": "Businesses by subscription state",
+      "byPlan": "Businesses per plan"
+    },
+    "tenants": {
+      "title": "Businesses",
+      "searchHint": "Name, slug, phone, email or owner phone",
+      "subscriptionState": "Subscription",
+      "businessStatus": "Business status",
+      "plan": "Plan",
+      "name": "Name",
+      "owner": "Owner",
+      "ends": "Trial / period ends",
+      "created": "Created",
+      "total_one": "{{count}} business",
+      "total_other": "{{count}} businesses"
+    },
+    "tenant": {
+      "cycle": "Billing cycle",
+      "price": "Price",
+      "daysLeft": "Days left",
+      "trialEnd": "Trial ends",
+      "periodEnd": "Period ends",
+      "lastActivity": "Last activity",
+      "suspendedReason": "Suspended because",
+      "suspend": "Suspend business",
+      "reactivate": "Reactivate business",
+      "suspendTitle": "Suspend {{name}}",
+      "reactivateTitle": "Reactivate {{name}}",
+      "suspendHint": "Members cannot use the business while it is suspended. Their data is kept.",
+      "reactivateHint": "Members can use the business again right away.",
+      "contact": "Contact",
+      "phone": "Phone",
+      "email": "Email",
+      "district": "District",
+      "members": "Members",
+      "owner": "Owner",
+      "usage": "Usage vs limits",
+      "unlimited": "Unlimited",
+      "entitlements": "Entitlements",
+      "overridden": "Overridden",
+      "overrides": "Overrides",
+      "noOverrides": "No overrides. The business gets exactly what its plan includes.",
+      "addOverride": "Add override",
+      "feature": "Feature",
+      "value": "Value",
+      "limit": "Limit",
+      "expires": "Expires",
+      "expiresHint": "Blank = never expires. Ends at the end of that day (UTC).",
+      "never": "Never",
+      "createdBy": "Added by",
+      "history": "Subscription history",
+      "event": "Event",
+      "actor": "By",
+      "invoices": "Invoices",
+      "paidAt": "Paid at",
+      "claims": "Payment claims",
+      "reviewClaims": "Review pending claims →"
+    },
+    "claims": {
+      "title": "Payment claims",
+      "pendingCount_one": "{{count}} claim waiting for review",
+      "pendingCount_other": "{{count}} claims waiting for review",
+      "tabs": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "all": "All"
+      },
+      "submitted": "Submitted",
+      "business": "Business",
+      "invoice": "Invoice no.",
+      "invoiceTotal": "Invoice total",
+      "method": "Method",
+      "differs": "Differs from invoice",
+      "reference": "Transaction ID",
+      "payer": "Paid from",
+      "submittedBy": "Submitted by",
+      "reviewed": "Reviewed",
+      "rejectionReason": "Rejection reason",
+      "approve": "Approve",
+      "reject": "Reject",
+      "rejectTitle": "Reject claim for {{invoice}}",
+      "rejectHint": "The owner sees this reason and can submit a corrected claim.",
+      "approved": "Claim approved. The subscription is now active.",
+      "none": "No claims here."
+    },
+    "plans": {
+      "title": "Plans & pricing",
+      "new": "New plan",
+      "createTitle": "New plan",
+      "editTitle": "Edit {{name}}",
+      "code": "Code",
+      "codeHint": "2–40 lowercase letters, digits or _. Cannot be changed later.",
+      "name": "Name",
+      "description": "Description",
+      "sortOrder": "Sort order",
+      "trialDays": "Trial days",
+      "publicLabel": "Public",
+      "publicHint": "Shown to owners on the plan page. Private plans are assigned by staff.",
+      "public": "Public",
+      "private": "Private",
+      "statuses": {
+        "active": "Active",
+        "retired": "Retired"
+      },
+      "trialBadge_one": "Trial · {{count}} day",
+      "trialBadge_other": "Trial · {{count}} days",
+      "subscribers_one": "{{count}} subscriber",
+      "subscribers_other": "{{count}} subscribers",
+      "prices": "Prices (BDT)",
+      "pricesHint": "Leave a cycle blank if the plan is not sold for it.",
+      "features": "Features",
+      "limit": "Limit",
+      "limitFor": "{{name}} limit"
+    },
+    "settings": {
+      "title": "Platform settings",
+      "paymentInstructions": "Payment instructions",
+      "intro": "Owners see these texts when they pay an invoice manually. Leave a method blank to hide it.",
+      "readOnly": "Only the platform owner can change these settings.",
+      "saved": "Payment instructions saved.",
+      "keys": {
+        "bkash": "bKash",
+        "nagad": "Nagad",
+        "rocket": "Rocket",
+        "bank_transfer": "Bank transfer",
+        "note": "General note"
+      }
+    }
+  }
+}

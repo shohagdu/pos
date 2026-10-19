@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      CARGO_TERM_COLOR: always
+      # sqlx::test creates one database per test from this URL (TCP, not socket)
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/pos_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start MySQL 8.4
+        # Started with docker run (not a service) to pass server flags.
+        run: |
+          docker run -d --name mysql -p 3306:3306 \
+            -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=pos_test \
+            --tmpfs /var/lib/mysql \
+            mysql:8.4.6 \
+            --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci \
+            --log-bin-trust-function-creators=1 --transaction-isolation=READ-COMMITTED \
+            --innodb-flush-log-at-trx-commit=0
+          for i in $(seq 1 60); do
+            docker exec mysql mysqladmin ping -h127.0.0.1 -uroot -proot --silent && break
+            sleep 2
+          done
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Format
+        run: cargo fmt --all -- --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Guard triggers up to date
+        run: python3 scripts/gen_guards.py --check migrations/*.sql
+      - name: Tenant SQL lint
+        run: python3 scripts/check_tenant_sql.py
+      - name: Tests (unit + MySQL integration + tenant isolation)
+        run: cargo test --workspace --locked
+      - name: Migrate a fresh database and run schema guards
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/pos_ci
+          # Required by AppConfig; CI never issues tokens.
+          JWT_SECRET: ci-only-secret-not-used-for-real-tokens-0000
+        run: |
+          docker exec mysql mysql -uroot -proot -e "CREATE DATABASE pos_ci"
+          cargo run --locked -q -p pos-api -- migrate
+          cargo run --locked -q -p pos-api -- check-schema
+      - name: Dependency audit
+        uses: taiki-e/install-action@cargo-audit
+      - run: cargo audit
+
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high

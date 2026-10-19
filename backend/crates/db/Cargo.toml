@@ -1,0 +1,20 @@
+[package]
+name = "pos-db"
+description = "MySQL pool, tenant-scoped transactions, migrations and schema guards"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

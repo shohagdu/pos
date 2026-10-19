@@ -1,0 +1,30 @@
+[package]
+name = "pos-tenancy"
+description = "Tenant provisioning, settings, branches and onboarding"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-audit.workspace = true
+pos-auth.workspace = true
+pos-billing.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+serde.workspace = true
+utoipa.workspace = true
+serde_json.workspace = true
+rust_decimal.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+
+[lints]
+workspace = true

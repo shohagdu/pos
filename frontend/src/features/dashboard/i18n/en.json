@@ -1,0 +1,43 @@
+{
+  "dashboard": {
+    "quickActions": "Quick actions",
+    "actions": {
+      "newSale": "New sale",
+      "newPurchase": "New purchase",
+      "addExpense": "Add expense",
+      "reports": "Reports"
+    },
+    "today": "Today",
+    "thisMonth": "This month",
+    "sales": "Sales",
+    "netSales": "Net sales",
+    "cashReceived": "Cash received",
+    "expenses": "Expenses",
+    "grossProfit": "Gross profit",
+    "netProfit": "Net profit",
+    "invoices_one": "{{count}} invoice",
+    "invoices_other": "{{count}} invoices",
+    "balances": "Balances",
+    "receivables": "Customers owe",
+    "payables": "We owe suppliers",
+    "moneyBalance": "Money balance",
+    "lowStock": "Low stock",
+    "outOfStock": "Out of stock",
+    "chart": {
+      "title": "Sales, last 14 days"
+    },
+    "topProducts": "Top products this month",
+    "recentSales": "Recent sales",
+    "noSales": "No sales yet.",
+    "product": "Product",
+    "invoice": "Invoice",
+    "customer": "Customer",
+    "due": "Due",
+    "saleStatuses": {
+      "completed": "Completed",
+      "partially_returned": "Partly returned",
+      "returned": "Returned",
+      "cancelled": "Cancelled"
+    }
+  }
+}

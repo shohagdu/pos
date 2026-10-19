@@ -1,0 +1,87 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.90"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+# internal
+pos-core = { path = "crates/core" }
+pos-db = { path = "crates/db" }
+pos-audit = { path = "crates/audit" }
+pos-auth = { path = "crates/auth" }
+pos-billing = { path = "crates/billing" }
+pos-tenancy = { path = "crates/tenancy" }
+pos-catalog = { path = "crates/catalog" }
+pos-inventory = { path = "crates/inventory" }
+pos-parties = { path = "crates/parties" }
+pos-money = { path = "crates/money" }
+pos-accounting = { path = "crates/accounting" }
+pos-sales = { path = "crates/sales" }
+pos-purchasing = { path = "crates/purchasing" }
+pos-reporting = { path = "crates/reporting" }
+pos-platform = { path = "crates/platform" }
+
+# web
+actix-web = { version = "4.17", default-features = false, features = ["macros", "cookies"] }
+actix-cors = "0.7"
+utoipa = { version = "6", features = ["uuid", "chrono"] }
+
+# database
+sqlx = { version = "0.9", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls-ring-webpki",
+    "mysql",
+    "macros",
+    "migrate",
+    "uuid",
+    "chrono",
+    "json",
+    "rust_decimal",
+] }
+
+# security
+argon2 = "0.6"
+jsonwebtoken = { version = "11", default-features = false, features = ["rust_crypto"] }
+sha2 = "0.11"
+getrandom = { version = "0.4", features = ["std"] }
+base64 = "0.22"
+
+# runtime & utilities
+tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "signal", "time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1.28", features = ["v7", "serde"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde", "std"] }
+chrono-tz = "0.10"
+rust_decimal = { version = "1.43", features = ["serde-with-str"] }
+thiserror = "2"
+anyhow = "1"
+dotenvy = "0.15"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"
+
+# Password hashing is deliberately slow; unoptimised it makes tests crawl.
+[profile.dev.package.argon2]
+opt-level = 3
+
+[profile.dev.package.blake2]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

@@ -1,0 +1,44 @@
+{
+  "branches": {
+    "working": "Working in",
+    "all": "All branches",
+    "mainNamed": "{{name}} (main)",
+    "intro": "Each branch has its own stock locations, cash drawer, invoice numbers and receipts.",
+    "add": "Add branch",
+    "code": "Code",
+    "codeHint": "2–10 letters or digits, e.g. DHN. Used in invoice numbers; cannot be changed later.",
+    "name": "Branch name",
+    "phone": "Phone",
+    "address": "Address",
+    "receiptHeader": "Receipt header",
+    "receiptHeaderHint": "Printed at the top of this branch's receipts.",
+    "main": "Main",
+    "none": "No branches yet.",
+    "editNamed": "Edit {{name}}",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "activateNamed": "Activate {{name}}",
+    "deactivateNamed": "Deactivate {{name}}",
+    "changed": "Someone else changed this branch. The latest details are loaded — please check and save again.",
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "errors": {
+      "code": "Use 2–10 letters or digits.",
+      "name": "Enter a name."
+    },
+    "registersIntro": "Cash registers (drawers) where cashiers open and close shifts. Pick a branch in the sidebar to add registers to it.",
+    "registersIntroBranch": "Cash registers of {{branch}}, where cashiers open and close shifts.",
+    "addRegister": "Add register",
+    "registerName": "Register name",
+    "branch": "Branch",
+    "cashAccount": "Cash account",
+    "openShift": "Open shift",
+    "shiftOpen": "Open",
+    "noRegisters": "No registers yet.",
+    "registerGoesTo": "The register is added to {{branch}}.",
+    "registerGoesToMain": "The register is added to the main branch. Pick another branch in the sidebar to add it there.",
+    "defaultCash": "Branch cash account (default)"
+  }
+}

@@ -1,0 +1,16 @@
+# Mirrors the required server settings in DB design §2.2.
+[mysqld]
+character-set-server = utf8mb4
+collation-server = utf8mb4_0900_ai_ci
+default-time-zone = '+00:00'
+transaction-isolation = READ-COMMITTED
+sql-mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,ONLY_FULL_GROUP_BY,NO_ENGINE_SUBSTITUTION
+binlog-format = ROW
+binlog-expire-logs-seconds = 2592000
+# Guard triggers are created by the migration user while binary logging is on.
+log-bin-trust-function-creators = 1
+innodb-lock-wait-timeout = 5
+ngram-token-size = 2
+max-connections = 300
+slow-query-log = 1
+long-query-time = 0.5

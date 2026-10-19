@@ -1,0 +1,95 @@
+{
+  "accounting": {
+    "title": "Accounting",
+    "subtitle": "Journal entries posted by sales, purchases, payments and manual journals.",
+    "journals": "Journals",
+    "trialBalance": "Trial balance",
+    "generalLedger": "General ledger",
+    "noJournals": "No journal entries in this period.",
+    "entryNo": "Entry no.",
+    "sourceType": "Source",
+    "sourceNo": "Source no.",
+    "debit": "Debit",
+    "credit": "Credit",
+    "statuses": {
+      "posted": "Posted",
+      "reversed": "Reversed"
+    },
+    "sources": {
+      "sale": "Sale",
+      "sale_return": "Sale return",
+      "purchase": "Purchase",
+      "purchase_return": "Purchase return",
+      "payment": "Payment",
+      "expense": "Expense",
+      "transfer": "Transfer",
+      "stock_adjustment": "Stock adjustment",
+      "opening_balance": "Opening balance",
+      "manual": "Manual"
+    },
+    "types": {
+      "asset": "Asset",
+      "liability": "Liability",
+      "equity": "Equity",
+      "income": "Income",
+      "expense": "Expense"
+    },
+    "chart": {
+      "title": "Chart of accounts",
+      "code": "Code",
+      "name": "Name",
+      "type": "Type",
+      "normalSide": "Normal side",
+      "system": "System",
+      "group": "Group",
+      "inactive": "Inactive",
+      "ledger": "Ledger",
+      "ledgerOf": "Ledger of {{name}}"
+    },
+    "journal": {
+      "new": "New journal",
+      "post": "Post journal",
+      "memo": "Memo",
+      "lines": "Journal lines",
+      "account": "Account",
+      "lineMemo": "Line memo",
+      "chooseAccount": "Choose account…",
+      "accountN": "Account, line {{n}}",
+      "debitN": "Debit, line {{n}}",
+      "creditN": "Credit, line {{n}}",
+      "memoN": "Memo, line {{n}}",
+      "removeN": "Remove line {{n}}",
+      "addLine": "Add line",
+      "balanced": "Balanced",
+      "difference": "Difference: {{amount}}",
+      "help": "Each line has either a debit or a credit. Total debits must equal total credits. Only postable accounts can be used."
+    },
+    "detail": {
+      "title": "Journal {{no}}",
+      "loading": "Journal",
+      "reverse": "Reverse journal",
+      "reverses": "Reverses",
+      "original": "Original entry",
+      "createdAt": "Recorded at"
+    },
+    "periods": {
+      "title": "Fiscal periods",
+      "subtitle": "Locked months cannot receive new or changed entries.",
+      "lockTitle": "Lock or reopen a month",
+      "month": "Month",
+      "lock": "Lock month",
+      "reopen": "Reopen month",
+      "help": "A month can be locked once it has ended. Reopen it to correct entries.",
+      "locked": "{{month}} is locked.",
+      "reopened": "{{month}} is open again.",
+      "start": "Start",
+      "end": "End",
+      "lockedAt": "Locked at",
+      "none": "No periods yet.",
+      "statuses": {
+        "open": "Open",
+        "locked": "Locked"
+      }
+    }
+  }
+}

@@ -1,0 +1,316 @@
+{
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Sales, purchases, stock, money and accounts for any period.",
+    "noReports": "You don't have access to any reports.",
+    "noAccess": "You don't have permission to view this.",
+    "noData": "No data for this period.",
+    "periodRange": "{{from}} – {{to}}",
+    "upTo": "Up to {{to}}",
+    "asOf": "As of {{date}}",
+    "asOfLabel": "As of",
+    "uncategorised": "Uncategorised",
+    "allCategories": "All categories",
+    "allSuppliers": "All suppliers",
+    "sku": "SKU",
+    "unit": "Unit",
+    "method": "Method",
+    "moneyIn": "Money in",
+    "moneyOut": "Money out",
+    "net": "Net",
+    "count": "Count",
+    "item": "Item",
+    "account": "Account",
+    "code": "Code",
+    "dr": "Dr",
+    "cr": "Cr",
+    "balanced": "Balanced",
+    "outOfBalance": "Out of balance",
+    "groups": {
+      "business": "Business reports",
+      "accounts": "Accounting",
+      "analysis": "Analysis"
+    },
+    "cards": {
+      "sales": {
+        "title": "Sales",
+        "description": "Daily or monthly sales, by product, category and cashier."
+      },
+      "purchases": {
+        "title": "Purchases",
+        "description": "Bills, returns and dues by supplier and product."
+      },
+      "inventory": {
+        "title": "Inventory",
+        "description": "Stock value by category, low and out-of-stock items."
+      },
+      "expenses": {
+        "title": "Expenses",
+        "description": "Spending by category and month."
+      },
+      "payments": {
+        "title": "Payments",
+        "description": "Money in and out by method and account."
+      },
+      "profit": {
+        "title": "Profit",
+        "description": "Net sales, cost of goods, expenses and net profit."
+      },
+      "trialBalance": {
+        "title": "Trial balance",
+        "description": "Debits and credits of every ledger account."
+      },
+      "profitLoss": {
+        "title": "Profit & loss account",
+        "description": "Income and expenses from the ledger."
+      },
+      "balanceSheet": {
+        "title": "Balance sheet",
+        "description": "Assets, liabilities and equity on a date."
+      },
+      "generalLedger": {
+        "title": "General ledger",
+        "description": "Every entry of one account with a running balance."
+      },
+      "journals": {
+        "title": "Journals",
+        "description": "Journal entries, manual journals and the chart of accounts."
+      },
+      "periods": {
+        "title": "Fiscal periods",
+        "description": "Lock finished months against changes."
+      },
+      "aging": {
+        "title": "Receivable & payable aging",
+        "description": "Customer and supplier dues by how long they have been open."
+      },
+      "vat": {
+        "title": "VAT summary",
+        "description": "Output VAT on sales, input VAT on purchases and the net payable."
+      },
+      "discounts": {
+        "title": "Discounts",
+        "description": "Discounts given, by cashier and the largest invoices."
+      },
+      "productMovement": {
+        "title": "Fast & slow movers",
+        "description": "Products by sales speed, with days of stock left and items that do not sell."
+      }
+    },
+    "sales": {
+      "title": "Sales report",
+      "groupBy": "Group by",
+      "byDay": "Day",
+      "byMonth": "Month",
+      "tabs": {
+        "summary": "Summary",
+        "product": "By product",
+        "category": "By category",
+        "cashier": "By cashier"
+      },
+      "period": "Period",
+      "invoices": "Invoices",
+      "gross": "Gross",
+      "discount": "Discount",
+      "vat": "VAT",
+      "returns": "Returns",
+      "netSales": "Net sales",
+      "cogs": "COGS",
+      "grossProfit": "Gross profit",
+      "collected": "Collected",
+      "due": "Due",
+      "grandTotal": "Total",
+      "margin": "Margin",
+      "product": "Product",
+      "category": "Category",
+      "cashier": "Cashier",
+      "cancelledCol": "Cancelled",
+      "paymentsByMethod": "Payments by method",
+      "cancelledNote_one": "{{count}} cancelled invoice is not included.",
+      "cancelledNote_other": "{{count}} cancelled invoices are not included."
+    },
+    "purchases": {
+      "title": "Purchase report",
+      "supplier": "Supplier",
+      "bills": "Bills",
+      "total": "Total",
+      "returned": "Returned",
+      "paid": "Paid",
+      "due": "Due",
+      "vat": "VAT",
+      "bySupplier": "By supplier",
+      "byProduct": "By product",
+      "netCost": "Net cost",
+      "avgCost": "Avg. unit cost",
+      "lastCost": "Last unit cost"
+    },
+    "inventory": {
+      "title": "Inventory report",
+      "valuation": "Stock valuation by category",
+      "items": "Items",
+      "costValue": "Value at cost",
+      "retailValue": "Retail value",
+      "noCost": "You need permission to see costs to view the stock valuation.",
+      "lowStock": "Low stock",
+      "outOfStock": "Out of stock",
+      "onHand": "On hand",
+      "reorderLevel": "Reorder level",
+      "noneLow": "No items are low on stock.",
+      "noneOut": "No items are out of stock.",
+      "firstRows": "Showing the first {{count}} items.",
+      "location": "Location",
+      "allLocations": "All locations",
+      "stockLink": "Stock",
+      "movementsLink": "Stock movements"
+    },
+    "expenses": {
+      "title": "Expense report",
+      "byCategory": "By category",
+      "byMonth": "By month",
+      "category": "Category",
+      "month": "Month",
+      "vat": "VAT",
+      "share": "Share"
+    },
+    "payments": {
+      "title": "Payment report",
+      "byMethod": "By method",
+      "byAccount": "By account",
+      "account": "Account"
+    },
+    "profit": {
+      "title": "Profit report",
+      "netSales": "Net sales",
+      "lessCogs": "Less: cost of goods sold",
+      "grossProfit": "Gross profit",
+      "lessExpenses": "Less: expenses",
+      "netProfit": "Net profit",
+      "netMargin": "Net margin",
+      "plLink": "Profit & loss account",
+      "note": "Net sales exclude VAT and are after returns. Cost of goods uses the average cost at the time of sale."
+    },
+    "tb": {
+      "title": "Trial balance",
+      "opening": "Opening",
+      "debit": "Debit",
+      "credit": "Credit",
+      "closingDebit": "Closing debit",
+      "closingCredit": "Closing credit",
+      "fromHint": "Leave From empty to include everything from the beginning."
+    },
+    "pl": {
+      "title": "Profit & loss account",
+      "revenue": "Revenue",
+      "totalRevenue": "Total revenue",
+      "costOfSales": "Cost of sales",
+      "totalCostOfSales": "Total cost of sales",
+      "grossProfit": "Gross profit",
+      "otherIncome": "Other income",
+      "totalOtherIncome": "Total other income",
+      "expenses": "Expenses",
+      "totalExpenses": "Total expenses",
+      "netProfit": "Net profit"
+    },
+    "bs": {
+      "title": "Balance sheet",
+      "assets": "Assets",
+      "totalAssets": "Total assets",
+      "liabilities": "Liabilities",
+      "totalLiabilities": "Total liabilities",
+      "equity": "Equity",
+      "totalEquity": "Total equity",
+      "currentEarnings": "Current earnings (not yet closed)",
+      "totalLiabilitiesEquity": "Total liabilities and equity",
+      "earningsNote": "Current earnings is the profit or loss not yet closed to retained earnings."
+    },
+    "gl": {
+      "title": "General ledger",
+      "chooseAccount": "Choose an account…",
+      "pickAccount": "Choose an account to see its ledger.",
+      "opening": "Opening balance",
+      "closing": "Closing balance",
+      "entryNo": "Entry no.",
+      "source": "Source",
+      "sourceNo": "Source no.",
+      "memo": "Memo",
+      "balance": "Balance",
+      "noEntries": "No entries in this period.",
+      "truncated": "Only the first entries are shown. Choose a shorter period to see everything."
+    },
+    "aging": {
+      "title": "Aging report",
+      "parties": "Customers or suppliers",
+      "customers": "Customer receivables",
+      "suppliers": "Supplier payables",
+      "party": "Name",
+      "phone": "Phone",
+      "current": "0–30 days",
+      "d31": "31–60 days",
+      "d61": "61–90 days",
+      "d90": "Over 90 days",
+      "other": "Other",
+      "total": "Total due",
+      "oldest": "Oldest",
+      "otherHint": "Other = balance not tied to an open invoice or bill (opening balances, advances, unapplied payments)."
+    },
+    "vat": {
+      "title": "VAT summary",
+      "output": "Output VAT (sales less returns)",
+      "input": "Input VAT (purchases less returns and expenses)",
+      "rate": "Rate",
+      "taxable": "Taxable value",
+      "vat": "VAT",
+      "expensesRow": "Expenses",
+      "noRate": "No rate",
+      "outputVat": "Output VAT",
+      "inputVat": "Input VAT",
+      "netPayable": "Net VAT payable",
+      "netRefundable": "Net VAT refundable",
+      "notRegistered": "This business is not marked as VAT-registered in settings, so the figures are for information only."
+    },
+    "discounts": {
+      "title": "Discount report",
+      "gross": "Gross sales",
+      "itemDiscount": "Item discounts",
+      "invoiceDiscount": "Invoice discounts",
+      "totalDiscount": "Total discount",
+      "discountPct": "Discount share",
+      "discountPctHint": "Total discount as a share of gross sales",
+      "byCashier": "By cashier",
+      "cashier": "Cashier",
+      "invoices": "Invoices",
+      "discountedInvoices": "With discount",
+      "topInvoices": "Largest discounts",
+      "invoice": "Invoice",
+      "customer": "Customer",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "grandTotal": "Total",
+      "unknownCashier": "Unknown"
+    },
+    "movement": {
+      "title": "Fast & slow movers",
+      "class": "Movement",
+      "classes": {
+        "all": "All",
+        "fast": "Fast",
+        "slow": "Slow",
+        "non_moving": "Not moving"
+      },
+      "fastCount": "Fast movers",
+      "slowCount": "Slow movers",
+      "nonMovingCount": "Not moving",
+      "nonMovingValue": "Stock value not moving",
+      "product": "Product",
+      "category": "Category",
+      "sold": "Sold",
+      "netSales": "Net sales",
+      "dailyRate": "Per day",
+      "stock": "Stock",
+      "stockValue": "Stock value",
+      "daysOfStock": "Days of stock",
+      "lastSold": "Last sold",
+      "never": "Never"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "suppliers": {
+    "title": "Suppliers",
+    "new": "New supplier",
+    "editTitle": "Edit supplier",
+    "none": "No suppliers yet.",
+    "searchHint": "Name, code or phone",
+    "code": "Code",
+    "name": "Name",
+    "contactPerson": "Contact person",
+    "phone": "Phone",
+    "email": "Email",
+    "address": "Address",
+    "notes": "Notes",
+    "openingBalance": "Opening balance",
+    "openingBalanceHint": "What you already owe this supplier (negative = advance paid). Cannot be changed later.",
+    "balance": "Balance",
+    "payable": "Payable",
+    "advance": "Advance",
+    "settled": "Settled",
+    "dueOnly": "Only suppliers we owe",
+    "totalPayable": "Total payable",
+    "totalPayableHint": "What we owe the listed suppliers",
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "all": "All"
+    },
+    "pay": "Pay supplier",
+    "deactivate": "Deactivate",
+    "activate": "Activate",
+    "inUse": "This supplier has transactions and cannot be deleted. Deactivate it instead.",
+    "noBills": "No bills from this supplier yet.",
+    "unallocated": "Advance",
+    "tabs": {
+      "label": "Supplier sections",
+      "statement": "Statement",
+      "bills": "Bills",
+      "payments": "Payments"
+    },
+    "statement": {
+      "title": "Statement: {{name}}",
+      "type": "Type",
+      "reference": "Reference",
+      "debit": "Debit",
+      "credit": "Credit",
+      "opening": "Opening balance",
+      "closing": "Closing balance",
+      "hint": "Debit increases what we owe; credit decreases it."
+    },
+    "entryTypes": {
+      "opening": "Opening balance",
+      "purchase": "Purchase",
+      "payment_out": "Payment",
+      "payment_void": "Payment voided",
+      "purchase_return": "Purchase return",
+      "refund_in": "Refund received"
+    },
+    "errors": {
+      "nameRequired": "Enter a name with at least 2 characters.",
+      "amountInvalid": "Enter a valid amount."
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "plan": {
+    "renewSoon": "The business owner can choose a plan and pay by bKash, Nagad, Rocket or bank transfer on this page."
+  },
+  "billing": {
+    "cycles": {
+      "monthly": "Monthly",
+      "quarterly": "Quarterly",
+      "annual": "Annual"
+    },
+    "per": {
+      "monthly": "month",
+      "quarterly": "3 months",
+      "annual": "year"
+    },
+    "choose": {
+      "title": "Choose a plan / Renew",
+      "subtitle": "Pick a plan and billing cycle, pay, then report the payment. The plan is activated once the payment is verified.",
+      "cycle": "Billing cycle",
+      "none": "No plans are on sale right now. Please contact support.",
+      "current": "Current plan",
+      "notOffered": "Not available for this billing cycle.",
+      "perMonth": "{{amount}} per month",
+      "save": "Save {{amount}} ({{pct}}%) compared with monthly",
+      "pay": "Pay for this plan",
+      "renew": "Renew this plan",
+      "payFor": "Pay for {{plan}}"
+    },
+    "invoice": {
+      "number": "Invoice no.",
+      "plan": "Plan",
+      "cycle": "Billing cycle",
+      "period": "Period",
+      "total": "Total",
+      "paidAt": "Paid on"
+    },
+    "invoiceStatus": {
+      "open": "Open",
+      "paid": "Paid",
+      "void": "Void"
+    },
+    "claimStatus": {
+      "pending": "Waiting for verification",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "methods": {
+      "bkash": "bKash",
+      "nagad": "Nagad",
+      "rocket": "Rocket",
+      "bank_transfer": "Bank transfer",
+      "cash": "Cash",
+      "other": "Other"
+    },
+    "claim": {
+      "title": "Pay invoice",
+      "method": "Payment method",
+      "howToPay": "How to pay by {{method}}",
+      "amount": "Amount paid",
+      "amountInvalid": "Enter the amount you paid.",
+      "reference": "Transaction ID",
+      "referenceHint": "As shown in the payment SMS or bank slip (4–60 characters).",
+      "payer": "Paid from (account or number)",
+      "payerHint": "The bKash/Nagad number or bank account you paid from.",
+      "submit": "I have paid",
+      "submitted": "Thank you! We'll activate your plan as soon as the payment is verified."
+    },
+    "invoices": {
+      "title": "Invoices and payments",
+      "invoices": "Invoices",
+      "claims": "Reported payments",
+      "noInvoices": "No invoices yet.",
+      "noClaims": "No payments reported yet.",
+      "report": "Report payment",
+      "reportFor": "Report payment for {{no}}",
+      "awaiting": "Payment waiting for verification",
+      "rejection": "Rejection reason"
+    },
+    "export": {
+      "title": "Your data",
+      "body": "Download a ZIP file with every record of your business as CSV files (opens in Excel).",
+      "button": "Download all my data (ZIP)",
+      "preparing": "Preparing the download…",
+      "failed": "The download could not be prepared. Please try again."
+    }
+  }
+}

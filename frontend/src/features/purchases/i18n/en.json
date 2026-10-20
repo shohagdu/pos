@@ -41,7 +41,11 @@
     "statuses": {
       "draft": "Draft",
       "received": "Received",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "ordered": "Ordered",
+      "approved": "Approved",
+      "partially_received": "Partly received",
+      "open": "Open orders"
     },
     "paymentStatuses": {
       "unpaid": "Unpaid",
@@ -84,7 +88,8 @@
       "vatRecoverable": "VAT is recoverable (VAT-registered business), so it is not part of the landed cost.",
       "vatInCost": "VAT is not recoverable, so it is included in the landed cost.",
       "saveDraft": "Save draft",
-      "notDraft": "Only draft bills can be edited. Use a purchase return to correct a posted bill."
+      "notDraft": "Only draft bills can be edited. Use a purchase return to correct a posted bill.",
+      "expectedHint": "For purchase orders"
     },
     "post": {
       "button": "Post bill",
@@ -168,7 +173,59 @@
       "amountPositive": "Enter an amount above 0.",
       "amountOverDue": "The amount is more than the due ({{max}}).",
       "referenceRequired": "Enter the transaction ID.",
-      "reasonRequired": "Enter a reason."
+      "reasonRequired": "Enter a reason.",
+      "receiveQty": "Enter 0 up to what is still to come",
+      "nothingArriving": "Enter what arrived",
+      "expectedBeforeOrder": "The expected date is before the order date"
+    },
+    "expectedDate": "Expected date",
+    "orderedAt": "Ordered",
+    "approvedBy": "Approved by",
+    "receivedValue": "Received value",
+    "outstanding": "Still to come",
+    "orderedNote": "This order is waiting for approval before goods can be received.",
+    "approvedNote": "Receive goods as they arrive; each delivery adds its value to the supplier's balance.",
+    "closedNote": "Closed short on {{date}}: {{reason}}. The rest will not arrive.",
+    "order": {
+      "button": "Place order",
+      "hint": "Placing the order numbers it and locks its lines. Nothing is owed to the supplier until goods arrive."
+    },
+    "approve": {
+      "button": "Approve order"
+    },
+    "cancelOrder": {
+      "button": "Cancel order",
+      "title": "Cancel purchase order",
+      "hint": "Nothing has arrived yet. The order is kept for the record.",
+      "submit": "Cancel order"
+    },
+    "receive": {
+      "button": "Receive goods",
+      "title": "Receive goods",
+      "hint": "Enter what arrived now. Lines left at 0 stay on order.",
+      "ordered": "Ordered",
+      "remaining": "To come",
+      "arriving": "Arriving now",
+      "arrivingFor": "Arriving now for {{name}}",
+      "date": "Receipt date",
+      "note": "Note (delivery, lorry, challan no.)",
+      "withPayment": "Record a payment now",
+      "submit": "Receive",
+      "value": "Value of this delivery: {{value}}"
+    },
+    "close": {
+      "button": "Close short",
+      "title": "Close order short",
+      "hint": "The rest of the order will not arrive and is not owed. Received goods stay.",
+      "submit": "Close order"
+    },
+    "receipts": {
+      "title": "Goods receipts",
+      "no": "Receipt no.",
+      "value": "Value",
+      "items": "Lines",
+      "by": "Received by",
+      "none": "Nothing received yet."
     }
   }
 }

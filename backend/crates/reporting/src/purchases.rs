@@ -67,11 +67,11 @@ pub async fn report(tx: &mut TenantTx, range: &DateRange) -> AppResult<PurchaseR
     let (from, to) = resolve(tx, range).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
-        "SELECT p.supplier_id, s.name AS supplier_name, COUNT(*) AS bills, COALESCE(SUM(p.grand_total), 0) AS grand_total, \
+        "SELECT p.supplier_id, s.name AS supplier_name, COUNT(*) AS bills, COALESCE(SUM(p.received_total), 0) AS grand_total, \
          COALESCE(SUM(p.returned_total), 0) AS returned_total, COALESCE(SUM(p.paid_total), 0) AS paid_total, \
          COALESCE(SUM(p.due_total), 0) AS due_total FROM purchases p \
          JOIN suppliers s ON s.tenant_id = p.tenant_id AND s.id = p.supplier_id \
-         WHERE p.status = 'received' AND p.tenant_id = ",
+         WHERE p.status IN ('partially_received', 'received') AND p.tenant_id = ",
     );
     q.push_bind(tenant_id);
     if let Some(branch_id) = tx.branch_id() {
@@ -91,7 +91,7 @@ pub async fn report(tx: &mut TenantTx, range: &DateRange) -> AppResult<PurchaseR
          COALESCE(ROUND(SUM(i.line_total - i.tax_amount) / NULLIF(SUM(i.base_quantity), 0), 4), 0) AS avg_unit_cost, \
          (SELECT v.last_purchase_price FROM product_variants v WHERE v.tenant_id = i.tenant_id AND v.id = i.variant_id) AS last_unit_cost \
          FROM purchase_items i JOIN purchases p ON p.tenant_id = i.tenant_id AND p.id = i.purchase_id \
-         WHERE p.status = 'received' AND i.tenant_id = ",
+         WHERE p.status IN ('partially_received', 'received') AND i.tenant_id = ",
     );
     q.push_bind(tenant_id);
     if let Some(branch_id) = tx.branch_id() {
@@ -109,15 +109,18 @@ pub async fn report(tx: &mut TenantTx, range: &DateRange) -> AppResult<PurchaseR
     }
 
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
-        "SELECT COALESCE(SUM(tax_total), 0) FROM purchases WHERE status = 'received' AND tenant_id = ",
+        "SELECT COALESCE(SUM(gi.tax_amount), 0) FROM goods_receipt_items gi \
+         JOIN goods_receipts g ON g.tenant_id = gi.tenant_id AND g.id = gi.receipt_id \
+         JOIN purchases p ON p.tenant_id = g.tenant_id AND p.id = g.purchase_id \
+         WHERE p.status IN ('partially_received', 'received') AND gi.tenant_id = ",
     );
     q.push_bind(tenant_id);
     if let Some(branch_id) = tx.branch_id() {
-        q.push(" AND branch_id = ").push_bind(branch_id);
+        q.push(" AND p.branch_id = ").push_bind(branch_id);
     }
-    q.push(" AND purchase_date BETWEEN ").push_bind(from).push(" AND ").push_bind(to);
+    q.push(" AND p.purchase_date BETWEEN ").push_bind(from).push(" AND ").push_bind(to);
     if let Some(supplier_id) = range.supplier_id {
-        q.push(" AND supplier_id = ").push_bind(supplier_id);
+        q.push(" AND p.supplier_id = ").push_bind(supplier_id);
     }
     let tax_total: Decimal = q.build_query_scalar().fetch_one(&mut **tx).await.map_err(map_db_error)?;
     Ok(PurchaseReport {

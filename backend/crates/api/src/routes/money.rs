@@ -1,5 +1,6 @@
 //! Money (Phase 4): payment accounts and the cash/bank book, payment methods,
-//! payments (list, detail, void), account transfers, expenses and other income.
+//! payments (list, detail, void), account transfers, expenses, other income
+//! and bank reconciliation.
 
 use actix_web::{HttpRequest, HttpResponse, get, http::StatusCode, patch, post, put, web};
 use pos_core::AppError;
@@ -9,6 +10,7 @@ use pos_money::{
     incomes::{self, Income, IncomeCategory, IncomeCategoryInput, IncomeFilter, IncomeInput, IncomePage},
     methods::{self, PaymentMethod, PaymentMethodPatch},
     payments::{self, PaymentDetail, PaymentFilter, PaymentPage},
+    reconciliation::{self, ClearInput, Reconciliation, ReconciliationFilter, ReconciliationInput, ReconciliationSummary},
     transfers::{self, Transfer, TransferFilter, TransferInput, TransferPage},
 };
 use serde::Deserialize;
@@ -47,7 +49,14 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(list_incomes)
         .service(create_income)
         .service(get_income)
-        .service(void_income);
+        .service(void_income)
+        .service(list_reconciliations)
+        .service(start_reconciliation)
+        .service(get_reconciliation)
+        .service(clear_reconciliation_lines)
+        .service(complete_reconciliation)
+        .service(cancel_reconciliation)
+        .service(reopen_reconciliation);
 }
 
 #[derive(Debug, Default, Deserialize, utoipa::IntoParams)]
@@ -584,4 +593,120 @@ pub async fn void_income(
     let income = incomes::void(&mut tx, &auth.ctx.meta, path.into_inner(), &body.reason).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(income))
+}
+
+// ------------------------------------------------------- bank reconciliation
+
+#[utoipa::path(get, path = "/api/v1/bank-reconciliations", tag = "money", params(ReconciliationFilter),
+    security(("bearer" = [])), responses((status = 200, body = Vec<ReconciliationSummary>)))]
+#[get("/bank-reconciliations")]
+pub async fn list_reconciliations(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    query: web::Query<ReconciliationFilter>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounts.view")?;
+    let mut tx = auth.begin(&state).await?;
+    let list = reconciliation::list(&mut tx, &query).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(list))
+}
+
+/// Starts reconciling a bank, wallet or card account against one statement (PAY-R06).
+#[utoipa::path(post, path = "/api/v1/bank-reconciliations", tag = "money", request_body = ReconciliationInput,
+    security(("bearer" = [])), responses((status = 201, body = Reconciliation), (status = 409, body = crate::error::Problem)))]
+#[post("/bank-reconciliations")]
+pub async fn start_reconciliation(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    body: web::Json<ReconciliationInput>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounts.manage")?;
+    let mut tx = auth.begin(&state).await?;
+    let rec = reconciliation::start(&mut tx, &auth.ctx.meta, &body).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Created().json(rec))
+}
+
+#[utoipa::path(get, path = "/api/v1/bank-reconciliations/{id}", tag = "money", params(("id" = Uuid, Path)),
+    security(("bearer" = [])), responses((status = 200, body = Reconciliation), (status = 404, body = crate::error::Problem)))]
+#[get("/bank-reconciliations/{id}")]
+pub async fn get_reconciliation(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounts.view")?;
+    let mut tx = auth.begin(&state).await?;
+    let rec = reconciliation::get(&mut tx, path.into_inner()).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(rec))
+}
+
+/// Ticks book lines as on the statement, or unticks them.
+#[utoipa::path(put, path = "/api/v1/bank-reconciliations/{id}/lines", tag = "money", request_body = ClearInput,
+    params(("id" = Uuid, Path)), security(("bearer" = [])),
+    responses((status = 200, body = Reconciliation), (status = 422, body = crate::error::Problem)))]
+#[put("/bank-reconciliations/{id}/lines")]
+pub async fn clear_reconciliation_lines(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+    body: web::Json<ClearInput>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounts.manage")?;
+    let mut tx = auth.begin(&state).await?;
+    let rec = reconciliation::set_cleared(&mut tx, path.into_inner(), &body).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(rec))
+}
+
+/// Completes a reconciliation whose cleared balance equals the statement balance.
+#[utoipa::path(post, path = "/api/v1/bank-reconciliations/{id}/complete", tag = "money", params(("id" = Uuid, Path)),
+    security(("bearer" = [])), responses((status = 200, body = Reconciliation), (status = 422, body = crate::error::Problem)))]
+#[post("/bank-reconciliations/{id}/complete")]
+pub async fn complete_reconciliation(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounts.manage")?;
+    let mut tx = auth.begin(&state).await?;
+    let rec = reconciliation::complete(&mut tx, &auth.ctx.meta, path.into_inner()).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(rec))
+}
+
+/// Cancels a reconciliation in progress.
+#[utoipa::path(post, path = "/api/v1/bank-reconciliations/{id}/cancel", tag = "money", params(("id" = Uuid, Path)),
+    security(("bearer" = [])), responses((status = 200, body = Reconciliation), (status = 422, body = crate::error::Problem)))]
+#[post("/bank-reconciliations/{id}/cancel")]
+pub async fn cancel_reconciliation(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounts.manage")?;
+    let mut tx = auth.begin(&state).await?;
+    let rec = reconciliation::cancel(&mut tx, &auth.ctx.meta, path.into_inner()).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(rec))
+}
+
+/// Reopens the account's latest completed reconciliation to correct it.
+#[utoipa::path(post, path = "/api/v1/bank-reconciliations/{id}/reopen", tag = "money", request_body = ReasonInput,
+    params(("id" = Uuid, Path)), security(("bearer" = [])),
+    responses((status = 200, body = Reconciliation), (status = 422, body = crate::error::Problem)))]
+#[post("/bank-reconciliations/{id}/reopen")]
+pub async fn reopen_reconciliation(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+    body: web::Json<ReasonInput>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounts.manage")?;
+    let mut tx = auth.begin(&state).await?;
+    let rec = reconciliation::reopen(&mut tx, &auth.ctx.meta, path.into_inner(), &body.reason).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(rec))
 }

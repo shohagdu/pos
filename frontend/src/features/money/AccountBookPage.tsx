@@ -11,7 +11,7 @@ import { downloadCsv } from '../../lib/csv'
 import { dec } from '../../lib/decimal'
 import { formatDate, startOfMonth, today } from '../../lib/dates'
 import { formatMoney } from '../../lib/format'
-import { QueryStatus, TextLink } from './shared'
+import { LinkButton, QueryStatus, TextLink } from './shared'
 import { referencePath, stamp, useTenant } from './utils'
 
 /** Cash / bank book of one payment account (`/accounts/:id`). */
@@ -61,6 +61,9 @@ export function AccountBookPage() {
         }
         actions={
           <div className="flex gap-2 print:hidden">
+            {b && b.account.account_type !== 'cash' && (
+              <LinkButton to={`/accounts/reconciliations?account_id=${b.account.id}`}>{t('money.reconcile.reconcile')}</LinkButton>
+            )}
             <Button variant="secondary" disabled={!b} onClick={exportCsv}>
               {t('common.exportCsv')}
             </Button>

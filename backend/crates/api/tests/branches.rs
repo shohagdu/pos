@@ -291,6 +291,185 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     let incomes = get!("/api/v1/incomes").await;
     assert_eq!(num(&incomes.body, "total_amount"), 40.0, "{}", incomes.body);
 
+    // --- a purchase order: 10 ordered (+20 shipping), approved, 4 then 2 arrive, closed short
+    let supplier = send(&srv, &owner, "post", "/api/v1/suppliers", Some(json!({ "name": "Rahman Distributors" })), None).await;
+    assert_eq!(supplier.status, StatusCode::CREATED, "{}", supplier.body);
+    let supplier_id = s(&supplier.body, "id");
+    let draft = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/purchases",
+        Some(json!({ "supplier_id": supplier_id, "shipping_cost": "20",
+                     "lines": [{ "variant_id": soap, "quantity": "10", "unit_cost": "50" }] })),
+        None,
+    )
+    .await;
+    assert_eq!(draft.status, StatusCode::CREATED, "{}", draft.body);
+    let po = s(&draft.body, "id");
+    let po_item = s(&draft.body["items"][0], "id");
+    let po_uri = |action: &str| format!("/api/v1/purchases/{po}/{action}");
+    let ordered = send(&srv, &owner, "post", &po_uri("order"), None, None).await;
+    assert_eq!(ordered.body["status"], "ordered", "{}", ordered.body);
+    assert!(ordered.body["purchase_no"].is_string());
+    assert_eq!(num(&ordered.body, "due_total"), 0.0);
+    let early = send(&srv, &owner, "post", &po_uri("receive"), None, None).await;
+    assert_eq!(early.code(), "PURCHASE_NOT_APPROVED", "{}", early.body);
+    let approved = send(&srv, &owner, "post", &po_uri("approve"), None, None).await;
+    assert_eq!(approved.body["status"], "approved", "{}", approved.body);
+    let first = send(
+        &srv,
+        &owner,
+        "post",
+        &po_uri("receive"),
+        Some(json!({ "lines": [{ "purchase_item_id": po_item, "quantity": "4" }], "note": "First lorry",
+                     "payment": { "method_id": cash, "amount": "100" } })),
+        None,
+    )
+    .await;
+    assert_eq!(first.body["status"], "partially_received", "{}", first.body);
+    assert_eq!(num(&first.body, "received_total"), 208.0, "{}", first.body);
+    assert_eq!(num(&first.body, "due_total"), 108.0);
+    assert_eq!(first.body["payment_status"], "partial");
+    let cancel = send(&srv, &owner, "post", &po_uri("cancel"), Some(json!({ "reason": "x" })), None).await;
+    assert_eq!(cancel.code(), "PURCHASE_NOT_CANCELLABLE", "{}", cancel.body);
+    let too_many = send(
+        &srv,
+        &owner,
+        "post",
+        &po_uri("receive"),
+        Some(json!({ "lines": [{ "purchase_item_id": po_item, "quantity": "7" }] })),
+        None,
+    )
+    .await;
+    assert!(!too_many.status.is_success(), "{}", too_many.body);
+    let second = send(
+        &srv,
+        &owner,
+        "post",
+        &po_uri("receive"),
+        Some(json!({ "lines": [{ "purchase_item_id": po_item, "quantity": "2" }] })),
+        None,
+    )
+    .await;
+    assert_eq!(second.body["status"], "partially_received", "{}", second.body);
+    assert_eq!(num(&second.body, "received_total"), 312.0);
+    assert_eq!(second.body["receipts"].as_array().map(Vec::len), Some(2));
+    assert_eq!(num(&second.body["items"][0], "received_quantity"), 6.0);
+    let closed = send(&srv, &owner, "post", &po_uri("close"), Some(json!({ "reason": "Supplier out of stock" })), None).await;
+    assert_eq!(closed.body["status"], "received", "{}", closed.body);
+    assert!(closed.body["closed_at"].is_string());
+    assert_eq!(num(&closed.body, "grand_total"), 520.0);
+    assert_eq!(num(&closed.body, "due_total"), 212.0);
+    let owed = get!(&format!("/api/v1/suppliers/{supplier_id}")).await;
+    assert_eq!(num(&owed.body, "current_balance"), 212.0, "{}", owed.body);
+    // A one-step bill still receives everything at once.
+    let bill = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/purchases",
+        Some(json!({ "supplier_id": supplier_id, "lines": [{ "variant_id": soap, "quantity": "1", "unit_cost": "50" }] })),
+        None,
+    )
+    .await;
+    let bill = send(&srv, &owner, "post", &format!("/api/v1/purchases/{}/post", s(&bill.body, "id")), None, None).await;
+    assert_eq!(bill.body["status"], "received", "{}", bill.body);
+    assert_eq!(num(&bill.body, "received_total"), 50.0);
+    assert_eq!(num(&bill.body, "due_total"), 50.0);
+
+    // --- bank reconciliation: 100 moved to the bank, a 15 charge; the statement says 85
+    let accounts = get!("/api/v1/payment-accounts").await;
+    let bank = s(find(&accounts.body, "name", "Bank Account"), "id");
+    let main_cash = s(find(&accounts.body, "name", "Cash"), "id");
+    let moved = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/account-transfers",
+        Some(json!({ "from_account_id": main_cash, "to_account_id": bank, "amount": "100" })),
+        None,
+    )
+    .await;
+    assert_eq!(moved.status, StatusCode::CREATED, "{}", moved.body);
+    let expense_categories = get!("/api/v1/expense-categories").await;
+    let charges = s(find(&expense_categories.body, "name", "Bank & MFS Charges"), "id");
+    let fee = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/expenses",
+        Some(json!({ "category_id": charges, "amount": "15", "account_id": bank })),
+        None,
+    )
+    .await;
+    assert_eq!(fee.status, StatusCode::CREATED, "{}", fee.body);
+    let today = moved.body["business_date"].as_str().expect("business date").to_owned();
+    let cash_rec = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/bank-reconciliations",
+        Some(json!({ "account_id": main_cash, "statement_date": today, "statement_balance": "0" })),
+        None,
+    )
+    .await;
+    assert_eq!(cash_rec.status, StatusCode::BAD_REQUEST, "{}", cash_rec.body);
+    let rec = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/bank-reconciliations",
+        Some(json!({ "account_id": bank, "statement_date": today, "statement_balance": "85" })),
+        None,
+    )
+    .await;
+    assert_eq!(rec.status, StatusCode::CREATED, "{}", rec.body);
+    assert_eq!(num(&rec.body, "difference"), 85.0, "{}", rec.body);
+    let lines: Vec<String> = rec.body["lines"].as_array().expect("lines").iter().map(|l| s(l, "id")).collect();
+    assert_eq!(lines.len(), 2, "{}", rec.body);
+    let rec_uri = |action: &str| format!("/api/v1/bank-reconciliations/{}/{action}", s(&rec.body, "id"));
+    let again = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/bank-reconciliations",
+        Some(json!({ "account_id": bank, "statement_date": today, "statement_balance": "85" })),
+        None,
+    )
+    .await;
+    assert_eq!(again.code(), "RECONCILIATION_OPEN", "{}", again.body);
+    let early = send(&srv, &owner, "post", &rec_uri("complete"), None, None).await;
+    assert_eq!(early.code(), "RECONCILIATION_DIFFERENCE", "{}", early.body);
+    let half = send(&srv, &owner, "put", &rec_uri("lines"), Some(json!({ "clear": [lines[0]] })), None).await;
+    assert_eq!(num(&half.body, "difference").abs(), 15.0, "{}", half.body);
+    let all = send(&srv, &owner, "put", &rec_uri("lines"), Some(json!({ "clear": lines })), None).await;
+    assert_eq!(num(&all.body, "difference"), 0.0, "{}", all.body);
+    let done = send(&srv, &owner, "post", &rec_uri("complete"), None, None).await;
+    assert_eq!(done.body["status"], "completed", "{}", done.body);
+    assert_eq!(num(&done.body, "cleared_balance"), 85.0);
+    let next = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/bank-reconciliations",
+        Some(json!({ "account_id": bank, "statement_date": today, "statement_balance": "85" })),
+        None,
+    )
+    .await;
+    assert_eq!(num(&next.body, "opening_balance"), 85.0, "{}", next.body);
+    assert_eq!(next.body["lines"].as_array().map(Vec::len), Some(0), "{}", next.body);
+    let not_latest = send(&srv, &owner, "post", &rec_uri("reopen"), Some(json!({ "reason": "Typo" })), None).await;
+    assert_eq!(not_latest.code(), "RECONCILIATION_OPEN", "{}", not_latest.body);
+    let next_cancel = format!("/api/v1/bank-reconciliations/{}/cancel", s(&next.body, "id"));
+    let cancelled = send(&srv, &owner, "post", &next_cancel, None, None).await;
+    assert_eq!(cancelled.body["status"], "cancelled", "{}", cancelled.body);
+    let reopened = send(&srv, &owner, "post", &rec_uri("reopen"), Some(json!({ "reason": "Typo" })), None).await;
+    assert_eq!(reopened.body["status"], "in_progress", "{}", reopened.body);
+    assert_eq!(reopened.body["lines"].as_array().map(Vec::len), Some(2));
+    let redone = send(&srv, &owner, "post", &rec_uri("complete"), None, None).await;
+    assert_eq!(redone.body["status"], "completed", "{}", redone.body);
+
     // --- reports
     for uri in [
         "/api/v1/reports/aging?party=customers",

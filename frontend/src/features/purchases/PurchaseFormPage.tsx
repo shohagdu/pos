@@ -98,6 +98,7 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
   const [head, setHead] = useState({
     supplier_invoice_no: purchase?.supplier_invoice_no ?? '',
     purchase_date: purchase?.purchase_date ?? today(),
+    expected_date: purchase?.expected_date ?? '',
     location_id: purchase?.location_id ?? locations.find((l) => l.is_sellable)?.id ?? '',
     bill_discount: trimDecimal(purchase?.bill_discount_amount),
     shipping_cost: trimDecimal(purchase?.shipping_cost),
@@ -166,6 +167,7 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
         supplier_id: supplier?.id ?? '',
         supplier_invoice_no: optional(head.supplier_invoice_no),
         purchase_date: optional(head.purchase_date),
+        expected_date: optional(head.expected_date),
         location_id: optional(head.location_id),
         lines: lines.map((l) => {
           const discount = optional(l.discount_value)
@@ -205,6 +207,7 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
     const found: Record<string, string> = {}
     if (!supplier) found.supplier_id = t('purchases.errors.supplierRequired')
     if (head.purchase_date && head.purchase_date > today()) found.purchase_date = t('purchases.errors.futureDate')
+    if (head.expected_date && head.expected_date < head.purchase_date) found.expected_date = t('purchases.errors.expectedBeforeOrder')
     if (lines.length === 0) found.lines = t('purchases.errors.noLines')
     lines.forEach((l, i) => {
       const qty = tryParse(l.quantity)
@@ -290,6 +293,15 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
               value={head.purchase_date}
               onChange={setField('purchase_date')}
               error={errors.purchase_date}
+            />
+            <TextField
+              label={`${t('purchases.expectedDate')} (${t('common.optional')})`}
+              type="date"
+              min={head.purchase_date}
+              value={head.expected_date}
+              onChange={setField('expected_date')}
+              hint={t('purchases.form.expectedHint')}
+              error={errors.expected_date}
             />
             <Select
               label={t('purchases.location')}

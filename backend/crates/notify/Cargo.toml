@@ -1,0 +1,29 @@
+[package]
+name = "pos-notify"
+description = "Notifications: in-app centre, per-user preferences, email/SMS delivery with retries, scheduled alerts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+pos-core.workspace = true
+pos-db.workspace = true
+pos-billing.workspace = true
+pos-inventory.workspace = true
+sqlx.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+utoipa.workspace = true
+rust_decimal.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+lettre.workspace = true
+rustls.workspace = true
+
+[lints]
+workspace = true

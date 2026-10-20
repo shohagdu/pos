@@ -249,6 +249,59 @@ export interface IncomePage extends Page<Income> {
   total_amount: string
 }
 
+export type ReconciliationStatus = 'in_progress' | 'completed' | 'cancelled'
+
+export interface ReconciliationInput {
+  account_id: string
+  statement_date: string
+  /** Closing balance on the statement (negative when overdrawn). */
+  statement_balance: string
+  note?: string
+}
+
+export interface ReconciliationSummary {
+  id: string
+  account_id: string
+  account_name: string
+  statement_date: string
+  statement_balance: string
+  /** Cleared balance carried from earlier reconciliations. */
+  opening_balance: string
+  /** Opening + ticked lines. */
+  cleared_balance: string
+  status: ReconciliationStatus
+  cleared_count: number
+  note: string | null
+  created_by_name: string | null
+  created_at: string
+  completed_by_name: string | null
+  completed_at: string | null
+}
+
+export interface ReconciliationLine {
+  /** The book line (account transaction). */
+  id: string
+  business_date: string
+  txn_type: string
+  /** Signed: + in, − out. */
+  amount: string
+  reference_type: string
+  reference_id: string
+  reference_no: string | null
+  note: string | null
+  cleared: boolean
+}
+
+export interface Reconciliation extends ReconciliationSummary {
+  /** Statement − cleared balance; 0 when it can be completed. */
+  difference: string
+  cleared_in: string
+  cleared_out: string
+  /** Book balance at the statement date. */
+  book_balance: string
+  lines: ReconciliationLine[]
+}
+
 export const moneyApi = {
   accounts: (includeInactive = false) =>
     apiFetch<PaymentAccount[]>(`/api/v1/payment-accounts${queryString({ include_inactive: includeInactive || undefined })}`),
@@ -296,6 +349,18 @@ export const moneyApi = {
   createIncome: (input: IncomeInput, idempotencyKey: string) =>
     apiFetch<Income>('/api/v1/incomes', { method: 'POST', body: input, idempotencyKey }),
   voidIncome: (id: string, reason: string) => apiFetch<Income>(`/api/v1/incomes/${id}/void`, { method: 'POST', body: { reason } }),
+
+  reconciliations: (accountId?: string) =>
+    apiFetch<ReconciliationSummary[]>(`/api/v1/bank-reconciliations${queryString({ account_id: accountId })}`),
+  reconciliation: (id: string) => apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}`),
+  startReconciliation: (input: ReconciliationInput) =>
+    apiFetch<Reconciliation>('/api/v1/bank-reconciliations', { method: 'POST', body: input }),
+  setCleared: (id: string, change: { clear?: string[]; unclear?: string[] }) =>
+    apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}/lines`, { method: 'PUT', body: change }),
+  completeReconciliation: (id: string) => apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}/complete`, { method: 'POST' }),
+  cancelReconciliation: (id: string) => apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}/cancel`, { method: 'POST' }),
+  reopenReconciliation: (id: string, reason: string) =>
+    apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}/reopen`, { method: 'POST', body: { reason } }),
 }
 
 export const moneyKeys = {
@@ -312,6 +377,8 @@ export const moneyKeys = {
   expense: (tenantId: string, id: string) => ['money', tenantId, 'expense', id] as const,
   incomeCategories: (tenantId: string) => ['money', tenantId, 'income-categories'] as const,
   incomes: (tenantId: string, filter: IncomeFilter) => ['money', tenantId, 'incomes', filter] as const,
+  reconciliations: (tenantId: string, accountId?: string) => ['money', tenantId, 'reconciliations', accountId ?? ''] as const,
+  reconciliation: (tenantId: string, id: string) => ['money', tenantId, 'reconciliation', id] as const,
 }
 
 export const usePaymentAccounts = (tenantId: string, includeInactive = false) =>
@@ -357,3 +424,7 @@ export const useIncomes = (tenantId: string, filter: IncomeFilter) =>
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.next_cursor,
   })
+export const useReconciliations = (tenantId: string, accountId?: string) =>
+  useQuery({ queryKey: moneyKeys.reconciliations(tenantId, accountId), queryFn: () => moneyApi.reconciliations(accountId) })
+export const useReconciliation = (tenantId: string, id: string) =>
+  useQuery({ queryKey: moneyKeys.reconciliation(tenantId, id), queryFn: () => moneyApi.reconciliation(id) })

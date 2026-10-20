@@ -1,7 +1,14 @@
 // Non-component helpers shared by the inventory, customers, money and expenses pages.
 
+import type { ReconciliationStatus } from '../../api/money'
 import { dec } from '../../lib/decimal'
 import { useSession } from '../auth/session'
+
+export const RECONCILIATION_TONE: Record<ReconciliationStatus, 'good' | 'warn' | 'neutral'> = {
+  in_progress: 'warn',
+  completed: 'good',
+  cancelled: 'neutral',
+}
 
 /** Session with the active tenant id. */
 export function useTenant() {

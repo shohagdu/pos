@@ -7,7 +7,12 @@
     "editAccountName": "{{name}} সম্পাদনা",
     "accountName": "অ্যাকাউন্টের নাম",
     "accountType": "ধরন",
-    "types": { "cash": "ক্যাশ", "bank": "ব্যাংক", "mobile_wallet": "মোবাইল ওয়ালেট", "card": "কার্ড" },
+    "types": {
+      "cash": "ক্যাশ",
+      "bank": "ব্যাংক",
+      "mobile_wallet": "মোবাইল ওয়ালেট",
+      "card": "কার্ড"
+    },
     "accountNumber": "অ্যাকাউন্ট নম্বর",
     "walletNumber": "ওয়ালেট নম্বর",
     "bankName": "ব্যাংক / শাখা",
@@ -20,7 +25,10 @@
     "default": "ডিফল্ট",
     "active": "সক্রিয়",
     "defaultCannotDeactivate": "ডিফল্ট অ্যাকাউন্ট নিষ্ক্রিয় করা যায় না।",
-    "statuses": { "active": "সক্রিয়", "inactive": "নিষ্ক্রিয়" },
+    "statuses": {
+      "active": "সক্রিয়",
+      "inactive": "নিষ্ক্রিয়"
+    },
     "noAccounts": "এখনও কোনো অ্যাকাউন্ট নেই।",
     "transfer": "টাকা স্থানান্তর",
     "transferNo": "স্থানান্তর নং",
@@ -81,6 +89,54 @@
       "income": "আয়",
       "manual": "ম্যানুয়াল"
     },
-    "paymentStatuses": { "posted": "পোস্ট হয়েছে", "voided": "বাতিল" }
+    "paymentStatuses": {
+      "posted": "পোস্ট হয়েছে",
+      "voided": "বাতিল"
+    },
+    "reconcile": {
+      "title": "ব্যাংক মিলকরণ",
+      "subtitle": "ব্যাংক, ওয়ালেট বা কার্ড হিসাব স্টেটমেন্টের সাথে মিলিয়ে নিন।",
+      "reconcile": "মিলকরণ",
+      "start": "মিলকরণ শুরু করুন",
+      "account": "হিসাব",
+      "chooseAccount": "হিসাব বেছে নিন",
+      "statementDate": "স্টেটমেন্টের তারিখ",
+      "statementBalance": "স্টেটমেন্টের সমাপনী ব্যালেন্স",
+      "statementBalanceHint": "ওভারড্রাফট হলে মাইনাস চিহ্ন দিন।",
+      "none": "এখনো কোনো মিলকরণ নেই।",
+      "statuses": {
+        "in_progress": "চলমান",
+        "completed": "সম্পন্ন",
+        "cancelled": "বাতিল"
+      },
+      "openingBalance": "আগে মিলানো",
+      "clearedBalance": "মিলানো ব্যালেন্স",
+      "difference": "পার্থক্য",
+      "bookBalance": "স্টেটমেন্টের তারিখে খাতার ব্যালেন্স",
+      "clearedIn": "মিলানো জমা",
+      "clearedOut": "মিলানো খরচ",
+      "clearedCount": "মিলানো লাইন",
+      "lines": "খাতার লাইন",
+      "linesHint": "স্টেটমেন্টে যে লাইনগুলো আছে সেগুলোতে টিক দিন। ব্যাংক চার্জ বা সুদ খাতায় নেই? আগে এই হিসাবে খরচ বা অন্যান্য আয় হিসেবে লিখুন।",
+      "noLines": "স্টেটমেন্টের তারিখ পর্যন্ত মিলানো বাকি কোনো লাইন নেই।",
+      "cleared": "মিলানো",
+      "clearLine": "মিলানো: {{label}}",
+      "tickAll": "সব টিক দিন",
+      "untickAll": "সব টিক তুলুন",
+      "complete": "সম্পন্ন করুন",
+      "completeHint": "পার্থক্য ০ হলে সম্পন্ন করুন।",
+      "cancel": "মিলকরণ বাতিল",
+      "reopen": "আবার খুলুন",
+      "reopenTitle": "মিলকরণ আবার খুলুন",
+      "reopenHint": "শুধু হিসাবের সর্বশেষ মিলকরণ আবার খোলা যায়। এর লাইনগুলো টিক দেওয়া থাকবে।",
+      "completedBy": "সম্পন্নকারী",
+      "startedBy": "শুরুকারী",
+      "openReconciliation": "খুলুন",
+      "errors": {
+        "account": "একটি হিসাব বেছে নিন",
+        "date": "ভবিষ্যতের নয় এমন স্টেটমেন্ট তারিখ দিন",
+        "balance": "সর্বোচ্চ ২ দশমিকসহ ব্যালেন্স লিখুন"
+      }
+    }
   }
 }

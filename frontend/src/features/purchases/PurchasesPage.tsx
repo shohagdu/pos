@@ -2,7 +2,7 @@ import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 
-import { type Purchase, type PurchaseFilter, type PurchaseStatus, usePurchases } from '../../api/purchasing'
+import { PURCHASE_STATUSES, type Purchase, type PurchaseFilter, usePurchases } from '../../api/purchasing'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { type Column, DataTable } from '../../components/ui/DataTable'
@@ -20,7 +20,7 @@ import { useSession } from '../auth/session'
 import { BUTTON_LINK, LINK, SECONDARY_LINK } from './helpers'
 import { PaymentBadge, StatusBadge } from './shared'
 
-const STATUSES: PurchaseStatus[] = ['draft', 'received', 'cancelled']
+const STATUSES = ['open', ...PURCHASE_STATUSES] as const
 const PAYMENT_STATUSES = ['unpaid', 'partial', 'paid', 'refunded'] as const
 
 /** `/purchases`: supplier bills with filters, totals and CSV. */
@@ -67,7 +67,7 @@ export function PurchasesPage() {
       render: (p) => (
         <span className="flex flex-wrap gap-1">
           <StatusBadge status={p.status} />
-          {p.status === 'received' && <PaymentBadge status={p.payment_status} />}
+          {(p.status === 'received' || p.status === 'partially_received') && <PaymentBadge status={p.payment_status} />}
         </span>
       ),
     },
@@ -125,7 +125,7 @@ export function PurchasesPage() {
           <Select
             label={t('common.status')}
             value={filter.status ?? ''}
-            onChange={(e) => set({ status: (e.target.value || undefined) as PurchaseStatus | undefined })}
+            onChange={(e) => set({ status: (e.target.value || undefined) as PurchaseFilter['status'] })}
             options={[{ value: '', label: t('common.all') }, ...STATUSES.map((s) => ({ value: s, label: t(`purchases.statuses.${s}`) }))]}
           />
           <Select

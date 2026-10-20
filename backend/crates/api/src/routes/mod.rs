@@ -7,6 +7,7 @@ pub mod health;
 pub mod inventory;
 pub mod meta;
 pub mod money;
+pub mod notifications;
 pub mod parties;
 pub mod purchasing;
 pub mod registers;

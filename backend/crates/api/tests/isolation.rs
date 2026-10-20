@@ -127,6 +127,7 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/shifts/current"
             | "/api/v1/income-categories"
             | "/api/v1/incomes"
+            | "/api/v1/bank-reconciliations"
             | "/api/v1/reports/aging"
             | "/api/v1/reports/vat-summary"
             | "/api/v1/reports/discounts"
@@ -154,6 +155,7 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/shifts"
             | "/api/v1/income-categories"
             | "/api/v1/incomes"
+            | "/api/v1/bank-reconciliations"
             | "/api/v1/stock-adjustments"
             | "/api/v1/customers"
             | "/api/v1/suppliers"
@@ -203,11 +205,27 @@ fn access(method: &str, path: &str) -> Option<Access> {
         | ("get", "/api/v1/sale-returns/{id}")
         | ("delete", "/api/v1/held-carts/{id}")
         | ("get" | "put", "/api/v1/purchases/{id}")
-        | ("post", "/api/v1/purchases/{id}/post" | "/api/v1/purchases/{id}/cancel")
+        | (
+            "post",
+            "/api/v1/purchases/{id}/post"
+            | "/api/v1/purchases/{id}/cancel"
+            | "/api/v1/purchases/{id}/order"
+            | "/api/v1/purchases/{id}/approve"
+            | "/api/v1/purchases/{id}/receive"
+            | "/api/v1/purchases/{id}/close",
+        )
         | ("get", "/api/v1/purchase-returns/{id}")
         | ("get", "/api/v1/stock-adjustments/{id}")
         | ("get", "/api/v1/journals/{id}")
         | ("post", "/api/v1/journals/{id}/reverse")
+        | ("get", "/api/v1/bank-reconciliations/{id}")
+        | ("put", "/api/v1/bank-reconciliations/{id}/lines")
+        | (
+            "post",
+            "/api/v1/bank-reconciliations/{id}/complete"
+            | "/api/v1/bank-reconciliations/{id}/cancel"
+            | "/api/v1/bank-reconciliations/{id}/reopen",
+        )
         | ("get", "/api/v1/stock-transfers/{id}")
         | (
             "post",
@@ -324,6 +342,7 @@ struct Trade {
     shift_id: String,
     income_category_id: String,
     income_id: String,
+    reconciliation_id: String,
 }
 
 impl Victim {
@@ -390,6 +409,8 @@ impl Victim {
             &self.trade.income_category_id
         } else if path.starts_with("/api/v1/incomes/") {
             &self.trade.income_id
+        } else if path.starts_with("/api/v1/bank-reconciliations/") {
+            &self.trade.reconciliation_id
         } else if path.starts_with("/api/v1/subscription/invoices/") {
             &self.trade.invoice_id
         } else if path.starts_with("/api/v1/reports/general-ledger") {
@@ -428,6 +449,7 @@ impl Victim {
             &t.shift_id,
             &t.income_category_id,
             &t.income_id,
+            &t.reconciliation_id,
             "Alice Till",
             "Alice Bank Interest",
             "Alice Customer",
@@ -494,7 +516,9 @@ fn body_for(method: &str, path: &str, b_role: &str, b_unit: &str, a: &Trade) -> 
             | "/api/v1/expenses/{id}/void"
             | "/api/v1/incomes/{id}/void"
             | "/api/v1/sales/{id}/cancel"
-            | "/api/v1/purchases/{id}/cancel",
+            | "/api/v1/purchases/{id}/cancel"
+            | "/api/v1/purchases/{id}/close"
+            | "/api/v1/bank-reconciliations/{id}/reopen",
         ) => {
             json!({ "reason": "Hijack" })
         }
@@ -513,6 +537,10 @@ fn body_for(method: &str, path: &str, b_role: &str, b_unit: &str, a: &Trade) -> 
         ("post", "/api/v1/shifts") => json!({ "register_id": a.register_id, "opening_cash": "0" }),
         ("post", "/api/v1/income-categories") => json!({ "name": "Bob Income" }),
         ("post", "/api/v1/incomes") => json!({ "category_id": a.income_category_id, "amount": "1" }),
+        ("post", "/api/v1/bank-reconciliations") => {
+            json!({ "account_id": a.account_id, "statement_date": "2026-01-31", "statement_balance": "0" })
+        }
+        ("put", "/api/v1/bank-reconciliations/{id}/lines") => json!({ "clear": [a.payment_id] }),
         ("post", "/api/v1/subscription/invoices/{id}/claims") => {
             json!({ "method": "bkash", "amount": "990", "transaction_ref": "TRXHIJACK1" })
         }
@@ -994,6 +1022,16 @@ where
     )
     .await;
     let income_id = ok(&income, "other income");
+    let bank = find_id(&accounts.body, "name", "Bank Account");
+    let reconciliation = call(
+        srv,
+        post(
+            "/api/v1/bank-reconciliations",
+            json!({ "account_id": bank, "statement_date": "2026-01-31", "statement_balance": "0" }),
+        ),
+    )
+    .await;
+    let reconciliation_id = ok(&reconciliation, "bank reconciliation");
     Trade {
         variant_id,
         customer_id,
@@ -1020,5 +1058,6 @@ where
         shift_id,
         income_category_id,
         income_id,
+        reconciliation_id,
     }
 }

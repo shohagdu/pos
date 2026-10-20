@@ -219,9 +219,13 @@ pub async fn vat_summary(tx: &mut TenantTx, range: &DateRange) -> AppResult<VatS
     .await
     .map_err(map_db_error)?;
     let purchases: Vec<RateAgg> = sqlx::query_as(
-        "SELECT pi.tax_rate_pct, COALESCE(SUM(pi.line_total - pi.tax_amount), 0), COALESCE(SUM(pi.tax_amount), 0) \
-         FROM purchase_items pi JOIN purchases p ON p.tenant_id = pi.tenant_id AND p.id = pi.purchase_id \
-         WHERE pi.tenant_id = ? AND p.status IN ('received', 'partially_received') AND p.purchase_date BETWEEN ? AND ? \
+        // Input VAT arises when the goods are received (one receipt per delivery).
+        "SELECT pi.tax_rate_pct, COALESCE(SUM(ROUND((pi.line_total - pi.tax_amount) * gi.base_quantity / pi.base_quantity, 2)), 0), \
+         COALESCE(SUM(gi.tax_amount), 0) \
+         FROM goods_receipt_items gi JOIN goods_receipts g ON g.tenant_id = gi.tenant_id AND g.id = gi.receipt_id \
+         JOIN purchase_items pi ON pi.tenant_id = gi.tenant_id AND pi.id = gi.purchase_item_id \
+         JOIN purchases p ON p.tenant_id = g.tenant_id AND p.id = g.purchase_id \
+         WHERE gi.tenant_id = ? AND p.status IN ('received', 'partially_received') AND g.business_date BETWEEN ? AND ? \
            AND (? IS NULL OR p.branch_id = ?) GROUP BY pi.tax_rate_pct",
     )
     .bind(tenant_id)

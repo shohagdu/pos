@@ -84,6 +84,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .configure(routes::purchasing::configure)
             .configure(routes::reports::configure)
             .configure(routes::accounting::configure)
+            .configure(routes::notifications::configure)
             .configure(routes::admin::configure),
     );
 }

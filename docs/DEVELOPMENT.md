@@ -306,6 +306,26 @@ exist; Compose creates it. `make check` runs everything CI runs.
   it is open are linked to it. `GET /shifts/{id}/report` is the X report while
   open and the Z report after `POST /shifts/{id}/close` stores expected, counted
   and the over/short difference.
+- **Purchase orders (PUR-R06).** A draft can be posted in one step (as before)
+  or placed as an order: `POST /purchases/{id}/order` (numbers it, nothing owed)
+  → `/approve` (`purchases.approve`) → `/receive` once per delivery → `received`
+  when every line is in, or `/close` to close a partly received order short.
+  Each receipt is posted like a small bill for what arrived (stock at landed
+  cost, supplier ledger, journal, optional payment); its lines store their
+  value and VAT (`goods_receipt_items.line_value`, `tax_amount`) and the
+  receipt completing a line takes the remainder, so receipts add up to the bill.
+  `purchases.received_total` is what the supplier is owed before payments and
+  returns; payments, returns, aging and reports treat `partially_received` like
+  `received`, and input VAT is dated by the goods receipt (migration 0107).
+- **Bank reconciliation (PAY-R06)** (`/bank-reconciliations`, migration 0108):
+  for a bank, wallet or card account, enter the statement date and closing
+  balance, tick the book lines on the statement (`PUT …/lines`), and complete
+  when `opening + ticked = statement` (difference 0). The book is append-only,
+  so ticks live in `bank_reconciliation_items` (unique per account transaction:
+  a line is cleared once); opening-balance lines count as cleared. One
+  reconciliation per account can be in progress; the latest completed one can
+  be reopened. Bank charges or interest are entered as an expense or other
+  income on the account, then ticked. Cash is counted with register shifts.
 - **Other income** (`/incomes`, `/income-categories`) posts money in to a
   payment account with its journal; void posts the reversal.
 - **Reports:** `/reports/aging` (customers or suppliers, 0–30/31–60/61–90/90+),

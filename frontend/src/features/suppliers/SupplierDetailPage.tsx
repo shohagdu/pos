@@ -261,7 +261,7 @@ function BillsTab({ tenantId, supplierId }: { tenantId: string; supplierId: stri
       render: (p) => (
         <span className="flex flex-wrap gap-1">
           <PurchaseStatusBadge status={p.status} />
-          {p.status === 'received' && <PaymentBadge status={p.payment_status} />}
+          {(p.status === 'received' || p.status === 'partially_received') && <PaymentBadge status={p.payment_status} />}
         </span>
       ),
     },

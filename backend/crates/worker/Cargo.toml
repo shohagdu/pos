@@ -11,6 +11,7 @@ publish.workspace = true
 pos-core.workspace = true
 pos-db.workspace = true
 pos-platform.workspace = true
+pos-notify.workspace = true
 sqlx.workspace = true
 tokio.workspace = true
 chrono.workspace = true

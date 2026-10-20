@@ -226,7 +226,7 @@ pub async fn create(
     let ctx = context::load(tx).await?;
     let tenant_id = tx.tenant_id();
     let purchase: Option<LockedPurchase> = sqlx::query_as(
-        "SELECT status, branch_id, location_id, supplier_id, purchase_no, grand_total, paid_total, returned_total, due_total \
+        "SELECT status, branch_id, location_id, supplier_id, purchase_no, received_total AS grand_total, paid_total, returned_total, due_total \
          FROM purchases WHERE tenant_id = ? AND id = ? FOR UPDATE",
     )
     .bind(tenant_id)
@@ -245,10 +245,10 @@ pub async fn create(
         returned_total: returned,
         due_total: due,
     } = purchase.ok_or_else(|| AppError::field("purchase_id", "NOT_FOUND", "the bill was not found"))?;
-    if status != "received" {
+    if status != "received" && status != "partially_received" {
         return Err(AppError::Unprocessable {
             code: "PURCHASE_NOT_RECEIVED",
-            message: "only posted bills can be returned".into(),
+            message: "only goods that were received can be returned".into(),
         });
     }
     let purchase_no = purchase_no.unwrap_or_default();
@@ -292,7 +292,8 @@ pub async fn create(
                 message: format!("only {} of {} can still be returned", left.normalize(), item.product_name),
             });
         }
-        let (line_total, tax) = if qty == left {
+        // The last of a fully received line takes the remainder.
+        let (line_total, tax) = if qty == left && item.received_quantity == item.base_quantity {
             (item.line_total - item.returned_value, item.tax_amount - item.returned_tax)
         } else {
             (round2(item.line_total * qty / item.base_quantity), round2(item.tax_amount * qty / item.base_quantity))

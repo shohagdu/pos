@@ -31,6 +31,8 @@ import { TransferFormPage } from '../features/inventory/TransferFormPage'
 import { TransfersPage } from '../features/inventory/TransfersPage'
 import { AccountBookPage } from '../features/money/AccountBookPage'
 import { AccountsPage } from '../features/money/AccountsPage'
+import { ReconciliationPage } from '../features/money/ReconciliationPage'
+import { ReconciliationsPage } from '../features/money/ReconciliationsPage'
 import { PosPage } from '../features/pos/PosPage'
 import { PurchaseDetailPage } from '../features/purchases/PurchaseDetailPage'
 import { PurchaseFormPage } from '../features/purchases/PurchaseFormPage'
@@ -189,6 +191,8 @@ export const routes: RouteObject[] = [
                   { path: '/shifts', element: <ShiftsPage /> },
                   { path: '/shifts/:id', element: <ShiftReportPage /> },
                   { path: '/accounts', element: <AccountsPage /> },
+                  { path: '/accounts/reconciliations', element: <ReconciliationsPage /> },
+                  { path: '/accounts/reconciliations/:id', element: <ReconciliationPage /> },
                   { path: '/accounts/:id', element: <AccountBookPage /> },
                   { path: '/expenses', element: <ExpensesPage /> },
                   { path: '/expenses/categories', element: <ExpenseCategoriesPage /> },

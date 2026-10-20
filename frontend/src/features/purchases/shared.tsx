@@ -17,7 +17,8 @@ import { type PaymentValues, checkPayment, toPayInput, trimDecimal, useRefreshAf
 
 export function StatusBadge({ status }: { status: PurchaseStatus }) {
   const { t } = useTranslation()
-  const tone = status === 'received' ? 'good' : status === 'cancelled' ? 'bad' : 'neutral'
+  const tone =
+    status === 'received' ? 'good' : status === 'cancelled' ? 'bad' : status === 'partially_received' ? 'warn' : status === 'draft' ? 'neutral' : 'info'
   return <Badge tone={tone}>{t(`purchases.statuses.${status}`)}</Badge>
 }
 

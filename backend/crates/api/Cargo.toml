@@ -1,6 +1,7 @@
 [package]
 name = "pos-api"
 description = "HTTP API server"
+default-run = "pos-api"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -23,6 +24,7 @@ pos-sales.workspace = true
 pos-purchasing.workspace = true
 pos-reporting.workspace = true
 pos-platform.workspace = true
+pos-notify.workspace = true
 zip = { version = "9", default-features = false, features = ["deflate"] }
 rust_decimal.workspace = true
 uuid.workspace = true

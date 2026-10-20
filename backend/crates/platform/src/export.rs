@@ -54,6 +54,8 @@ pub const TABLES: &[&str] = &[
     "expenses",
     "income_categories",
     "other_incomes",
+    "bank_reconciliations",
+    "bank_reconciliation_items",
     "ledger_accounts",
     "journal_entries",
     "journal_lines",

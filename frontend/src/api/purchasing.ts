@@ -18,6 +18,8 @@ export interface PurchaseInput {
   supplier_id: string
   supplier_invoice_no?: string
   purchase_date?: string
+  /** When an order is expected to arrive. */
+  expected_date?: string
   location_id?: string
   lines: PurchaseLineInput[]
   bill_discount?: string
@@ -34,7 +36,11 @@ export interface PayInput {
   note?: string
 }
 
-export type PurchaseStatus = 'draft' | 'received' | 'cancelled'
+export const PURCHASE_STATUSES = ['draft', 'ordered', 'approved', 'partially_received', 'received', 'cancelled'] as const
+export type PurchaseStatus = (typeof PURCHASE_STATUSES)[number]
+
+/** Orders still waiting for goods. */
+export const OPEN_ORDER_STATUSES: PurchaseStatus[] = ['ordered', 'approved', 'partially_received']
 
 export interface Purchase {
   id: string
@@ -54,12 +60,21 @@ export interface Purchase {
   shipping_cost: string
   other_cost: string
   grand_total: string
+  /** Value of the goods received so far (owed before payments and returns). */
+  received_total: string
   paid_total: string
   returned_total: string
   due_total: string
   note: string | null
   item_count: number
+  expected_date: string | null
+  ordered_at: string | null
+  approved_at: string | null
+  approved_by_name: string | null
+  /** First goods receipt (or the one-step post). */
   posted_at: string | null
+  /** Closed short: the rest of the order will not arrive. */
+  closed_at: string | null
   cancelled_at: string | null
   cancel_reason: string | null
   created_by_name: string | null
@@ -102,15 +117,37 @@ export interface PurchasePayment {
   created_at: string
 }
 
+export interface GoodsReceipt {
+  id: string
+  receipt_no: string
+  business_date: string
+  location_name: string
+  item_count: number
+  value: string
+  note: string | null
+  received_by_name: string | null
+  received_at: string
+}
+
+export interface GoodsReceiptInput {
+  /** Lines arriving now; empty = everything still outstanding. */
+  lines?: { purchase_item_id: string; quantity: string }[]
+  business_date?: string
+  note?: string
+  payment?: PayInput
+}
+
 export interface PurchaseDetail extends Purchase {
   items: PurchaseItem[]
+  receipts: GoodsReceipt[]
   payments: PurchasePayment[]
   returns: { id: string; return_no: string; business_date: string; total: string }[]
 }
 
 export interface PurchaseFilter {
   supplier_id?: string
-  status?: PurchaseStatus | ''
+  /** A status, or `open` (ordered, approved or partially received). */
+  status?: PurchaseStatus | 'open' | ''
   payment_status?: string
   from?: string
   to?: string
@@ -195,6 +232,12 @@ export const purchasingApi = {
     apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/post`, { method: 'POST', body: payment ? { payment } : {}, idempotencyKey }),
   cancelPurchase: (id: string, reason: string) =>
     apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/cancel`, { method: 'POST', body: { reason } }),
+  orderPurchase: (id: string) => apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/order`, { method: 'POST' }),
+  approvePurchase: (id: string) => apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/approve`, { method: 'POST' }),
+  receivePurchase: (id: string, input: GoodsReceiptInput, idempotencyKey: string) =>
+    apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/receive`, { method: 'POST', body: input, idempotencyKey }),
+  closePurchase: (id: string, reason: string) =>
+    apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/close`, { method: 'POST', body: { reason } }),
   lastPrices: (variantIds: string[]) =>
     apiFetch<LastPrice[]>(`/api/v1/purchases/last-prices${queryString({ variant_ids: variantIds.join(',') })}`),
   paySupplier: (input: SupplierPaymentInput, idempotencyKey: string) =>

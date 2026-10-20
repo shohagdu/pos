@@ -30,7 +30,7 @@ export function PurchaseReturnPage() {
   const purchase = usePurchase(tenantId, id)
   if (purchase.isPending) return <Spinner />
   if (purchase.isError) return <Alert tone="danger">{problemMessage(purchase.error, t)}</Alert>
-  if (purchase.data.status !== 'received') {
+  if (purchase.data.status !== 'received' && purchase.data.status !== 'partially_received') {
     return (
       <div className="flex max-w-3xl flex-col gap-4">
         <Alert tone="warning">{t('purchases.return.notReceived')}</Alert>

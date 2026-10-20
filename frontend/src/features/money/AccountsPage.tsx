@@ -12,7 +12,7 @@ import { formatDate } from '../../lib/dates'
 import { formatMoney } from '../../lib/format'
 import { AccountDialog, TransferDialog } from './AccountDialogs'
 import { PaymentMethodsSection } from './PaymentMethodsSection'
-import { LoadMore, QueryStatus, TextLink } from './shared'
+import { LinkButton, LoadMore, QueryStatus, TextLink } from './shared'
 import { useTenant } from './utils'
 
 const TYPE_TONE = { cash: 'good', bank: 'info', mobile_wallet: 'warn', card: 'neutral' } as const
@@ -78,6 +78,9 @@ export function AccountsPage() {
         subtitle={t('money.subtitle')}
         actions={
           <>
+            {showBalances && list.some((a) => a.account_type !== 'cash') && (
+              <LinkButton to="/accounts/reconciliations">{t('money.reconcile.reconcile')}</LinkButton>
+            )}
             {canTransfer && (
               <Button variant="secondary" disabled={activeList.length < 2} onClick={() => setDialog({ kind: 'transfer' })}>
                 {t('money.transfer')}

@@ -1,5 +1,6 @@
 //! Purchasing (Phase 4): bills as drafts, posting with goods receipt, last
-//! purchase prices, supplier payments and purchase returns.
+//! purchase prices, supplier payments and purchase returns; purchase orders
+//! with approval and partial receipts (Phase 6, PUR-R06).
 
 use actix_web::{HttpRequest, HttpResponse, get, http::StatusCode, post, put, web};
 use pos_core::AppError;
@@ -7,7 +8,8 @@ use pos_money::payments::PaymentDetail;
 use pos_purchasing::{
     payments::{self, SupplierPaymentInput},
     purchases::{
-        self, LastPrice, LastPriceQuery, PostInput, PurchaseDetail, PurchaseFilter, PurchaseInput, PurchasePage,
+        self, GoodsReceiptInput, LastPrice, LastPriceQuery, PostInput, PurchaseDetail, PurchaseFilter, PurchaseInput,
+        PurchasePage,
     },
     returns::{self, PurchaseReturnDetail, PurchaseReturnFilter, PurchaseReturnInput, PurchaseReturnPage},
 };
@@ -28,6 +30,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(update_purchase)
         .service(post_purchase)
         .service(cancel_purchase)
+        .service(order_purchase)
+        .service(approve_purchase)
+        .service(receive_purchase)
+        .service(close_purchase)
         .service(pay_supplier)
         .service(create_purchase_return)
         .service(list_purchase_returns)
@@ -159,7 +165,96 @@ pub async fn post_purchase(
     .await
 }
 
-/// Cancels a draft bill. Posted bills are corrected with a purchase return.
+/// Places a draft as a purchase order: numbers it and freezes its lines (PUR-R06).
+#[utoipa::path(post, path = "/api/v1/purchases/{id}/order", tag = "purchasing", params(("id" = Uuid, Path)),
+    security(("bearer" = [])), responses((status = 200, body = PurchaseDetail), (status = 422, body = crate::error::Problem)))]
+#[post("/purchases/{id}/order")]
+pub async fn order_purchase(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("purchases.create")?;
+    let mut tx = auth.begin(&state).await?;
+    let detail = purchases::order(&mut tx, &auth.ctx.meta, path.into_inner()).await?;
+    tx.commit().await?;
+    Ok(ok(detail))
+}
+
+/// Approves a placed order so goods can be received against it.
+#[utoipa::path(post, path = "/api/v1/purchases/{id}/approve", tag = "purchasing", params(("id" = Uuid, Path)),
+    security(("bearer" = [])), responses((status = 200, body = PurchaseDetail), (status = 422, body = crate::error::Problem)))]
+#[post("/purchases/{id}/approve")]
+pub async fn approve_purchase(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("purchases.approve")?;
+    let mut tx = auth.begin(&state).await?;
+    let detail = purchases::approve(&mut tx, &auth.ctx.meta, path.into_inner()).await?;
+    tx.commit().await?;
+    Ok(ok(detail))
+}
+
+/// Receives goods against an approved order: one goods receipt with stock,
+/// the supplier's share of the bill, the journal and an optional payment.
+#[utoipa::path(post, path = "/api/v1/purchases/{id}/receive", tag = "purchasing", request_body = GoodsReceiptInput,
+    security(("bearer" = [])), params(("id" = Uuid, Path), ("Idempotency-Key" = Option<String>, Header)),
+    responses((status = 200, body = PurchaseDetail), (status = 422, body = crate::error::Problem)))]
+#[post("/purchases/{id}/receive")]
+pub async fn receive_purchase(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+    body: Option<web::Json<GoodsReceiptInput>>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("purchases.post")?;
+    if body.as_ref().is_some_and(|b| b.payment.is_some()) {
+        auth.require("suppliers.pay")?;
+    }
+    let key = idempotency_key(&req, false)?;
+    let id = path.into_inner();
+    let input = body.map(web::Json::into_inner).unwrap_or_default();
+    let request = serde_json::json!({ "purchase_id": id, "input": input });
+    let (meta, input) = (&auth.ctx.meta, &input);
+    let p = Posting {
+        key,
+        endpoint: "POST /purchases/receive",
+        resource: "purchase",
+        status: StatusCode::OK,
+        request: &request,
+    };
+    posting::run(&state, &auth, p, |mut tx| {
+        Box::pin(async move {
+            let result = purchases::receive(&mut tx, meta, id, input).await.map(|d| (d.purchase.id, d));
+            (tx, result)
+        })
+    })
+    .await
+}
+
+/// Closes a partly received order short: the rest will not arrive.
+#[utoipa::path(post, path = "/api/v1/purchases/{id}/close", tag = "purchasing", request_body = ReasonInput,
+    params(("id" = Uuid, Path)), security(("bearer" = [])),
+    responses((status = 200, body = PurchaseDetail), (status = 422, body = crate::error::Problem)))]
+#[post("/purchases/{id}/close")]
+pub async fn close_purchase(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+    body: web::Json<ReasonInput>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("purchases.post")?;
+    let mut tx = auth.begin(&state).await?;
+    let detail = purchases::close(&mut tx, &auth.ctx.meta, path.into_inner(), &body.reason).await?;
+    tx.commit().await?;
+    Ok(ok(detail))
+}
+
+/// Cancels a draft bill, or an order nothing has arrived for. Received
+/// bills are corrected with a purchase return.
 #[utoipa::path(post, path = "/api/v1/purchases/{id}/cancel", tag = "purchasing", request_body = ReasonInput,
     params(("id" = Uuid, Path)), security(("bearer" = [])),
     responses((status = 200, body = PurchaseDetail), (status = 422, body = crate::error::Problem)))]

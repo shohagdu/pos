@@ -7,7 +7,12 @@
     "editAccountName": "Edit {{name}}",
     "accountName": "Account name",
     "accountType": "Type",
-    "types": { "cash": "Cash", "bank": "Bank", "mobile_wallet": "Mobile wallet", "card": "Card" },
+    "types": {
+      "cash": "Cash",
+      "bank": "Bank",
+      "mobile_wallet": "Mobile wallet",
+      "card": "Card"
+    },
     "accountNumber": "Account number",
     "walletNumber": "Wallet number",
     "bankName": "Bank / branch",
@@ -20,7 +25,10 @@
     "default": "Default",
     "active": "Active",
     "defaultCannotDeactivate": "The default account cannot be deactivated.",
-    "statuses": { "active": "Active", "inactive": "Inactive" },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
     "noAccounts": "No accounts yet.",
     "transfer": "Transfer money",
     "transferNo": "Transfer no.",
@@ -81,6 +89,54 @@
       "income": "Income",
       "manual": "Manual"
     },
-    "paymentStatuses": { "posted": "Posted", "voided": "Voided" }
+    "paymentStatuses": {
+      "posted": "Posted",
+      "voided": "Voided"
+    },
+    "reconcile": {
+      "title": "Bank reconciliation",
+      "subtitle": "Match a bank, wallet or card account with its statement.",
+      "reconcile": "Reconcile",
+      "start": "Start reconciliation",
+      "account": "Account",
+      "chooseAccount": "Choose an account",
+      "statementDate": "Statement date",
+      "statementBalance": "Statement closing balance",
+      "statementBalanceHint": "Use a minus sign if the account is overdrawn.",
+      "none": "No reconciliations yet.",
+      "statuses": {
+        "in_progress": "In progress",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      },
+      "openingBalance": "Reconciled before",
+      "clearedBalance": "Cleared balance",
+      "difference": "Difference",
+      "bookBalance": "Book balance on statement date",
+      "clearedIn": "Cleared in",
+      "clearedOut": "Cleared out",
+      "clearedCount": "Cleared lines",
+      "lines": "Book lines",
+      "linesHint": "Tick each line that appears on the statement. Missing bank charges or interest? Record them as an expense or other income on this account first.",
+      "noLines": "No uncleared lines up to the statement date.",
+      "cleared": "Cleared",
+      "clearLine": "Cleared: {{label}}",
+      "tickAll": "Tick all",
+      "untickAll": "Untick all",
+      "complete": "Complete",
+      "completeHint": "Complete when the difference is 0.",
+      "cancel": "Cancel reconciliation",
+      "reopen": "Reopen",
+      "reopenTitle": "Reopen reconciliation",
+      "reopenHint": "Only the latest reconciliation of an account can be reopened. Its lines stay ticked.",
+      "completedBy": "Completed by",
+      "startedBy": "Started by",
+      "openReconciliation": "Open",
+      "errors": {
+        "account": "Choose an account",
+        "date": "Choose a statement date not in the future",
+        "balance": "Enter the balance with at most 2 decimals"
+      }
+    }
   }
 }

@@ -58,10 +58,11 @@ pub struct SupplierPaymentInput {
     pub allocations: Option<Vec<BillAllocationInput>>,
 }
 
-fn payment_status(grand: Decimal, paid: Decimal, due: Decimal) -> &'static str {
-    if due <= Decimal::ZERO || grand.is_zero() {
+/// `received` = value of the goods received (what was owed before payments).
+fn payment_status(received: Decimal, paid: Decimal, due: Decimal) -> &'static str {
+    if due <= Decimal::ZERO || received.is_zero() {
         "paid"
-    } else if paid.is_zero() && due >= grand {
+    } else if paid.is_zero() && due >= received {
         "unpaid"
     } else {
         "partial"
@@ -72,8 +73,8 @@ fn payment_status(grand: Decimal, paid: Decimal, due: Decimal) -> &'static str {
 async fn apply_to_purchases(tx: &mut TenantTx, allocations: &[(Uuid, Decimal)], sign: Decimal) -> AppResult<()> {
     let tenant_id = tx.tenant_id();
     for (purchase_id, value) in allocations {
-        let (grand, paid, due): (Decimal, Decimal, Decimal) = sqlx::query_as(
-            "SELECT grand_total, paid_total, due_total FROM purchases WHERE tenant_id = ? AND id = ? FOR UPDATE",
+        let (received, paid, due): (Decimal, Decimal, Decimal) = sqlx::query_as(
+            "SELECT received_total, paid_total, due_total FROM purchases WHERE tenant_id = ? AND id = ? FOR UPDATE",
         )
         .bind(tenant_id)
         .bind(purchase_id)
@@ -87,7 +88,7 @@ async fn apply_to_purchases(tx: &mut TenantTx, allocations: &[(Uuid, Decimal)], 
         )
         .bind(paid)
         .bind(due)
-        .bind(payment_status(grand, paid, due))
+        .bind(payment_status(received, paid, due))
         .bind(tenant_id)
         .bind(purchase_id)
         .execute(&mut **tx)
@@ -207,7 +208,7 @@ pub async fn pay(tx: &mut TenantTx, meta: &RequestMeta, input: &SupplierPaymentI
     let ctx = context::load(tx).await?;
     let tenant_id = tx.tenant_id();
     let open: Vec<(Uuid, Decimal)> = sqlx::query_as(
-        "SELECT id, due_total FROM purchases WHERE tenant_id = ? AND supplier_id = ? AND status = 'received' \
+        "SELECT id, due_total FROM purchases WHERE tenant_id = ? AND supplier_id = ? AND status IN ('partially_received', 'received') \
          AND due_total > 0 ORDER BY purchase_date, created_at, id FOR UPDATE",
     )
     .bind(tenant_id)

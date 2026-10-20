@@ -32,12 +32,14 @@ const rice = {
 const draft = {
   id: 'pur1', purchase_no: null, supplier_id: 's1', supplier_name: 'Karim Traders', supplier_invoice_no: 'KT-77', purchase_date: '2026-10-18',
   location_id: 'loc1', location_name: 'Main store', status: 'draft', payment_status: 'unpaid', subtotal: '4200.00', item_discount_total: '0.00',
-  bill_discount_amount: '0.00', tax_total: '0.00', shipping_cost: '50.00', other_cost: '0.00', grand_total: '4250.00', paid_total: '0.00',
-  returned_total: '0.00', due_total: '4250.00', note: null, item_count: 1, posted_at: null, cancelled_at: null, cancel_reason: null,
+  bill_discount_amount: '0.00', tax_total: '0.00', shipping_cost: '50.00', other_cost: '0.00', grand_total: '4250.00', received_total: '0.00',
+  paid_total: '0.00', returned_total: '0.00', due_total: '4250.00', note: null, item_count: 1, expected_date: null, ordered_at: null,
+  approved_at: null, approved_by_name: null, posted_at: null, closed_at: null, cancelled_at: null, cancel_reason: null,
   created_by_name: 'Rahim Uddin', version: 1, created_at: '2026-10-18T05:00:00Z',
   items: [{ id: 'i1', line_no: 1, variant_id: 'v1', product_name: 'Miniket Rice 5kg', sku: 'P000001', unit_short_name: 'pcs', quantity: '10.000',
     received_quantity: '0.000', returned_quantity: '0.000', unit_cost: '420.0000', discount_type: null, discount_value: null, line_discount: '0.00',
     bill_discount_alloc: '0.00', tax_rate_pct: '0.0000', tax_amount: '0.00', charges_alloc: '50.00', line_total: '4200.00', landed_unit_cost: '425.0000', previous_unit_cost: '400.0000' }],
+  receipts: [],
   payments: [],
   returns: [],
 }
@@ -118,5 +120,45 @@ describe('purchases', () => {
     const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/purchases/pur1/post')
     expect(post?.headers.get('Idempotency-Key')).toMatch(/^[0-9a-f-]{36}$/)
     expect(post?.body).toEqual({ payment: { method_id: 'pm-cash', amount: '4250', account_id: 'acc-cash' } })
+  })
+
+  it('places, approves and receives part of a purchase order', async () => {
+    const ordered = { ...draft, purchase_no: 'PUR-0001', status: 'ordered', due_total: '0.00', ordered_at: '2026-10-18T06:00:00Z' }
+    const approved = { ...ordered, status: 'approved', approved_at: '2026-10-18T07:00:00Z', approved_by_name: 'Rahim Uddin' }
+    const partial = {
+      ...approved, status: 'partially_received', received_total: '1700.00', due_total: '1700.00',
+      items: [{ ...draft.items[0]!, received_quantity: '4.000' }],
+      receipts: [{ id: 'g1', receipt_no: 'GRN-0001', business_date: '2026-10-18', location_name: 'Main store', item_count: 1, value: '1700.00',
+        note: 'First lorry', received_by_name: 'Rahim Uddin', received_at: '2026-10-18T08:00:00Z' }],
+    }
+    let current: object = draft
+    const calls = mockApi({
+      ...signedIn([...perms, 'purchases.approve']),
+      'GET /api/v1/purchases/pur1': () => Response.json(current),
+      'POST /api/v1/purchases/pur1/order': () => Response.json((current = ordered)),
+      'POST /api/v1/purchases/pur1/approve': () => Response.json((current = approved)),
+      'POST /api/v1/purchases/pur1/receive': () => Response.json((current = partial)),
+    })
+    renderRoute('/purchases/pur1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Place order' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Approve order' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Receive goods' }))
+
+    const arriving = await screen.findByLabelText('Arriving now for Miniket Rice 5kg')
+    expect(arriving).toHaveValue('10')
+    await userEvent.clear(arriving)
+    await userEvent.type(arriving, '4')
+    expect(screen.getByText('Value of this delivery: ৳1,700.00', { exact: false })).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Note (delivery, lorry, challan no.) (optional)'), 'First lorry')
+    await userEvent.click(screen.getByRole('button', { name: 'Receive' }))
+
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/purchases/pur1/receive')).toBe(true))
+    const post = calls.find((c) => c.path === '/api/v1/purchases/pur1/receive')
+    expect(post?.body).toEqual({ lines: [{ purchase_item_id: 'i1', quantity: '4' }], note: 'First lorry' })
+    expect(post?.headers.get('Idempotency-Key')).toBeTruthy()
+    const receipts = await screen.findByRole('table', { name: 'Goods receipts' })
+    expect(within(receipts).getByText('GRN-0001')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Close short' })).toBeInTheDocument()
+    expect(screen.getByText(/Still to come: Miniket Rice 5kg 6/)).toBeInTheDocument()
   })
 })

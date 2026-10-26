@@ -39,6 +39,7 @@ pub fn config() -> AppConfig {
             expose_otp: true,
         },
         run_migrations_on_start: false,
+        storage_dir: std::env::temp_dir().join("pos-test-storage").to_string_lossy().into_owned(),
     }
 }
 
@@ -97,6 +98,16 @@ impl Req {
 
     pub fn put(uri: &str, body: Value) -> Self {
         Self { inner: test::TestRequest::put().uri(uri).set_json(body) }
+    }
+
+    /// A raw body, e.g. an image upload.
+    pub fn put_bytes(uri: &str, bytes: &[u8], content_type: &str) -> Self {
+        Self {
+            inner: test::TestRequest::put()
+                .uri(uri)
+                .insert_header(("content-type", content_type.to_owned()))
+                .set_payload(bytes.to_vec()),
+        }
     }
 
     pub fn delete(uri: &str) -> Self {

@@ -31,6 +31,8 @@ import { TransferFormPage } from '../features/inventory/TransferFormPage'
 import { TransfersPage } from '../features/inventory/TransfersPage'
 import { AccountBookPage } from '../features/money/AccountBookPage'
 import { AccountsPage } from '../features/money/AccountsPage'
+import { NotificationSettingsPage } from '../features/notifications/NotificationSettingsPage'
+import { NotificationsPage } from '../features/notifications/NotificationsPage'
 import { ReconciliationPage } from '../features/money/ReconciliationPage'
 import { ReconciliationsPage } from '../features/money/ReconciliationsPage'
 import { PosPage } from '../features/pos/PosPage'
@@ -147,6 +149,8 @@ export const routes: RouteObject[] = [
                   { path: '/settings', element: <SettingsPage /> },
                   { path: '/settings/:section', element: <SettingsPage /> },
                   { path: '/account/sessions', element: <SessionsPage /> },
+                  { path: '/account/notifications', element: <NotificationSettingsPage /> },
+                  { path: '/notifications', element: <NotificationsPage /> },
                   { path: '/plan', element: <PlanPage /> },
                   { path: '/users', element: <UsersPage /> },
                   { path: '/users/:tab', element: <UsersPage /> },

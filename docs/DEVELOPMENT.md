@@ -45,6 +45,7 @@ backend/
   crates/purchasing purchase bills (draft → post with GRN), landed cost, supplier payments, purchase returns
   crates/reporting read-only reports: dashboard, sales, purchases, expenses, payments, profit estimate,
                   aging, VAT summary, discounts, product movement
+  crates/notify   notifications: in-app centre, preferences, email/SMS delivery with retries, scheduled checks
   crates/platform Super Admin (staff, businesses, plans, overrides, payment claims), lifecycle job, data export
   crates/api      HTTP server: problem+json errors, request id, security headers, CORS, OpenAPI
   crates/worker   scheduled jobs: monthly partitions, idempotency-key purge
@@ -64,6 +65,11 @@ frontend/src/
 Flow: `POST /auth/register` → SMS code → `POST /auth/verify-phone` (signs in)
 → `POST /tenants` (creates the business, 14-day trial) → `POST /auth/switch-tenant`
 → wizard (`PATCH /settings`, `PATCH /branches/{id}`, `POST /onboarding/steps/{step}`).
+The business currency (`settings.currency_code`, one of
+`pos_tenancy::settings::CURRENCIES`, 2-decimal currencies only) is chosen in
+the regional step and can change only until the first sale, purchase or
+payment (`CURRENCY_LOCKED`): amounts are never converted. `/auth/me` returns it
+and the web app formats every amount with it (`lib/format.ts`).
 The OpenAPI document at `/api/v1/openapi.json` lists every route.
 
 - **Tokens.** The access token (JWT, 15 min) lives in memory in the SPA and goes in
@@ -326,6 +332,20 @@ exist; Compose creates it. `make check` runs everything CI runs.
   reconciliation per account can be in progress; the latest completed one can
   be reopened. Bank charges or interest are entered as an expense or other
   income on the account, then ticked. Cash is counted with register shifts.
+- **Notifications (NOT-R01, NOT-R02)** (`crates/notify`, migration 0109): the
+  worker runs `pos_notify::jobs::run` every `NOTIFY_TICK_SECS` (default 120) in
+  each business's time zone: low stock (daily from 08:00), yesterday's sales
+  (from 07:00), overdue customer and supplier balances (Saturdays), renewal
+  reminders (7/3/1 days), purchase orders and expenses awaiting approval, and
+  security events (lockouts, password resets, token reuse). Recipients are the
+  active members holding the type's permission (owners always), each written
+  to in their own language. A `dedupe_key` per user makes re-runs harmless.
+  Members pick channels per type (`/notification-preferences`; SMS needs the
+  plan feature `notifications.sms`); in-app rows feed the header bell. Email
+  and SMS deliveries are sent by `pos_notify::delivery::dispatch` with up to 5
+  tries (2, 4, 8, 16 minutes apart) and kept with their last error. Gateways
+  come from `SMTP_*` and `NOTIFY_SMS_*` (see `.env.example`); unset, messages
+  are only logged.
 - **Other income** (`/incomes`, `/income-categories`) posts money in to a
   payment account with its journal; void posts the reversal.
 - **Reports:** `/reports/aging` (customers or suppliers, 0–30/31–60/61–90/90+),

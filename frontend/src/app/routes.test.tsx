@@ -30,7 +30,7 @@ describe('routes', () => {
   it('restores the session from the refresh cookie and shows the dashboard', async () => {
     mockApi(signedInWithTenant)
     renderRoute('/')
-    expect(await screen.findByText('Welcome, Rahim Uddin')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /^Good (morning|afternoon|evening), Rahim$/ })).toBeInTheDocument()
     expect(await screen.findByText('0.1.0')).toBeInTheDocument()
     expect(screen.getAllByText('Rahim Store').length).toBeGreaterThan(0)
     expect(screen.getByText('Free trial: 10 days left')).toBeInTheDocument()

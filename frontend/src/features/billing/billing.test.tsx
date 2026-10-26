@@ -60,7 +60,7 @@ describe('plan and subscription state', () => {
     mockApi({ ...session('suspended', null), 'GET /api/v1/subscription': { ...overview, subscription: { ...overview.subscription, status: 'suspended' } } })
     renderRoute('/')
     expect(await screen.findByRole('heading', { name: 'Rahim Store is suspended' })).toBeInTheDocument()
-    expect(screen.queryByText('Welcome, Rahim Uddin')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^Good (morning|afternoon|evening)/ })).not.toBeInTheDocument()
   })
 
   function inviteSession(used: number) {

@@ -237,6 +237,8 @@ pub struct CurrentTenant {
     pub features: Vec<String>,
     /// Branches the member may work in (`X-Branch-Id`); `null` = every branch.
     pub branch_ids: Option<Vec<Uuid>>,
+    /// ISO 4217 code the business keeps its money in (formatting only; no conversion).
+    pub currency_code: String,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -260,6 +262,11 @@ pub async fn me(state: web::Data<AppState>, req: HttpRequest, auth: Authenticate
         let ents = &member.entitlements;
         let subscription = (!ents.plan_code.is_empty()).then(|| ents.summary());
         let summary = memberships.iter().find(|m| m.tenant_id == member.access.tenant_id);
+        let currency_code: String = sqlx::query_scalar("SELECT currency_code FROM tenants WHERE id = ?")
+            .bind(member.access.tenant_id)
+            .fetch_one(&state.pool)
+            .await
+            .map_err(pos_db::map_db_error)?;
         Some(CurrentTenant {
             tenant_id: member.access.tenant_id,
             membership_id: member.access.membership_id,
@@ -270,6 +277,7 @@ pub async fn me(state: web::Data<AppState>, req: HttpRequest, auth: Authenticate
             subscription,
             features: ents.enabled_flags(),
             branch_ids: member.branch_scope(),
+            currency_code,
         })
     } else {
         None

@@ -48,7 +48,8 @@
     "cycles": {
       "monthly": "Monthly",
       "quarterly": "Quarterly",
-      "annual": "Annual"
+      "annual": "Annual",
+      "lifetime": "One-time (lifetime)"
     },
     "methods": {
       "bkash": "bKash",
@@ -62,7 +63,8 @@
       "status_changed": "Status changed",
       "trial_started": "Trial started",
       "payment_verified": "Payment verified",
-      "reminder": "Reminder ({{days}} days left)"
+      "reminder": "Reminder ({{days}} days left)",
+      "licence_granted": "Licence granted"
     },
     "actors": {
       "system": "System",
@@ -208,6 +210,33 @@
         "bank_transfer": "Bank transfer",
         "note": "General note"
       }
+    },
+    "licence": {
+      "open": "Set licence",
+      "title": "Set licence for {{name}}",
+      "kind": "Licence type",
+      "kinds": {
+        "annual": "Yearly",
+        "lifetime": "One-time",
+        "trial": "Extend trial"
+      },
+      "hints": {
+        "annual": "Active for the chosen years. Renewing early adds the time after the current end date.",
+        "lifetime": "Paid once, never expires. No renewal reminders.",
+        "trial": "Adds days to the running trial, or starts a new trial from today if it has ended."
+      },
+      "confirm": {
+        "annual": "Activate yearly licence",
+        "lifetime": "Activate one-time licence",
+        "trial": "Extend trial"
+      },
+      "days": "Days to add",
+      "years": "Years",
+      "price": "Amount paid (BDT)",
+      "priceHint": "Blank = the plan price ({{amount}}).",
+      "reason": "Receipt or note",
+      "reasonHint": "E.g. the money receipt number or how the client paid. Kept in the history.",
+      "noEnd": "Never (one-time)"
     }
   }
 }

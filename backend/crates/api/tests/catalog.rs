@@ -84,7 +84,7 @@ async fn new_business_has_tax_rates_and_units(pool: MySqlPool) {
 async fn product_lifecycle(pool: MySqlPool) {
     let srv = test::init_service(app(AppState::new(pool, common::config()))).await;
     let mut owner = sign_up(&srv, "Owner", "01711000511").await;
-    create_business(&srv, &mut owner, "Rahim Store").await;
+    let tenant = create_business(&srv, &mut owner, "Rahim Store").await;
     let pcs = pcs(&srv, &owner).await;
     let post = |uri: &str, body: Value| Req::post(uri, body).bearer(&owner.token).build();
 
@@ -237,10 +237,67 @@ async fn product_lifecycle(pool: MySqlPool) {
     }
     assert_eq!(seen.len(), 4, "{seen:?}");
 
+    // Photo: the type comes from the bytes; a new photo replaces the old one.
+    let soap =
+        call(&srv, post("/api/v1/products", json!({ "name": "Soap", "unit_id": pcs, "selling_price": "40" }))).await;
+    let image_uri = format!("/api/v1/products/{}/image", id(&soap.body));
+    let png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR-pretend-image-data";
+    // A photo for a product that is not there is refused before anything is stored.
+    let photos = std::path::Path::new(&common::config().storage_dir).join(format!("tenants/{tenant}/product_image"));
+    let stored = || std::fs::read_dir(&photos).map_or(0, Iterator::count);
+    let missing = format!("/api/v1/products/{}/image", Uuid::now_v7());
+    let nowhere = call(&srv, Req::put_bytes(&missing, png, "image/png").bearer(&owner.token).build()).await;
+    assert_eq!(nowhere.status, StatusCode::NOT_FOUND, "{}", nowhere.body);
+    assert_eq!(stored(), 0, "no bytes kept for a missing product");
+    let not_image =
+        call(&srv, Req::put_bytes(&image_uri, b"GIF89a....", "image/gif").bearer(&owner.token).build()).await;
+    assert_eq!(
+        (not_image.status, not_image.body["errors"][0]["code"].as_str()),
+        (StatusCode::BAD_REQUEST, Some("UNSUPPORTED_TYPE"))
+    );
+    let too_big = vec![0xFF_u8; 2 * 1024 * 1024 + 1];
+    let refused = call(&srv, Req::put_bytes(&image_uri, &too_big, "image/jpeg").bearer(&owner.token).build()).await;
+    assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{}", refused.body);
+    let first = call(
+        &srv,
+        Req::put_bytes(&image_uri, png, "image/png")
+            .header("x-file-name", "soap%20front.png")
+            .bearer(&owner.token)
+            .build(),
+    )
+    .await;
+    assert_eq!(first.status, StatusCode::OK, "{}", first.body);
+    assert_eq!(stored(), 1);
+    let first_file = first.body["image_file_id"].as_str().expect("image id").to_owned();
+    let served =
+        test::call_service(&srv, Req::get(&format!("/api/v1/files/{first_file}")).bearer(&owner.token).build()).await;
+    assert_eq!(served.status(), StatusCode::OK);
+    assert_eq!(served.headers().get("content-type").and_then(|v| v.to_str().ok()), Some("image/png"));
+    assert_eq!(test::read_body(served).await.as_ref(), png);
+    let jpg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3];
+    let second = call(&srv, Req::put_bytes(&image_uri, &jpg, "image/jpeg").bearer(&owner.token).build()).await;
+    assert_eq!(second.status, StatusCode::OK, "{}", second.body);
+    assert_ne!(second.body["image_file_id"], json!(first_file));
+    let gone = call(&srv, Req::get(&format!("/api/v1/files/{first_file}")).bearer(&owner.token).build()).await;
+    assert_eq!(gone.status, StatusCode::NOT_FOUND, "the replaced photo is removed");
+    let usage = call(&srv, Req::get("/api/v1/subscription").bearer(&owner.token).build()).await;
+    let storage = usage.body["usage"].as_array().into_iter().flatten().find(|m| m["feature"] == "storage.mb").cloned();
+    assert_eq!(storage.map(|m| m["used"].clone()), Some(json!(1)), "{}", usage.body);
+    let cleared = call(&srv, Req::delete(&image_uri).bearer(&owner.token).build()).await;
+    assert_eq!((cleared.status, cleared.body["image_file_id"].clone()), (StatusCode::OK, Value::Null));
+
     let audit = call(&srv, Req::get("/api/v1/audit-logs?action=product.*").bearer(&owner.token).build()).await;
     let actions: Vec<&str> =
         audit.body["data"].as_array().into_iter().flatten().filter_map(|e| e["action"].as_str()).collect();
-    for action in ["product.created", "product.updated", "product.archived", "product.restored", "product.deleted"] {
+    for action in [
+        "product.created",
+        "product.updated",
+        "product.archived",
+        "product.restored",
+        "product.deleted",
+        "product.image_set",
+        "product.image_removed",
+    ] {
         assert!(actions.contains(&action), "{action} in {actions:?}");
     }
 }

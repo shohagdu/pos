@@ -11,7 +11,6 @@
     "emptyCart": "Scan a barcode or search for a product to start a sale.",
     "item": "Item",
     "discount": "Discount",
-    "discountAmount": "৳",
     "discountPercent": "%",
     "decrease": "Decrease {{name}}",
     "increase": "Increase {{name}}",
@@ -25,7 +24,7 @@
     "changeCustomer": "Change",
     "chooseCustomer": "Choose customer",
     "customerSearch": "Search customers",
-    "customerSearchHint": "Name or phone",
+    "customerSearchHint": "Search by name or phone",
     "quickAdd": "New customer",
     "customerName": "Name",
     "customerPhone": "Phone",
@@ -89,10 +88,17 @@
       "customer": "Customer",
       "discount": "Discount",
       "pay": "Pay",
+      "confirm": "Confirm sale (in payment)",
       "hold": "Hold",
       "held": "Held carts",
       "removeLine": "Remove line",
       "close": "Close dialog"
-    }
+    },
+    "noCustomerFound": "No customer found.",
+    "addAsNew": "+ Add “{{text}}” as a new customer",
+    "useWalkIn": "Walk-in",
+    "newCustomerTitle": "New customer",
+    "customerPhoneHint": "e.g. 01712345678. Used to find the customer next time.",
+    "customerAddress": "Address"
   }
 }

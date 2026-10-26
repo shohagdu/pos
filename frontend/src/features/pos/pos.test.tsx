@@ -67,6 +67,32 @@ describe('POS', () => {
     expect(await screen.findByText(/Scan a barcode or search/)).toBeInTheDocument()
   })
 
+  it('confirms the sale from the keyboard with F8', async () => {
+    const calls = mockApi(routes({ 'POST /api/v1/sales': () => Response.json(sale, { status: 201 }) }))
+    renderRoute('/pos')
+    await scanTwiceAndPay()
+    await userEvent.keyboard('{F8}')
+    expect(await screen.findByRole('dialog', { name: 'Sale INV-0001 completed' })).toBeInTheDocument()
+    expect(calls.filter((c) => c.method === 'POST' && c.path === '/api/v1/sales')).toHaveLength(1)
+  })
+
+  it('tabs from the amount straight to Confirm sale', async () => {
+    mockApi(routes())
+    renderRoute('/pos')
+    const dialog = await scanTwiceAndPay()
+    expect(within(dialog).getByLabelText('Amount 1')).toHaveFocus()
+    await userEvent.tab()
+    expect(within(dialog).getByRole('button', { name: 'Confirm sale' })).toHaveFocus()
+  })
+
+  it('confirms the sale with Ctrl+Enter', async () => {
+    mockApi(routes({ 'POST /api/v1/sales': () => Response.json(sale, { status: 201 }) }))
+    renderRoute('/pos')
+    await scanTwiceAndPay()
+    await userEvent.keyboard('{Control>}{Enter}{/Control}')
+    expect(await screen.findByRole('dialog', { name: 'Sale INV-0001 completed' })).toBeInTheDocument()
+  })
+
   it('reuses the idempotency key when retrying after a network error', async () => {
     let attempts = 0
     const calls = mockApi(
@@ -88,5 +114,60 @@ describe('POS', () => {
     const keys = calls.filter((c) => c.method === 'POST' && c.path === '/api/v1/sales').map((c) => c.headers.get('Idempotency-Key'))
     expect(keys).toHaveLength(2)
     expect(keys[0]).toBe(keys[1])
+  })
+
+  it('finds a customer by phone in the inline search and puts them on the cart', async () => {
+    const karim = {
+      id: 'c1', code: 'C0001', name: 'Karim Mia', phone: '01711000002', email: null, address: null, credit_limit: null,
+      opening_balance: '0.00', current_balance: '250.00', is_walk_in: false, notes: null, status: 'active', version: 1,
+    }
+    const calls = mockApi(routes({ 'GET /api/v1/customers': { data: [karim], next_cursor: null } }))
+    renderRoute('/pos')
+    await screen.findByRole('combobox', { name: 'Search products' })
+    expect(screen.getByTestId('pos-customer')).toHaveTextContent('Walk-in customer')
+    await userEvent.keyboard('{F4}')
+    const search = screen.getByRole('combobox', { name: 'Search customers' })
+    expect(search).toHaveFocus()
+    await userEvent.type(search, '017110')
+    const option = await screen.findByRole('option', { name: /Karim Mia/ })
+    expect(option).toHaveTextContent('Due')
+    expect(calls.find((c) => c.path === '/api/v1/customers')?.search).toContain('q=017110')
+    await userEvent.keyboard('{Enter}')
+    expect(screen.getByTestId('pos-customer')).toHaveTextContent('Karim Mia')
+    expect(search).toHaveValue('')
+    await userEvent.click(screen.getByRole('button', { name: 'Walk-in' }))
+    expect(screen.getByTestId('pos-customer')).toHaveTextContent('Walk-in customer')
+  })
+
+  it('adds a new customer from what was typed and selects them', async () => {
+    const calls = mockApi(
+      routes({
+        'GET /api/v1/customers': { data: [], next_cursor: null },
+        'POST /api/v1/customers': (call: { body: unknown }) =>
+          Response.json(
+            {
+              id: 'c9', code: 'C0009', name: 'Salma Begum', phone: '01811000009', email: null, address: null, credit_limit: null,
+              opening_balance: '0.00', current_balance: '0.00', is_walk_in: false, notes: null, status: 'active', version: 1,
+              ...(call.body as object),
+            },
+            { status: 201 },
+          ),
+      }),
+    )
+    renderRoute('/pos')
+    const search = await screen.findByRole('combobox', { name: 'Search customers' })
+    await userEvent.type(search, '01811000009')
+    expect(await screen.findByText('No customer found.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('option', { name: '+ Add “01811000009” as a new customer' }))
+    const dialog = screen.getByRole('dialog', { name: 'New customer' })
+    expect(within(dialog).getByLabelText('Phone')).toHaveValue('01811000009')
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Salma Begum')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add and select' }))
+    await waitFor(() => expect(screen.getByTestId('pos-customer')).toHaveTextContent('Salma Begum'))
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/customers')?.body).toEqual({
+      name: 'Salma Begum',
+      phone: '01811000009',
+    })
+    expect(screen.getByRole('button', { name: '+ New customer' })).toBeInTheDocument()
   })
 })

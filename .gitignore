@@ -2,6 +2,9 @@
 backend/target/
 backend/target-run/
 
+# Uploaded files in development (STORAGE_DIR)
+backend/storage/
+
 # Node
 frontend/node_modules/
 frontend/dist/

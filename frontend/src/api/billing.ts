@@ -40,7 +40,7 @@ export function useSubscription(tenantId: string) {
 
 // ------------------------------------------------- manual billing (SUB-R05)
 
-export type BillingCycle = 'monthly' | 'quarterly' | 'annual'
+export type BillingCycle = 'monthly' | 'quarterly' | 'annual' | 'lifetime'
 export type ClaimMethod = 'bkash' | 'nagad' | 'rocket' | 'bank_transfer' | 'cash' | 'other'
 export const CLAIM_METHODS: ClaimMethod[] = ['bkash', 'nagad', 'rocket', 'bank_transfer', 'cash', 'other']
 

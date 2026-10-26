@@ -44,7 +44,40 @@
       "group": "Group",
       "inactive": "Inactive",
       "ledger": "Ledger",
-      "ledgerOf": "Ledger of {{name}}"
+      "ledgerOf": "Ledger of {{name}}",
+      "add": "Add account",
+      "addTitle": "Add account",
+      "editTitle": "Edit account",
+      "addSub": "Sub-account",
+      "addSubTo": "Add a sub-account under {{name}}",
+      "editOf": "Edit {{name}}",
+      "search": "Search",
+      "searchHint": "Code or name",
+      "allTypes": "All types",
+      "parent": "Group",
+      "topLevel": "— Top level —",
+      "codeHint": "Suggested from the group; change it if you like.",
+      "isGroup": "Group header",
+      "isGroupHint": "Groups only hold sub-accounts; journals post to the accounts under them.",
+      "active": "Active",
+      "activeHint": "Inactive accounts take no new entries. Only an empty, unused account can be made inactive.",
+      "contraHint": "Opposite of the usual side for this type — a contra account (like Sales Returns).",
+      "systemNote": "This is a system account the app posts to. Only its name can be changed.",
+      "inUseNote": "This account already has entries, so its type, normal side and group setting are fixed.",
+      "errors": {
+        "DUPLICATE_CODE": "Another account already uses this code.",
+        "INVALID_CODE": "Use up to 20 letters, digits, '-' or '.'.",
+        "PARENT_NOT_GROUP": "Choose a group header.",
+        "PARENT_INACTIVE": "That group is inactive.",
+        "PARENT_CYCLE": "An account cannot sit under itself.",
+        "TYPE_MISMATCH": "An account has the same type as its group.",
+        "INVALID_TYPE": "Choose a type.",
+        "INVALID_SIDE": "Choose debit or credit.",
+        "IN_USE": "Not possible once the account has entries or sub-accounts.",
+        "HAS_CHILDREN": "Move its sub-accounts out first.",
+        "READ_ONLY": "System accounts keep their code, type and place; only the name can change.",
+        "NOT_FOUND": "That group was not found."
+      }
     },
     "journal": {
       "new": "New journal",
@@ -91,5 +124,10 @@
         "locked": "Locked"
       }
     }
+  },
+  "problems": {
+    "ACCOUNT_LINKED": "A cash/bank account or an expense/income category still uses this account, so it stays active.",
+    "ACCOUNT_HAS_BALANCE": "Only an account with a zero balance can be made inactive.",
+    "ACCOUNT_HAS_CHILDREN": "Make its sub-accounts inactive first."
   }
 }

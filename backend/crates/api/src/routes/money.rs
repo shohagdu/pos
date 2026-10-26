@@ -10,7 +10,9 @@ use pos_money::{
     incomes::{self, Income, IncomeCategory, IncomeCategoryInput, IncomeFilter, IncomeInput, IncomePage},
     methods::{self, PaymentMethod, PaymentMethodPatch},
     payments::{self, PaymentDetail, PaymentFilter, PaymentPage},
-    reconciliation::{self, ClearInput, Reconciliation, ReconciliationFilter, ReconciliationInput, ReconciliationSummary},
+    reconciliation::{
+        self, ClearInput, Reconciliation, ReconciliationFilter, ReconciliationInput, ReconciliationSummary,
+    },
     transfers::{self, Transfer, TransferFilter, TransferInput, TransferPage},
 };
 use serde::Deserialize;

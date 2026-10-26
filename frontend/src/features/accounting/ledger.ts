@@ -37,6 +37,17 @@ export function chartOrder(accounts: LedgerAccount[]): LedgerAccount[] {
   return out
 }
 
+/** The next free code under a group: last sibling + 10 (6080 → 6090), or the group's + 10. */
+export function suggestCode(accounts: LedgerAccount[], parent: LedgerAccount | null): string {
+  const base = parent ? Number(parent.code) : NaN
+  if (!parent || !Number.isInteger(base)) return ''
+  const taken = new Set(accounts.map((a) => a.code))
+  const siblings = accounts.filter((a) => a.parent_id === parent.id).map((a) => Number(a.code)).filter(Number.isInteger)
+  let next = Math.floor(Math.max(base, ...siblings) / 10) * 10 + 10
+  while (taken.has(String(next))) next += 10
+  return String(next)
+}
+
 export function accountLabel(a: { code: string; name: string }): string {
   return `${a.code} · ${a.name}`
 }

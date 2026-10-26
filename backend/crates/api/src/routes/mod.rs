@@ -3,6 +3,7 @@ pub mod admin;
 pub mod audit;
 pub mod auth;
 pub mod catalog;
+pub mod files;
 pub mod health;
 pub mod inventory;
 pub mod meta;

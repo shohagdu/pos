@@ -205,14 +205,19 @@ async fn billing_claims_admin_and_export(pool: MySqlPool) {
     // Lifecycle: a trial that ended yesterday is stored as grace.
     let mut other = sign_up(&srv, "Late", "01711000954").await;
     let late_id = create_business(&srv, &mut other, "Late Shop").await;
+    // Raw writes pass the tenant guard triggers only as the platform.
+    let mut conn = pool.acquire().await.expect("connection");
+    sqlx::query("SET @app_platform = 1").execute(&mut *conn).await.expect("platform session");
     sqlx::query(
         "UPDATE subscriptions SET trial_ends_at = UTC_TIMESTAMP(6) - INTERVAL 1 DAY, current_period_end = UTC_TIMESTAMP(6) - INTERVAL 1 DAY \
          WHERE tenant_id = UUID_TO_BIN(?)",
     )
     .bind(&late_id)
-    .execute(&pool)
+    .execute(&mut *conn)
     .await
     .expect("backdate");
+    sqlx::query("SET @app_platform = NULL").execute(&mut *conn).await.expect("reset session");
+    drop(conn);
     let outcome = pos_platform::lifecycle::run(&pool, Utc::now()).await.expect("lifecycle");
     assert!(outcome.transitions >= 1, "{outcome:?}");
     let stored: String = sqlx::query_scalar("SELECT status FROM subscriptions WHERE tenant_id = UUID_TO_BIN(?)")
@@ -221,4 +226,41 @@ async fn billing_claims_admin_and_export(pool: MySqlPool) {
         .await
         .expect("status");
     assert_eq!(stored, "grace");
+
+    // Licences sold offline: support staff may not grant one; billing staff reopen
+    // the trial, then sell a one-time licence that never ends.
+    let licence = format!("/api/v1/admin/tenants/{late_id}/licence");
+    let trial = json!({ "kind": "trial", "days": 10, "reason": "Demo extension" });
+    let refused = call(&srv, Req::post(&licence, trial.clone()).bearer(&support.token).build()).await;
+    assert_eq!(refused.status, StatusCode::FORBIDDEN, "{}", refused.body);
+    let reopened = call(&srv, Req::post(&licence, trial).bearer(&staff.token).build()).await;
+    assert_eq!(reopened.status, StatusCode::OK, "{}", reopened.body);
+    assert_eq!(
+        (reopened.body["subscription_status"].clone(), reopened.body["days_left"].clone()),
+        (json!("trialing"), json!(10))
+    );
+    let lifetime =
+        json!({ "kind": "lifetime", "plan_code": "starter", "price_amount": "25000", "reason": "MR-1042 cash" });
+    let sold = call(&srv, Req::post(&licence, lifetime).bearer(&staff.token).build()).await;
+    assert_eq!(sold.status, StatusCode::OK, "{}", sold.body);
+    assert_eq!(sold.body["subscription_status"], "active", "{}", sold.body);
+    assert_eq!(sold.body["billing_cycle"], "lifetime");
+    assert_eq!(sold.body["current_period_end"], serde_json::Value::Null);
+    assert!(
+        sold.body["events"].as_array().is_some_and(|e| e
+            .iter()
+            .filter(|e| e["event_type"] == "licence_granted")
+            .count()
+            == 2)
+    );
+    pos_platform::lifecycle::run(&pool, Utc::now() + chrono::Duration::days(3650)).await.expect("lifecycle");
+    let stored: String = sqlx::query_scalar("SELECT status FROM subscriptions WHERE tenant_id = UUID_TO_BIN(?)")
+        .bind(&late_id)
+        .fetch_one(&pool)
+        .await
+        .expect("status");
+    assert_eq!(stored, "active", "a lifetime licence never lapses");
+    let yearly = json!({ "kind": "annual", "plan_code": "starter", "years": 11, "reason": "x" });
+    let too_long = call(&srv, Req::post(&licence, yearly).bearer(&staff.token).build()).await;
+    assert_eq!((too_long.status, too_long.code()), (StatusCode::BAD_REQUEST, "VALIDATION_FAILED"), "{}", too_long.body);
 }

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use pos_auth::{Auth, notify::LogNotifier};
 use pos_billing::EntitlementCache;
 use pos_core::config::AppConfig;
+use pos_files::Storage;
 use sqlx::MySqlPool;
 
 /// Shared, cheaply clonable application state.
@@ -12,6 +13,8 @@ pub struct AppState {
     pub config: Arc<AppConfig>,
     pub auth: Arc<Auth>,
     pub entitlements: Arc<EntitlementCache>,
+    /// Uploaded file bytes (product images).
+    pub storage: Storage,
 }
 
 impl AppState {
@@ -19,6 +22,7 @@ impl AppState {
     /// start in production without one.
     pub fn new(pool: MySqlPool, config: AppConfig) -> Self {
         let auth = Arc::new(Auth::new(&config.auth, Arc::new(LogNotifier)));
-        Self { pool, config: Arc::new(config), auth, entitlements: Arc::new(EntitlementCache::default()) }
+        let storage = Storage::local(&config.storage_dir);
+        Self { pool, config: Arc::new(config), auth, entitlements: Arc::new(EntitlementCache::default()), storage }
     }
 }

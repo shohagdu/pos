@@ -9,6 +9,7 @@ use pos_platform::billing::PaymentClaim;
 use pos_platform::{
     Staff, claims,
     claims::{ClaimFilter, ClaimPage, RejectInput},
+    licence::{self, LicenceInput},
     metrics::{self, PlatformMetrics},
     overrides::{self, Override, OverrideInput},
     plans::{self, Plan, PlanInput},
@@ -27,6 +28,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(get_tenant)
             .service(suspend_tenant)
             .service(reactivate_tenant)
+            .service(grant_licence)
             .service(set_override)
             .service(remove_override)
             .service(list_plans)
@@ -116,6 +118,25 @@ pub async fn reactivate_tenant(
     body: web::Json<StatusChange>,
 ) -> Result<HttpResponse, ApiError> {
     change_status(&state, &auth, path.into_inner(), false, &body.reason).await
+}
+
+/// Grants a licence sold offline: trial days, a yearly or a one-time licence.
+#[utoipa::path(post, path = "/api/v1/admin/tenants/{id}/licence", tag = "admin", params(("id" = Uuid, Path)),
+    request_body = LicenceInput, security(("bearer" = [])), responses((status = 200, body = TenantDetail)))]
+#[post("/tenants/{id}/licence")]
+pub async fn grant_licence(
+    state: web::Data<AppState>,
+    auth: PlatformAuth,
+    path: web::Path<Uuid>,
+    body: web::Json<LicenceInput>,
+) -> Result<HttpResponse, ApiError> {
+    auth.staff.require_billing()?;
+    let id = path.into_inner();
+    let mut tx = auth.begin(&state, "grant licence").await?;
+    licence::grant(&mut tx, auth.staff.user_id, &auth.meta, id, &body).await?;
+    tx.commit().await?;
+    state.entitlements.invalidate(id);
+    Ok(HttpResponse::Ok().json(tenants::get(&state.pool, id).await?))
 }
 
 /// Sets a feature or limit override with an optional expiry (ADM-R06).

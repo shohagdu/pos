@@ -745,7 +745,8 @@ pub async fn cancel_draft(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid, reaso
         });
     }
     let reason = reason.trim();
-    let reason = if reason.is_empty() { if status == "draft" { "Draft discarded" } else { "Order cancelled" } } else { reason };
+    let reason =
+        if reason.is_empty() { if status == "draft" { "Draft discarded" } else { "Order cancelled" } } else { reason };
     let tenant_id = tx.tenant_id();
     let user_id = tx.user_id();
     sqlx::query(
@@ -892,15 +893,25 @@ async fn post_receipt(tx: &mut TenantTx, r: &Receipt<'_>, arrivals: &[Arrival<'_
     });
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
     for a in arrivals {
-        sqlx::query("UPDATE purchase_items SET received_quantity = received_quantity + ? WHERE tenant_id = ? AND id = ?")
-            .bind(a.quantity)
-            .bind(tenant_id)
-            .bind(a.item.id)
-            .execute(&mut **tx)
-            .await
-            .map_err(map_db_error)?;
-        variants::record_purchase(tx, a.item.variant_id, a.item.unit_cost, r.business_date, a.quantity, r.supplier_id, a.item.id)
-            .await?;
+        sqlx::query(
+            "UPDATE purchase_items SET received_quantity = received_quantity + ? WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(a.quantity)
+        .bind(tenant_id)
+        .bind(a.item.id)
+        .execute(&mut **tx)
+        .await
+        .map_err(map_db_error)?;
+        variants::record_purchase(
+            tx,
+            a.item.variant_id,
+            a.item.unit_cost,
+            r.business_date,
+            a.quantity,
+            r.supplier_id,
+            a.item.id,
+        )
+        .await?;
     }
 
     let value: Decimal = arrivals.iter().map(|a| a.value).sum();
@@ -1091,7 +1102,10 @@ pub async fn order(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResult
 pub async fn approve(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResult<PurchaseDetail> {
     let (status, _) = lock(tx, id).await?;
     if status != "ordered" {
-        return Err(AppError::Unprocessable { code: "PURCHASE_NOT_ORDERED", message: "only a placed order can be approved".into() });
+        return Err(AppError::Unprocessable {
+            code: "PURCHASE_NOT_ORDERED",
+            message: "only a placed order can be approved".into(),
+        });
     }
     let tenant_id = tx.tenant_id();
     let user_id = tx.user_id();
@@ -1150,7 +1164,11 @@ pub async fn receive(
                 AppError::field(&format!("lines[{i}].purchase_item_id"), "NOT_FOUND", "this line is not on the order")
             })?;
             if arrivals.iter().any(|a| a.item.id == item.id) {
-                return Err(AppError::field(&format!("lines[{i}].purchase_item_id"), "DUPLICATE", "each line may appear once"));
+                return Err(AppError::field(
+                    &format!("lines[{i}].purchase_item_id"),
+                    "DUPLICATE",
+                    "each line may appear once",
+                ));
             }
             if line.quantity.is_zero() {
                 continue;
@@ -1158,7 +1176,11 @@ pub async fn receive(
             let qty = quantity(line.quantity, &field, item.allow_fraction)?;
             let left = item.base_quantity - item.received_quantity;
             if qty > left {
-                return Err(AppError::field(&field, "RECEIVE_QTY_EXCEEDED", format!("only {} is still to come", left.normalize())));
+                return Err(AppError::field(
+                    &field,
+                    "RECEIVE_QTY_EXCEEDED",
+                    format!("only {} is still to come", left.normalize()),
+                ));
             }
             arrivals.push(Arrival::new(item, qty));
         }
@@ -1168,7 +1190,8 @@ pub async fn receive(
     }
 
     let purchase_no = h.purchase_no.clone().unwrap_or_default();
-    let clean_note = input.note.as_deref().map(str::trim).filter(|n| !n.is_empty()).map(|n| n.chars().take(500).collect());
+    let clean_note =
+        input.note.as_deref().map(str::trim).filter(|n| !n.is_empty()).map(|n| n.chars().take(500).collect());
     let receipt = Receipt {
         purchase_id: id,
         purchase_no: &purchase_no,

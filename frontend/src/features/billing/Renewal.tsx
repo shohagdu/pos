@@ -99,7 +99,7 @@ function PlanCard({
             {formatMoney(price, i18n.language)}
             <span className="text-sm font-normal text-ink-muted"> / {t(`billing.per.${cycle}`)}</span>
           </span>
-          {cycle !== 'monthly' && (
+          {cycle !== 'monthly' && cycle !== 'lifetime' && (
             <span className="text-sm text-ink-muted">{t('billing.choose.perMonth', { amount: formatMoney(perMonth(price, cycle), i18n.language) })}</span>
           )}
           {saved && (

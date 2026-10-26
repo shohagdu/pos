@@ -125,4 +125,41 @@ describe('super admin console', () => {
       }),
     )
   })
+
+  it('activates a one-time licence at the plan price, and extends a trial', async () => {
+    const plan = (code: string, isTrial: boolean, prices: object[]) => ({
+      id: code, code, name: code === 'trial' ? 'Free Trial' : 'Starter', description: null, is_public: true, is_trial: isTrial,
+      trial_days: isTrial ? 14 : null, sort_order: 0, status: 'active', subscribers: 1, prices, features: [], updated_at: '2026-10-01T00:00:00Z',
+    })
+    const calls = mockApi({
+      ...signedIn('billing'),
+      'GET /api/v1/admin/tenants/t1': tenant,
+      'GET /api/v1/admin/plans': [plan('trial', true, []), plan('starter', false, [{ billing_cycle: 'lifetime', amount: '25000.00' }])],
+      'POST /api/v1/admin/tenants/t1/licence': { ...tenant, billing_cycle: 'lifetime', current_period_end: null },
+    })
+    renderRoute('/admin/tenants/t1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Set licence' }))
+    const dialog = screen.getByRole('dialog', { name: 'Set licence for Rahim Store' })
+    await userEvent.click(within(dialog).getByRole('tab', { name: 'One-time' }))
+    expect(within(dialog).getByText('Blank = the plan price (25000.00).')).toBeInTheDocument()
+    await userEvent.type(within(dialog).getByLabelText('Receipt or note'), 'MR-1042 cash')
+    await userEvent.click(screen.getByRole('button', { name: 'Activate one-time licence' }))
+    await waitFor(() =>
+      expect(calls.find((c) => c.path === '/api/v1/admin/tenants/t1/licence')?.body).toEqual({
+        kind: 'lifetime', plan_code: 'starter', price_amount: '25000.00', reason: 'MR-1042 cash',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    await userEvent.click(screen.getByRole('button', { name: 'Set licence' }))
+    const again = screen.getByRole('dialog', { name: 'Set licence for Rahim Store' })
+    await userEvent.click(within(again).getByRole('tab', { name: 'Extend trial' }))
+    await userEvent.clear(within(again).getByLabelText('Days to add'))
+    await userEvent.type(within(again).getByLabelText('Days to add'), '10')
+    await userEvent.type(within(again).getByLabelText('Receipt or note'), 'Demo for owner')
+    await userEvent.click(screen.getByRole('button', { name: 'Extend trial' }))
+    await waitFor(() =>
+      expect(calls.filter((c) => c.path === '/api/v1/admin/tenants/t1/licence')[1]?.body).toEqual({ kind: 'trial', days: 10, reason: 'Demo for owner' }),
+    )
+  })
 })

@@ -64,6 +64,7 @@ export function CancelSaleDialog({ sale, tenantId, open, onClose }: { sale: Sale
           }}
           error={missing ? t('sales.reasonRequired') : errors.reason}
           autoFocus
+          data-autofocus
         />
       </form>
     </Dialog>

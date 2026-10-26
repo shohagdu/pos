@@ -12,14 +12,18 @@ use serde::{Deserialize, Serialize};
 use sqlx::{MySqlConnection, MySqlPool};
 use uuid::Uuid;
 
-pub const CYCLES: &[&str] = &["monthly", "quarterly", "annual"];
+pub const CYCLES: &[&str] = &["monthly", "quarterly", "annual", "lifetime"];
+/// A one-time licence: bought once, never ends.
+pub const LIFETIME: &str = "lifetime";
 pub const CLAIM_METHODS: &[&str] = &["bkash", "nagad", "rocket", "bank_transfer", "cash", "other"];
 
-/// Months bought by one invoice of a billing cycle.
+/// Months bought by one invoice of a billing cycle (0 for a lifetime licence,
+/// whose invoice period is a single instant and whose subscription never ends).
 pub fn cycle_months(cycle: &str) -> u32 {
     match cycle {
         "quarterly" => 3,
         "annual" => 12,
+        LIFETIME => 0,
         _ => 1,
     }
 }
@@ -66,7 +70,7 @@ pub async fn offers(conn: &mut MySqlConnection) -> AppResult<Vec<PlanOffer>> {
     for (id, code, name, description) in plans {
         let prices = sqlx::query_as(
             "SELECT billing_cycle, amount FROM plan_prices WHERE plan_id = ? AND is_active AND currency_code = 'BDT' \
-             ORDER BY FIELD(billing_cycle, 'monthly', 'quarterly', 'annual')",
+             ORDER BY FIELD(billing_cycle, 'monthly', 'quarterly', 'annual', 'lifetime')",
         )
         .bind(id)
         .fetch_all(&mut *conn)
@@ -202,7 +206,7 @@ pub async fn overview(tx: &mut TenantTx) -> AppResult<BillingOverview> {
 #[serde(deny_unknown_fields)]
 pub struct InvoiceRequest {
     pub plan_code: String,
-    /// `monthly`, `quarterly` or `annual`.
+    /// `monthly`, `quarterly`, `annual` or `lifetime`.
     pub billing_cycle: String,
 }
 
@@ -236,7 +240,7 @@ pub(crate) fn renewal_start(
 /// same choice so a double click cannot bill twice.
 pub async fn request_invoice(tx: &mut TenantTx, meta: &RequestMeta, input: &InvoiceRequest) -> AppResult<Invoice> {
     if !CYCLES.contains(&input.billing_cycle.as_str()) {
-        return Err(AppError::field("billing_cycle", "INVALID_CYCLE", "use monthly, quarterly or annual"));
+        return Err(AppError::field("billing_cycle", "INVALID_CYCLE", "use monthly, quarterly, annual or lifetime"));
     }
     let tenant_id = tx.tenant_id();
     let plan: Option<(Uuid, Decimal)> = sqlx::query_as(

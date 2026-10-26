@@ -14,7 +14,21 @@ export interface LedgerAccount {
   parent_id: string | null
   system_key: string | null
   is_postable: boolean
-  status: string
+  status: 'active' | 'inactive'
+  version: number
+  /** Journal lines exist: type, side and "postable" can no longer change. */
+  has_entries: boolean
+}
+
+/** Add or edit an account. Under a group the type comes from the group. */
+export interface LedgerAccountInput {
+  code: string
+  name: string
+  account_type?: AccountKind
+  parent_id?: string | null
+  normal_side?: 'debit' | 'credit'
+  is_postable?: boolean
+  status?: 'active' | 'inactive'
 }
 
 export interface JournalEntry {
@@ -142,6 +156,9 @@ export interface GeneralLedger {
 
 export const accountingApi = {
   ledgerAccounts: () => apiFetch<LedgerAccount[]>('/api/v1/ledger-accounts'),
+  createLedgerAccount: (input: LedgerAccountInput) => apiFetch<LedgerAccount>('/api/v1/ledger-accounts', { method: 'POST', body: input }),
+  updateLedgerAccount: (id: string, version: number, input: LedgerAccountInput) =>
+    apiFetch<LedgerAccount>(`/api/v1/ledger-accounts/${id}`, { method: 'PUT', body: input, ifMatch: version }),
   journals: (filter: { from?: string; to?: string; source_type?: string }, cursor: string | null) =>
     apiFetch<Page<JournalEntry>>(`/api/v1/journals${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   journal: (id: string) => apiFetch<JournalDetail>(`/api/v1/journals/${id}`),

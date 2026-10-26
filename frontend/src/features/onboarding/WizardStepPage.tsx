@@ -7,6 +7,7 @@ import { ApiError } from '../../api/client'
 import {
   type Branch,
   type BusinessSettings,
+  CURRENCIES,
   RECEIPT_PAPERS,
   type SettingsPatch,
   TIMEZONES,
@@ -23,6 +24,7 @@ import { Select } from '../../components/ui/Select'
 import { Spinner } from '../../components/ui/Spinner'
 import { TextField } from '../../components/ui/TextField'
 import { LANGUAGES } from '../../i18n'
+import { currencySymbol } from '../../lib/format'
 import { useFields } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
@@ -137,10 +139,24 @@ function useSaveSettings(tenantId: string, step: 'regional' | 'invoice', version
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
 
+/** "Euro (EUR) — €" in the interface language. */
+function currencyLabel(code: string, lang: string): string {
+  let name = code
+  try {
+    name = new Intl.DisplayNames([lang === 'bn' ? 'bn-BD' : 'en'], { type: 'currency' }).of(code) ?? code
+  } catch {
+    // older browsers without DisplayNames: the code alone
+  }
+  const symbol = currencySymbol(code, lang)
+  return symbol === code ? `${name} (${code})` : `${name} (${code}) — ${symbol}`
+}
+
 function RegionalForm({ settings, tenantId, mode }: { settings: BusinessSettings; tenantId: string; mode: FormMode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { values, bind } = useFields({
+    currency_code: settings.currency_code,
     timezone: settings.timezone,
     locale: settings.locale,
     fiscal_year_start_month: String(settings.fiscal_year_start_month),
@@ -152,15 +168,32 @@ function RegionalForm({ settings, tenantId, mode }: { settings: BusinessSettings
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     save.mutate(
-      { timezone: values.timezone, locale: values.locale, fiscal_year_start_month: Number(values.fiscal_year_start_month) },
-      { onSuccess: () => void i18n.changeLanguage(values.locale) },
+      {
+        currency_code: values.currency_code,
+        timezone: values.timezone,
+        locale: values.locale,
+        fiscal_year_start_month: Number(values.fiscal_year_start_month),
+      },
+      {
+        onSuccess: () => {
+          void i18n.changeLanguage(values.locale)
+          // The session carries the currency every amount is shown in.
+          void queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+        },
+      },
     )
   }
 
   return (
     <StepCard title={t('onboarding.regional.title')} intro={t('onboarding.regional.intro')}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        <Select label={t('onboarding.regional.currency')} options={[{ value: 'BDT', label: t('onboarding.regional.bdt') }]} value="BDT" disabled onChange={() => {}} />
+        <Select
+          label={t('onboarding.regional.currency')}
+          options={CURRENCIES.map((code) => ({ value: code, label: currencyLabel(code, i18n.language) }))}
+          error={errors.currency_code}
+          {...bind('currency_code')}
+        />
+        <p className="-mt-2 text-sm text-ink-muted">{t('onboarding.regional.currencyHint')}</p>
         <Select label={t('onboarding.regional.timezone')} options={TIMEZONES.map((z) => ({ value: z, label: z }))} error={errors.timezone} {...bind('timezone')} />
         <Select label={t('onboarding.regional.language')} options={LANGUAGES.map((l) => ({ value: l.code, label: l.label }))} error={errors.locale} {...bind('locale')} />
         <Select

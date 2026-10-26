@@ -83,22 +83,25 @@ pub async fn list(tx: &mut TenantTx, filter: &NotificationFilter) -> AppResult<N
 pub async fn mark_read(tx: &mut TenantTx, id: Uuid) -> AppResult<()> {
     let tenant_id = tx.tenant_id();
     let user_id = tx.user_id();
-    let found: Option<i32> = sqlx::query_scalar("SELECT 1 FROM notifications WHERE tenant_id = ? AND id = ? AND user_id = ?")
-        .bind(tenant_id)
-        .bind(id)
-        .bind(user_id)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(map_db_error)?;
+    let found: Option<i32> =
+        sqlx::query_scalar("SELECT 1 FROM notifications WHERE tenant_id = ? AND id = ? AND user_id = ?")
+            .bind(tenant_id)
+            .bind(id)
+            .bind(user_id)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(map_db_error)?;
     if found.is_none() {
         return Err(AppError::NotFound);
     }
-    sqlx::query("UPDATE notifications SET read_at = COALESCE(read_at, UTC_TIMESTAMP(6)) WHERE tenant_id = ? AND id = ?")
-        .bind(tenant_id)
-        .bind(id)
-        .execute(&mut **tx)
-        .await
-        .map_err(map_db_error)?;
+    sqlx::query(
+        "UPDATE notifications SET read_at = COALESCE(read_at, UTC_TIMESTAMP(6)) WHERE tenant_id = ? AND id = ?",
+    )
+    .bind(tenant_id)
+    .bind(id)
+    .execute(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
     Ok(())
 }
 
@@ -106,11 +109,13 @@ pub async fn mark_read(tx: &mut TenantTx, id: Uuid) -> AppResult<()> {
 pub async fn mark_all_read(tx: &mut TenantTx) -> AppResult<()> {
     let tenant_id = tx.tenant_id();
     let user_id = tx.user_id();
-    sqlx::query("UPDATE notifications SET read_at = UTC_TIMESTAMP(6) WHERE tenant_id = ? AND user_id = ? AND read_at IS NULL")
-        .bind(tenant_id)
-        .bind(user_id)
-        .execute(&mut **tx)
-        .await
-        .map_err(map_db_error)?;
+    sqlx::query(
+        "UPDATE notifications SET read_at = UTC_TIMESTAMP(6) WHERE tenant_id = ? AND user_id = ? AND read_at IS NULL",
+    )
+    .bind(tenant_id)
+    .bind(user_id)
+    .execute(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
     Ok(())
 }

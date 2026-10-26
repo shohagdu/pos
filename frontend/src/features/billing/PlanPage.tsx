@@ -36,6 +36,7 @@ function PlanSummary({ tenantId }: { tenantId: string }) {
   const { subscription: sub, usage, features } = overview.data
   const flags = features.filter((f) => f.kind === 'flag')
   const ends = sub.status === 'trialing' ? sub.trial_ends_at : sub.current_period_end
+  const lifetime = sub.status === 'active' && sub.billing_cycle === 'lifetime'
 
   return (
     <div className="flex flex-col gap-6">
@@ -46,8 +47,14 @@ function PlanSummary({ tenantId }: { tenantId: string }) {
           <span className="rounded bg-canvas px-2 py-0.5 text-sm font-semibold">{t(`plan.status.${sub.status}`)}</span>
         </div>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
+          {sub.status !== 'trialing' && sub.billing_cycle && (
+            <>
+              <dt className="text-ink-muted">{t('plan.licence')}</dt>
+              <dd>{t(`billing.cycles.${sub.billing_cycle}`, { defaultValue: sub.billing_cycle })}</dd>
+            </>
+          )}
           <dt className="text-ink-muted">{sub.status === 'trialing' ? t('plan.trialEnds') : t('plan.periodEnds')}</dt>
-          <dd>{date(ends)}</dd>
+          <dd>{lifetime ? t('plan.neverEnds') : date(ends)}</dd>
           {sub.days_left !== null && (
             <>
               <dt className="text-ink-muted">{t('plan.daysLeftLabel')}</dt>

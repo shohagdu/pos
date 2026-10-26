@@ -51,6 +51,19 @@ pub async fn products_used(tx: &mut TenantTx) -> AppResult<i64> {
     .map_err(map_db_error)
 }
 
+pub const MB: i64 = 1024 * 1024;
+
+/// Megabytes of uploaded files, rounded up, for `storage.mb`.
+pub async fn storage_used_mb(tx: &mut TenantTx) -> AppResult<i64> {
+    let bytes: i64 =
+        sqlx::query_scalar("SELECT CAST(COALESCE(SUM(size_bytes), 0) AS SIGNED) FROM files WHERE tenant_id = ?")
+            .bind(tx.tenant_id())
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(map_db_error)?;
+    Ok((bytes + MB - 1) / MB)
+}
+
 async fn active_branches(tx: &mut TenantTx) -> AppResult<i64> {
     let tenant_id = tx.tenant_id();
     sqlx::query_scalar("SELECT COUNT(*) FROM branches WHERE tenant_id = ? AND status = 'active'")
@@ -78,7 +91,8 @@ pub async fn usage(tx: &mut TenantTx, ents: &Entitlements) -> AppResult<Vec<Usag
             "users.max" => Some(seats_used(tx, None).await?),
             "branches.max" => Some(active_branches(tx).await?),
             "products.max" => Some(products_used(tx).await?),
-            // registers.max, invoices.monthly_max, storage.mb are counted once
+            "storage.mb" => Some(storage_used_mb(tx).await?),
+            // registers.max and invoices.monthly_max are counted once
             // their modules land (Phases 3–5).
             _ => None,
         };

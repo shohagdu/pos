@@ -128,7 +128,7 @@ export interface AdminPlan {
   sort_order: number
   status: 'active' | 'retired'
   subscribers: number
-  prices: { billing_cycle: 'monthly' | 'quarterly' | 'annual'; amount: string }[]
+  prices: { billing_cycle: 'monthly' | 'quarterly' | 'annual' | 'lifetime'; amount: string }[]
   features: { code: string; name: string; kind: 'flag' | 'limit'; enabled: boolean; limit_value: number | null }[]
   updated_at: string
 }
@@ -142,8 +142,23 @@ export interface PlanInput {
   status?: 'active' | 'retired'
   trial_days?: number
   /** Cycle → price; a missing cycle is not sold. */
-  prices: Partial<Record<'monthly' | 'quarterly' | 'annual', string>>
+  prices: Partial<Record<'monthly' | 'quarterly' | 'annual' | 'lifetime', string>>
   features: { code: string; enabled: boolean; limit_value?: number | null }[]
+}
+
+export type LicenceKind = 'trial' | 'annual' | 'lifetime'
+
+export interface LicenceInput {
+  kind: LicenceKind
+  /** Annual and lifetime: the plan sold. */
+  plan_code?: string
+  /** Trial: days to add (1–365). */
+  days?: number
+  /** Annual: years (1–10). */
+  years?: number
+  /** What the business paid. */
+  price_amount?: string
+  reason: string
 }
 
 export interface ClaimPage {
@@ -162,6 +177,8 @@ export const platformApi = {
     apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}/suspend`, { method: 'POST', body: { reason } }),
   reactivate: (id: string, reason: string) =>
     apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}/reactivate`, { method: 'POST', body: { reason } }),
+  grantLicence: (tenantId: string, input: LicenceInput) =>
+    apiFetch<TenantDetail>(`/api/v1/admin/tenants/${tenantId}/licence`, { method: 'POST', body: input }),
   setOverride: (tenantId: string, input: OverrideInput) =>
     apiFetch<Override>(`/api/v1/admin/tenants/${tenantId}/overrides`, { method: 'PUT', body: input }),
   removeOverride: (tenantId: string, overrideId: string) =>

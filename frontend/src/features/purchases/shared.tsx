@@ -1,18 +1,20 @@
-import { useMutation } from '@tanstack/react-query'
-import { type FormEvent, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { moneyApi, usePaymentAccounts, usePaymentMethods } from '../../api/money'
-import { type Purchase, type PurchaseStatus, purchasingApi } from '../../api/purchasing'
+import { type Purchase, type PurchaseDetail, type PurchaseStatus, purchasingApi, purchasingKeys } from '../../api/purchasing'
 import { newKey } from '../../api/query'
 import { Alert } from '../../components/ui/Alert'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { Checkbox } from '../../components/ui/Checkbox'
 import { Dialog } from '../../components/ui/Dialog'
 import { Select } from '../../components/ui/Select'
 import { TextField } from '../../components/ui/TextField'
 import { formatMoney } from '../../lib/format'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
+import { useSession } from '../auth/session'
 import { type PaymentValues, checkPayment, toPayInput, trimDecimal, useRefreshAfterMoney } from './helpers'
 
 export function StatusBadge({ status }: { status: PurchaseStatus }) {
@@ -245,5 +247,119 @@ export function VoidPaymentDialog({ tenantId, paymentId, onClose }: { tenantId: 
       onConfirm={(reason) => voidIt.mutate(reason)}
       onClose={onClose}
     />
+  )
+}
+
+/**
+ * Post a bill: goods receipt, stock, ledger and an optional payment. `draft`
+ * hands over the saved draft (the form saves it first); F8 or Ctrl+Enter
+ * confirms, like the POS payment.
+ */
+export function PostDialog({
+  tenantId,
+  grandTotal,
+  draft,
+  onClose,
+  onPosted,
+}: {
+  tenantId: string
+  grandTotal: string
+  draft: () => Promise<PurchaseDetail>
+  onClose: () => void
+  onPosted: (posted: PurchaseDetail) => void
+}) {
+  const { t, i18n } = useTranslation()
+  const { can } = useSession()
+  const queryClient = useQueryClient()
+  const [key] = useState(newKey)
+  const canPay = can('suppliers.pay')
+  const methods = usePaymentMethods(tenantId).data ?? []
+  const [withPayment, setWithPayment] = useState(false)
+  const [values, setValues] = useState<PaymentValues>({ method_id: '', amount: trimDecimal(grandTotal), account_id: '', reference: '' })
+  const [clientErrors, setClientErrors] = useState<Record<string, string>>({})
+  const formRef = useRef<HTMLFormElement>(null)
+  const refresh = useRefreshAfterMoney(tenantId)
+  const post = useMutation({
+    mutationFn: async () => {
+      const saved = await draft()
+      return purchasingApi.postPurchase(saved.id, withPayment ? toPayInput(values) : undefined, key)
+    },
+    onSuccess: async (saved) => {
+      queryClient.setQueryData(purchasingKeys.purchase(tenantId, saved.id), saved)
+      await refresh()
+      onPosted(saved)
+    },
+  })
+  const server = fieldErrors(post.error, t)
+  const errors: Record<string, string | undefined> = {
+    method_id: server['payment.method_id'],
+    amount: server['payment.amount'],
+    account_id: server['payment.account_id'],
+    reference: server['payment.reference'],
+    ...clientErrors,
+  }
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.repeat) return
+      if (e.key === 'F8' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
+        e.preventDefault()
+        formRef.current?.requestSubmit()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (post.isPending) return
+    if (withPayment) {
+      const method = methods.find((m) => m.id === values.method_id)
+      const found = checkPayment(values, grandTotal, t, Boolean(method?.requires_reference))
+      setClientErrors(found)
+      if (Object.keys(found).length > 0) return
+    }
+    post.mutate()
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('purchases.post.title')}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" form="post-purchase" disabled={post.isPending} aria-keyshortcuts="F8 Control+Enter">
+            {post.isPending ? t('common.saving') : t('purchases.post.submit')}{' '}
+            <kbd aria-hidden="true" className="text-sm opacity-80">
+              F8
+            </kbd>
+          </Button>
+        </>
+      }
+    >
+      <form ref={formRef} id="post-purchase" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-brand-50 px-4 py-3">
+          <span className="font-semibold">{t('purchases.grandTotal')}</span>
+          <span className="text-2xl font-bold text-brand-700 tabular-nums">{formatMoney(grandTotal, i18n.language)}</span>
+        </div>
+        <p className="text-sm text-ink-muted">{t('purchases.post.hint', { total: formatMoney(grandTotal, i18n.language) })}</p>
+        {canPay && (
+          <Checkbox
+            label={t('purchases.post.withPayment')}
+            checked={withPayment}
+            onChange={(e) => setWithPayment(e.target.checked)}
+            autoFocus
+            data-autofocus
+          />
+        )}
+        {withPayment && <PaymentFields tenantId={tenantId} value={values} onChange={setValues} errors={errors} />}
+        {post.isError && hasFormError(post.error) && <Alert tone="danger">{problemMessage(post.error, t)}</Alert>}
+      </form>
+    </Dialog>
   )
 }

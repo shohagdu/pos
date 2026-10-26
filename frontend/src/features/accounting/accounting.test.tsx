@@ -18,9 +18,9 @@ beforeAll(() => {
 })
 
 const accounts = [
-  { id: 'a-assets', code: '1000', name: 'Assets', account_type: 'asset', normal_side: 'debit', parent_id: null, system_key: null, is_postable: false, status: 'active' },
-  { id: 'a-cash', code: '1010', name: 'Cash in hand', account_type: 'asset', normal_side: 'debit', parent_id: 'a-assets', system_key: 'cash', is_postable: true, status: 'active' },
-  { id: 'a-rent', code: '6100', name: 'Rent', account_type: 'expense', normal_side: 'debit', parent_id: null, system_key: null, is_postable: true, status: 'active' },
+  { id: 'a-assets', code: '1000', name: 'Assets', account_type: 'asset', normal_side: 'debit', parent_id: null, system_key: null, is_postable: false, status: 'active', version: 1, has_entries: false },
+  { id: 'a-cash', code: '1010', name: 'Cash in hand', account_type: 'asset', normal_side: 'debit', parent_id: 'a-assets', system_key: 'cash', is_postable: true, status: 'active', version: 1, has_entries: true },
+  { id: 'a-rent', code: '6100', name: 'Rent', account_type: 'expense', normal_side: 'debit', parent_id: null, system_key: null, is_postable: true, status: 'active', version: 3, has_entries: true },
 ]
 
 const journal = {
@@ -100,5 +100,56 @@ describe('accounting', () => {
     renderRoute('/accounting/periods')
     await userEvent.click(await screen.findByRole('button', { name: 'Lock month' }))
     expect(await screen.findByText('Only months that have ended can be locked.')).toBeInTheDocument()
+  })
+  it('adds a sub-account under a group with a suggested code', async () => {
+    const calls = mockApi({
+      ...signedIn(['accounting.view', 'accounting.coa_manage']),
+      'POST /api/v1/ledger-accounts': (call: { body: unknown }) =>
+        Response.json({ id: 'a-new', system_key: null, status: 'active', version: 1, has_entries: false, ...(call.body as object) }, { status: 201 }),
+    })
+    renderRoute('/accounting/journals')
+    await userEvent.click(await screen.findByRole('tab', { name: 'Chart of accounts' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a sub-account under Assets' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add account' })
+    expect(within(dialog).getByLabelText('Code')).toHaveValue('1020')
+    expect(within(dialog).getByLabelText('Type')).toBeDisabled()
+    await userEvent.type(within(dialog).getByLabelText('Name'), 'Petty cash')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/ledger-accounts')).toBe(true))
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/ledger-accounts')?.body).toEqual({
+      code: '1020', name: 'Petty cash', account_type: 'asset', parent_id: 'a-assets', normal_side: 'debit', is_postable: true,
+    })
+  })
+
+  it('renames a system account, with its code and type locked, and shows a stale-version error', async () => {
+    const calls = mockApi({
+      ...signedIn(['accounting.view', 'accounting.coa_manage']),
+      'PUT /api/v1/ledger-accounts/a-cash': () => problem(412, 'VERSION_MISMATCH'),
+    })
+    renderRoute('/accounting/journals')
+    await userEvent.click(await screen.findByRole('tab', { name: 'Chart of accounts' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit Cash in hand' }))
+    const dialog = screen.getByRole('dialog', { name: 'Edit account' })
+    expect(within(dialog).getByText(/Only its name can be changed/)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('Code')).toBeDisabled()
+    expect(within(dialog).getByLabelText('Normal side')).toBeDisabled()
+    expect(within(dialog).queryByLabelText('Active')).not.toBeInTheDocument()
+    const name = within(dialog).getByLabelText('Name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Cash box')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    expect(await within(dialog).findByText(/Someone else changed this/)).toBeInTheDocument()
+    const put = calls.find((c) => c.method === 'PUT')
+    expect(put?.headers.get('If-Match')).toBe('"1"')
+    expect(put?.body).toMatchObject({ code: '1010', name: 'Cash box', parent_id: 'a-assets', status: 'active' })
+  })
+
+  it('hides chart editing without accounting.coa_manage', async () => {
+    mockApi(signedIn(['accounting.view']))
+    renderRoute('/accounting/journals')
+    await userEvent.click(await screen.findByRole('tab', { name: 'Chart of accounts' }))
+    expect(await screen.findByText('Cash in hand')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Add account/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit Cash in hand' })).not.toBeInTheDocument()
   })
 })

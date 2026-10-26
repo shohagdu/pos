@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 
 /**
  * Modal dialog on the native `<dialog>` element: focus is trapped, `Esc`
- * closes it (POS shortcut), and the page behind is inert.
+ * closes it (POS shortcut), and the page behind is inert. Mark the field to
+ * focus on open with `data-autofocus`.
  */
 export function Dialog({
   open,
@@ -30,6 +31,9 @@ export function Dialog({
       // jsdom has no showModal(); fall back to the open attribute.
       if (typeof el.showModal === 'function') el.showModal()
       else el.setAttribute('open', '')
+      // React's autoFocus fires while the dialog is still hidden, and
+      // showModal() then focuses the header ✕; honour data-autofocus instead.
+      el.querySelector<HTMLElement>('[data-autofocus]')?.focus()
     } else if (!open && el.open) {
       if (typeof el.close === 'function') el.close()
       else el.removeAttribute('open')

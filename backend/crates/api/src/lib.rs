@@ -76,6 +76,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .configure(routes::subscription::configure)
             .configure(routes::audit::configure)
             .configure(routes::catalog::configure)
+            .configure(routes::files::configure)
             .configure(routes::inventory::configure)
             .configure(routes::parties::configure)
             .configure(routes::money::configure)

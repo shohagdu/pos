@@ -43,7 +43,7 @@ enum Sms {
 
 enum Email {
     Log,
-    Smtp { transport: AsyncSmtpTransport<Tokio1Executor>, from: Mailbox },
+    Smtp { transport: Box<AsyncSmtpTransport<Tokio1Executor>>, from: Mailbox },
 }
 
 pub struct Gateways {
@@ -100,7 +100,7 @@ impl Gateways {
                     .ok_or_else(|| config_error("SMTP_FROM", "required with SMTP_HOST"))?
                     .parse()
                     .map_err(|_| config_error("SMTP_FROM", "not an email address"))?;
-                Email::Smtp { transport: builder.build(), from }
+                Email::Smtp { transport: Box::new(builder.build()), from }
             }
         };
         Ok(Self { sms, email })

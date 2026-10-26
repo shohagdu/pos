@@ -21,7 +21,7 @@ import { usePrint } from '../sales/usePrint'
 import { type Cart, cartReducer, deserializeCart, emptyCart, priceCart, refreshLine, saleInput, serializeCart } from './cart'
 import { CartTable } from './CartTable'
 import { CustomerPanel } from './CustomerPanel'
-import { CustomerDialog } from './CustomerDialog'
+import { NewCustomerDialog } from './CustomerDialog'
 import { useOnline } from './hooks'
 import { HeldCartsDialog, HoldDialog } from './HoldDialogs'
 import { PaymentDialog } from './PaymentDialog'
@@ -92,10 +92,13 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
   const [cart, dispatch] = useReducer(cartReducer, emptyCart)
   const [selected, setSelected] = useState<string | null>(null)
   const [dialog, setDialog] = useState<DialogName>('none')
+  // What was typed in the customer search when "new customer" was chosen.
+  const [newCustomer, setNewCustomer] = useState('')
   // One Idempotency-Key per cart, kept until that sale succeeds (POS-R06).
   const [saleKey, setSaleKey] = useState(newKey)
   const [lastSale, setLastSale] = useState<SaleDetail | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
+  const customerRef = useRef<HTMLInputElement>(null)
   const discountRef = useRef<HTMLInputElement>(null)
   const online = useOnline()
   const print = usePrint()
@@ -183,7 +186,7 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
         searchRef.current?.focus()
       } else if (e.key === 'F4') {
         handled()
-        setDialog('customer')
+        customerRef.current?.focus()
       } else if (e.key === 'F7') {
         handled()
         discountRef.current?.focus()
@@ -264,7 +267,16 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
           </section>
 
           <aside className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 lg:overflow-y-auto">
-            <CustomerPanel customer={cart.customer} onChange={() => setDialog('customer')} />
+            <CustomerPanel
+              tenantId={tenantId}
+              customer={cart.customer}
+              inputRef={customerRef}
+              onSelect={(customer) => dispatch({ type: 'customer', customer })}
+              onNew={(typed) => {
+                setNewCustomer(typed)
+                setDialog('customer')
+              }}
+            />
             <TotalsPanel
               totals={priced.totals}
               pricesIncludeTax={ctx.prices_include_tax}
@@ -297,10 +309,11 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
         </main>
 
         {dialog === 'customer' && (
-          <CustomerDialog
+          <NewCustomerDialog
             tenantId={tenantId}
+            typed={newCustomer}
             onClose={close}
-            onSelect={(customer) => {
+            onCreated={(customer) => {
               dispatch({ type: 'customer', customer })
               close()
             }}

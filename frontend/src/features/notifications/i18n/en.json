@@ -1,0 +1,42 @@
+{
+  "notifications": {
+    "title": "Notifications",
+    "bellUnread": "Notifications, {{count}} unread",
+    "unreadCount": "{{count}} unread",
+    "allRead": "You're all caught up.",
+    "markAllRead": "Mark all read",
+    "all": "All",
+    "unread": "Unread",
+    "none": "No notifications yet.",
+    "noneUnread": "No unread notifications.",
+    "settings": "Notification settings",
+    "settingsHint": "Choose how you hear about each event. Untick everything to turn a type off.",
+    "noEmail": "Add an email address to your account to receive email notifications.",
+    "smsUnavailable": "SMS notifications are available on plans with the SMS feature.",
+    "type": "Event",
+    "channelFor": "{{channel}} for {{type}}",
+    "channels": {
+      "in_app": "In app",
+      "email": "Email",
+      "sms": "SMS"
+    },
+    "types": {
+      "stock.low": "Low stock",
+      "customer.due": "Customer dues",
+      "supplier.due": "Supplier dues",
+      "subscription.expiring": "Subscription renewal",
+      "sales.daily_summary": "Daily sales summary",
+      "security.alert": "Security alerts",
+      "approval.request": "Approval requests"
+    },
+    "typeHints": {
+      "stock.low": "Daily, when products reach their reorder level",
+      "customer.due": "Weekly, balances unpaid for over 30 days",
+      "supplier.due": "Weekly, bills unpaid for over 30 days",
+      "subscription.expiring": "7, 3 and 1 days before the plan ends",
+      "sales.daily_summary": "Each morning, yesterday's sales",
+      "security.alert": "Lockouts, password resets and stopped sign-ins on your account",
+      "approval.request": "Purchase orders and expenses waiting for you"
+    }
+  }
+}

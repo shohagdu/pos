@@ -220,13 +220,15 @@ async fn reconciled_balance(tx: &mut TenantTx, account_id: Uuid) -> AppResult<De
 /// Locks a reconciliation and returns `(account_id, status)`.
 async fn lock(tx: &mut TenantTx, id: Uuid) -> AppResult<(Uuid, String, NaiveDate)> {
     let tenant_id = tx.tenant_id();
-    sqlx::query_as("SELECT account_id, status, statement_date FROM bank_reconciliations WHERE tenant_id = ? AND id = ? FOR UPDATE")
-        .bind(tenant_id)
-        .bind(id)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(map_db_error)?
-        .ok_or(AppError::NotFound)
+    sqlx::query_as(
+        "SELECT account_id, status, statement_date FROM bank_reconciliations WHERE tenant_id = ? AND id = ? FOR UPDATE",
+    )
+    .bind(tenant_id)
+    .bind(id)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(map_db_error)?
+    .ok_or(AppError::NotFound)
 }
 
 fn not_in_progress() -> AppError {
@@ -281,7 +283,8 @@ pub async fn start(tx: &mut TenantTx, meta: &RequestMeta, input: &Reconciliation
     let statement_balance = if input.statement_balance.is_sign_negative() { -size } else { size };
     let opening = reconciled_balance(tx, input.account_id).await?;
     let id = new_id();
-    let note = input.note.as_deref().map(str::trim).filter(|n| !n.is_empty()).map(|n| n.chars().take(500).collect::<String>());
+    let note =
+        input.note.as_deref().map(str::trim).filter(|n| !n.is_empty()).map(|n| n.chars().take(500).collect::<String>());
     sqlx::query(
         "INSERT INTO bank_reconciliations (tenant_id, id, account_id, statement_date, statement_balance, opening_balance, \
          note, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -326,8 +329,7 @@ pub async fn set_cleared(tx: &mut TenantTx, id: Uuid, input: &ClearInput) -> App
     }
     let tenant_id = tx.tenant_id();
     if !input.unclear.is_empty() {
-        let mut q: QueryBuilder<MySql> =
-            QueryBuilder::new("DELETE FROM bank_reconciliation_items WHERE tenant_id = ");
+        let mut q: QueryBuilder<MySql> = QueryBuilder::new("DELETE FROM bank_reconciliation_items WHERE tenant_id = ");
         q.push_bind(tenant_id).push(" AND reconciliation_id = ").push_bind(id).push(" AND account_transaction_id IN (");
         let mut list = q.separated(", ");
         for txn in &input.unclear {
@@ -432,13 +434,16 @@ pub async fn cancel(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResul
         .execute(&mut **tx)
         .await
         .map_err(map_db_error)?;
-    sqlx::query("UPDATE bank_reconciliations SET status = 'cancelled', version = version + 1 WHERE tenant_id = ? AND id = ?")
-        .bind(tenant_id)
-        .bind(id)
-        .execute(&mut **tx)
-        .await
-        .map_err(map_db_error)?;
-    pos_audit::record(tx, meta, AuditEntry::new("bank_reconciliation.cancelled").entity("bank_reconciliation", id)).await?;
+    sqlx::query(
+        "UPDATE bank_reconciliations SET status = 'cancelled', version = version + 1 WHERE tenant_id = ? AND id = ?",
+    )
+    .bind(tenant_id)
+    .bind(id)
+    .execute(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    pos_audit::record(tx, meta, AuditEntry::new("bank_reconciliation.cancelled").entity("bank_reconciliation", id))
+        .await?;
     get(tx, id).await
 }
 
@@ -446,7 +451,10 @@ pub async fn cancel(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResul
 pub async fn reopen(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid, reason: &str) -> AppResult<Reconciliation> {
     let (account_id, status, _) = lock(tx, id).await?;
     if status != "completed" {
-        return Err(AppError::Unprocessable { code: "RECONCILIATION_NOT_COMPLETED", message: "only a completed reconciliation can be reopened".into() });
+        return Err(AppError::Unprocessable {
+            code: "RECONCILIATION_NOT_COMPLETED",
+            message: "only a completed reconciliation can be reopened".into(),
+        });
     }
     let tenant_id = tx.tenant_id();
     let latest: Option<Uuid> = sqlx::query_scalar(

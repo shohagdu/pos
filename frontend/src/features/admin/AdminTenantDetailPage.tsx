@@ -29,6 +29,7 @@ import { formatDate, formatDateTime } from '../../lib/dates'
 import { formatMoney } from '../../lib/format'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { LINK, cycleLabel, featureName, methodLabel, planLabel, stateLabel, useStaffRole } from './labels'
+import { LicenceDialog } from './LicenceDialog'
 import { BusinessStatusBadge, ClaimStatusBadge, Fact, InvoiceStatusBadge, ReasonDialog, SubscriptionBadge } from './shared'
 
 /** One business (ADM-R02…R06): subscription, usage, history, billing and overrides. */
@@ -75,6 +76,7 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
   const role = useStaffRole()
   const queryClient = useQueryClient()
   const [action, setAction] = useState<'suspend' | 'reactivate' | null>(null)
+  const [licensing, setLicensing] = useState(false)
   const change = useMutation({
     mutationFn: (reason: string) => (action === 'suspend' ? platformApi.suspend(d.id, reason) : platformApi.reactivate(d.id, reason)),
     onSuccess: async () => {
@@ -99,15 +101,17 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
             <SubscriptionBadge state={d.subscription_status} />
           </div>
         </div>
-        {canAdminister(role) && (
-          <div className="print:hidden">
-            {suspended ? (
-              <Button onClick={() => open('reactivate')}>{t('admin.tenant.reactivate')}</Button>
-            ) : (
-              <Button variant="secondary" className="text-danger" onClick={() => open('suspend')}>
-                {t('admin.tenant.suspend')}
-              </Button>
-            )}
+        {(canAdminister(role) || canBill(role)) && (
+          <div className="flex flex-wrap gap-2 print:hidden">
+            {canBill(role) && <Button onClick={() => setLicensing(true)}>{t('admin.licence.open')}</Button>}
+            {canAdminister(role) &&
+              (suspended ? (
+                <Button onClick={() => open('reactivate')}>{t('admin.tenant.reactivate')}</Button>
+              ) : (
+                <Button variant="secondary" className="text-danger" onClick={() => open('suspend')}>
+                  {t('admin.tenant.suspend')}
+                </Button>
+              ))}
           </div>
         )}
       </div>
@@ -122,7 +126,9 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
         <Fact label={t('admin.tenant.price')}>{d.price_amount ? formatMoney(d.price_amount, lang) : '—'}</Fact>
         <Fact label={t('admin.tenant.daysLeft')}>{d.days_left === null ? '—' : t('plan.daysLeft', { count: d.days_left })}</Fact>
         <Fact label={t('admin.tenant.trialEnd')}>{formatDate(d.trial_ends_at, lang)}</Fact>
-        <Fact label={t('admin.tenant.periodEnd')}>{formatDate(d.current_period_end, lang)}</Fact>
+        <Fact label={t('admin.tenant.periodEnd')}>
+          {d.billing_cycle === 'lifetime' ? t('admin.licence.noEnd') : formatDate(d.current_period_end, lang)}
+        </Fact>
         <Fact label={t('admin.tenant.lastActivity')}>{formatDateTime(d.last_activity_at, lang)}</Fact>
         <Fact label={t('admin.tenants.created')}>{formatDate(d.created_at, lang)}</Fact>
       </dl>
@@ -136,6 +142,7 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
         error={change.error}
         onSubmit={(reason) => change.mutate(reason)}
       />
+      {licensing && <LicenceDialog tenant={d} onClose={() => setLicensing(false)} />}
     </Card>
   )
 }

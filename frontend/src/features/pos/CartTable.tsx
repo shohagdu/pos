@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { DiscountType } from '../../api/sales'
 import { dec, toFixed } from '../../lib/decimal'
-import { formatMoney, formatQuantity } from '../../lib/format'
+import { currencySymbol, formatMoney, formatQuantity } from '../../lib/format'
 import type { LineResult } from '../../lib/pricing'
 import type { CartAction, CartLine, LineProblem } from './cart'
 
@@ -140,7 +140,7 @@ export function CartTable({
                       value={line.discountType}
                       onChange={(e) => dispatch({ type: 'discount', variantId: id, discountType: e.target.value as DiscountType, value: line.discountValue })}
                     >
-                      <option value="amount">{t('pos.discountAmount')}</option>
+                      <option value="amount">{currencySymbol()}</option>
                       <option value="percent">{t('pos.discountPercent')}</option>
                     </select>
                   </div>

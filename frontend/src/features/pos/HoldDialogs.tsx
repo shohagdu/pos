@@ -52,6 +52,7 @@ export function HoldDialog({
           placeholder={t('pos.holdLabelHint')}
           onChange={(e) => setLabel(e.target.value)}
           autoFocus
+          data-autofocus
         />
         {error !== null && error !== undefined && <Alert tone="danger">{problemMessage(error, t)}</Alert>}
       </form>

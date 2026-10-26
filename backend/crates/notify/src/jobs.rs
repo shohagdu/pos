@@ -33,13 +33,14 @@ const OVERDUE_DAYS: i64 = 30;
 struct Business {
     id: Uuid,
     timezone: String,
+    currency_code: String,
     owner_id: Option<Uuid>,
 }
 
 /// Runs every check for every active business; returns notifications created.
 pub async fn run(pool: &MySqlPool, now: DateTime<Utc>) -> AppResult<usize> {
     let businesses: Vec<Business> = sqlx::query_as(
-        "SELECT t.id, t.timezone, (SELECT m.user_id FROM tenant_memberships m WHERE m.tenant_id = t.id AND m.is_owner \
+        "SELECT t.id, t.timezone, t.currency_code, (SELECT m.user_id FROM tenant_memberships m WHERE m.tenant_id = t.id AND m.is_owner \
            AND m.status = 'active' ORDER BY m.created_at LIMIT 1) AS owner_id \
          FROM tenants t WHERE t.status = 'active' \
          /* tenant-lint: allow the scheduled checks cover every business */",
@@ -51,26 +52,37 @@ pub async fn run(pool: &MySqlPool, now: DateTime<Utc>) -> AppResult<usize> {
     for b in businesses {
         let Some(owner_id) = b.owner_id else { continue };
         let tz: Tz = b.timezone.parse().unwrap_or(chrono_tz::Asia::Dhaka);
-        match run_business(pool, b.id, owner_id, now, tz).await {
+        match run_business(pool, b.id, owner_id, now, tz, b.currency_code).await {
             Ok(n) => created += n,
             // One business's failure must not stop the others.
-            Err(err) => tracing::error!(tenant = %b.id, error = %err, job = "notifications", "notification checks failed"),
+            Err(err) => {
+                tracing::error!(tenant = %b.id, error = %err, job = "notifications", "notification checks failed")
+            }
         }
     }
     Ok(created)
 }
 
-/// Clock of one business.
+/// Clock and currency of one business.
 struct Local {
     date: NaiveDate,
     hour: u32,
     weekday: Weekday,
     now: DateTime<Utc>,
+    currency: String,
 }
 
-async fn run_business(pool: &MySqlPool, tenant_id: Uuid, owner_id: Uuid, now: DateTime<Utc>, tz: Tz) -> AppResult<usize> {
+async fn run_business(
+    pool: &MySqlPool,
+    tenant_id: Uuid,
+    owner_id: Uuid,
+    now: DateTime<Utc>,
+    tz: Tz,
+    currency: String,
+) -> AppResult<usize> {
     let local_now = now.with_timezone(&tz);
-    let local = Local { date: local_now.date_naive(), hour: local_now.hour(), weekday: local_now.weekday(), now };
+    let local =
+        Local { date: local_now.date_naive(), hour: local_now.hour(), weekday: local_now.weekday(), now, currency };
     let ctx = TenantCtx { tenant_id, user_id: owner_id, meta: RequestMeta::default() };
     let mut tx = pos_db::begin_tenant(pool, &ctx).await?;
     let ents = pos_billing::entitlements::resolve(&mut tx, tenant_id).await?;
@@ -91,15 +103,33 @@ async fn run_business(pool: &MySqlPool, tenant_id: Uuid, owner_id: Uuid, now: Da
     Ok(n)
 }
 
-/// `1234567.5` → `৳12,34,567.50` (South Asian grouping, as in the app).
-pub fn taka(value: Decimal) -> String {
+/// Symbol for a business currency (codes from `pos_tenancy::settings::CURRENCIES`).
+fn symbol(currency: &str) -> &str {
+    match currency {
+        "BDT" => "৳",
+        "INR" => "₹",
+        "USD" | "AUD" | "CAD" | "SGD" => "$",
+        "EUR" => "€",
+        "GBP" => "£",
+        "PKR" | "NPR" | "LKR" => "Rs",
+        "MYR" => "RM",
+        other => other,
+    }
+}
+
+/// `1234567.5` in BDT → `৳12,34,567.50` (South Asian grouping, as in the
+/// app); in EUR → `€1,234,567.50`.
+pub fn money(value: Decimal, currency: &str) -> String {
+    let lakh = matches!(currency, "BDT" | "INR" | "PKR" | "NPR" | "LKR");
     let fixed = format!("{:.2}", value.round_dp(2).abs());
     let (int, frac) = fixed.split_once('.').unwrap_or((&fixed, "00"));
     let digits: Vec<char> = int.chars().collect();
-    let mut grouped = String::new();
+    // The last three digits form a group; before them groups of 2 (lakh) or 3.
+    let size = if lakh { 2 } else { 3 };
     let head = digits.len().saturating_sub(3);
+    let mut grouped = String::new();
     for (i, c) in digits[..head].iter().enumerate() {
-        if i > 0 && (head - i) % 2 == 0 {
+        if i > 0 && (head - i).is_multiple_of(size) {
             grouped.push(',');
         }
         grouped.push(*c);
@@ -109,14 +139,22 @@ pub fn taka(value: Decimal) -> String {
     }
     grouped.extend(&digits[head..]);
     let sign = if value.is_sign_negative() && !value.is_zero() { "-" } else { "" };
-    format!("{sign}৳{grouped}.{frac}")
+    let symbol = symbol(currency);
+    let space = if symbol.chars().all(char::is_alphabetic) { " " } else { "" };
+    format!("{sign}{symbol}{space}{grouped}.{frac}")
 }
 
 fn bn(locale: &str) -> bool {
     locale.starts_with("bn")
 }
 
-async fn send(tx: &mut TenantTx, draft: &Draft<'_>, audience: Audience, subject: Option<Uuid>, sms: bool) -> AppResult<usize> {
+async fn send(
+    tx: &mut TenantTx,
+    draft: &Draft<'_>,
+    audience: Audience,
+    subject: Option<Uuid>,
+    sms: bool,
+) -> AppResult<usize> {
     let to = recipients(tx, audience, subject).await?;
     publish(tx, draft, &to, sms).await
 }
@@ -142,7 +180,9 @@ async fn low_stock(tx: &mut TenantTx, local: &Local, sms: bool) -> AppResult<usi
         } else {
             Text {
                 title: format!("{count} products are low on stock"),
-                body: Some(format!("{count} products are at or below their reorder level; {out_count} are out of stock.")),
+                body: Some(format!(
+                    "{count} products are at or below their reorder level; {out_count} are out of stock."
+                )),
             }
         }
     };
@@ -184,16 +224,21 @@ async fn daily_sales(tx: &mut TenantTx, local: &Local, sms: bool) -> AppResult<u
     .await
     .map_err(map_db_error)?;
     let date = day.format("%d %b %Y").to_string();
+    let cur = local.currency.clone();
     let text = move |locale: &str| {
         if bn(locale) {
             Text {
-                title: format!("{date}-এর বিক্রয়: {}", taka(total)),
-                body: Some(format!("{invoices}টি ইনভয়েস · বাকি {} · ফেরত {}", taka(due), taka(returns))),
+                title: format!("{date}-এর বিক্রয়: {}", money(total, &cur)),
+                body: Some(format!("{invoices}টি ইনভয়েস · বাকি {} · ফেরত {}", money(due, &cur), money(returns, &cur))),
             }
         } else {
             Text {
-                title: format!("Sales on {date}: {}", taka(total)),
-                body: Some(format!("{invoices} invoices · {} on credit · {} returned", taka(due), taka(returns))),
+                title: format!("Sales on {date}: {}", money(total, &cur)),
+                body: Some(format!(
+                    "{invoices} invoices · {} on credit · {} returned",
+                    money(due, &cur),
+                    money(returns, &cur)
+                )),
             }
         }
     };
@@ -228,15 +273,16 @@ async fn dues(tx: &mut TenantTx, local: &Local, sms: bool) -> AppResult<usize> {
         .await
         .map_err(map_db_error)?;
         if parties > 0 {
+            let cur = local.currency.clone();
             let text = move |locale: &str| {
                 if bn(locale) {
                     Text {
-                        title: format!("{parties} জন গ্রাহকের {} বকেয়া ৩০ দিনের বেশি", taka(amount)),
+                        title: format!("{parties} জন গ্রাহকের {} বকেয়া ৩০ দিনের বেশি", money(amount, &cur)),
                         body: Some("বকেয়া আদায়ের জন্য এজিং রিপোর্ট দেখুন।".into()),
                     }
                 } else {
                     Text {
-                        title: format!("{} owed by {parties} customers for over 30 days", taka(amount)),
+                        title: format!("{} owed by {parties} customers for over 30 days", money(amount, &cur)),
                         body: Some("See the aging report to follow up.".into()),
                     }
                 }
@@ -264,15 +310,16 @@ async fn dues(tx: &mut TenantTx, local: &Local, sms: bool) -> AppResult<usize> {
         .await
         .map_err(map_db_error)?;
         if parties > 0 {
+            let cur = local.currency.clone();
             let text = move |locale: &str| {
                 if bn(locale) {
                     Text {
-                        title: format!("{parties} জন সরবরাহকারীর {} পাওনা ৩০ দিনের বেশি", taka(amount)),
+                        title: format!("{parties} জন সরবরাহকারীর {} পাওনা ৩০ দিনের বেশি", money(amount, &cur)),
                         body: Some("পরিশোধের জন্য এজিং রিপোর্ট দেখুন।".into()),
                     }
                 } else {
                     Text {
-                        title: format!("{} owed to {parties} suppliers for over 30 days", taka(amount)),
+                        title: format!("{} owed to {parties} suppliers for over 30 days", money(amount, &cur)),
                         body: Some("See the aging report to plan payments.".into()),
                     }
                 }
@@ -347,11 +394,18 @@ async fn approvals(tx: &mut TenantTx, local: &Local, sms: bool) -> AppResult<usi
             continue;
         }
         let (no, party, amount) = (o.number.unwrap_or_default(), o.party, o.amount);
+        let cur = local.currency.clone();
         let text = move |locale: &str| {
             if bn(locale) {
-                Text { title: format!("ক্রয় অর্ডার {no} অনুমোদনের অপেক্ষায়"), body: Some(format!("{party} · {}", taka(amount))) }
+                Text {
+                    title: format!("ক্রয় অর্ডার {no} অনুমোদনের অপেক্ষায়"),
+                    body: Some(format!("{party} · {}", money(amount, &cur))),
+                }
             } else {
-                Text { title: format!("Purchase order {no} needs approval"), body: Some(format!("{party} · {}", taka(amount))) }
+                Text {
+                    title: format!("Purchase order {no} needs approval"),
+                    body: Some(format!("{party} · {}", money(amount, &cur))),
+                }
             }
         };
         let draft = Draft {
@@ -379,11 +433,18 @@ async fn approvals(tx: &mut TenantTx, local: &Local, sms: bool) -> AppResult<usi
             continue;
         }
         let (no, party, amount) = (e.number.unwrap_or_default(), e.party, e.amount);
+        let cur = local.currency.clone();
         let text = move |locale: &str| {
             if bn(locale) {
-                Text { title: format!("খরচ {no} অনুমোদনের অপেক্ষায়"), body: Some(format!("{party} · {}", taka(amount))) }
+                Text {
+                    title: format!("খরচ {no} অনুমোদনের অপেক্ষায়"),
+                    body: Some(format!("{party} · {}", money(amount, &cur))),
+                }
             } else {
-                Text { title: format!("Expense {no} needs approval"), body: Some(format!("{party} · {}", taka(amount))) }
+                Text {
+                    title: format!("Expense {no} needs approval"),
+                    body: Some(format!("{party} · {}", money(amount, &cur))),
+                }
             }
         };
         let draft = Draft {
@@ -429,12 +490,19 @@ async fn security(tx: &mut TenantTx, local: &Local, sms: bool) -> AppResult<usiz
         let (event, at) = (e.event.clone(), e.created_at.format("%d %b %Y %H:%M UTC").to_string());
         let text = move |locale: &str| {
             let (en, bn_title) = match event.as_str() {
-                "auth.lockout" => ("Your account was locked after failed sign-ins", "ব্যর্থ সাইন-ইনের পর আপনার অ্যাকাউন্ট লক হয়েছে"),
+                "auth.lockout" => {
+                    ("Your account was locked after failed sign-ins", "ব্যর্থ সাইন-ইনের পর আপনার অ্যাকাউন্ট লক হয়েছে")
+                }
                 "password.reset" => ("Your password was reset", "আপনার পাসওয়ার্ড রিসেট করা হয়েছে"),
-                _ => ("A suspicious sign-in was stopped and your sessions were ended", "সন্দেহজনক সাইন-ইন থামানো হয়েছে এবং সব সেশন বন্ধ করা হয়েছে"),
+                _ => (
+                    "A suspicious sign-in was stopped and your sessions were ended",
+                    "সন্দেহজনক সাইন-ইন থামানো হয়েছে এবং সব সেশন বন্ধ করা হয়েছে",
+                ),
             };
             if bn(locale) {
-                Text { title: bn_title.into(), body: Some(format!("{at}। আপনি না করে থাকলে পাসওয়ার্ড বদলান।")) }
+                Text {
+                    title: bn_title.into(), body: Some(format!("{at}। আপনি না করে থাকলে পাসওয়ার্ড বদলান।"))
+                }
             } else {
                 Text { title: en.into(), body: Some(format!("{at}. If this wasn't you, change your password.")) }
             }
@@ -456,10 +524,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn formats_taka_with_south_asian_grouping() {
-        assert_eq!(taka(Decimal::new(123456750, 2)), "৳12,34,567.50");
-        assert_eq!(taka(Decimal::new(999, 0)), "৳999.00");
-        assert_eq!(taka(Decimal::new(1000, 0)), "৳1,000.00");
-        assert_eq!(taka(Decimal::new(-1550, 1)), "-৳155.00");
+    fn formats_money_in_the_business_currency() {
+        assert_eq!(money(Decimal::new(123456750, 2), "BDT"), "৳12,34,567.50");
+        assert_eq!(money(Decimal::new(999, 0), "BDT"), "৳999.00");
+        assert_eq!(money(Decimal::new(1000, 0), "BDT"), "৳1,000.00");
+        assert_eq!(money(Decimal::new(-1550, 1), "BDT"), "-৳155.00");
+        assert_eq!(money(Decimal::new(123456750, 2), "EUR"), "€1,234,567.50");
+        assert_eq!(money(Decimal::new(5, 0), "MYR"), "RM 5.00");
     }
 }

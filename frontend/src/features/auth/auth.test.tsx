@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -40,7 +40,7 @@ describe('sign-in', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Rahim Fashion/ }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
-    expect(await screen.findByText('Welcome, Rahim Uddin')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /^Good (morning|afternoon|evening), Rahim$/ })).toBeInTheDocument()
     const me = calls.filter((c) => c.path === '/api/v1/auth/me').at(-1)
     expect(me?.headers.get('Authorization')).toBe('Bearer token-t2')
   })
@@ -106,6 +106,9 @@ describe('sign-up and onboarding', () => {
 
     expect(await screen.findByRole('heading', { name: 'Regional settings' })).toBeInTheDocument()
     expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toMatchObject({ name: 'Rahim Store', business_type: 'grocery' })
+    const currency = screen.getByLabelText('Currency')
+    expect(within(currency).getByRole('option', { name: 'Euro (EUR) — €' })).toBeInTheDocument()
+    await userEvent.selectOptions(currency, 'EUR')
     await userEvent.selectOptions(screen.getByLabelText('Fiscal year starts in'), '1')
     await userEvent.click(screen.getByRole('button', { name: 'Save and continue' }))
 
@@ -113,7 +116,7 @@ describe('sign-up and onboarding', () => {
     expect(router.state.location.pathname).toBe('/onboarding/branch')
     const patch = calls.find((c) => c.method === 'PATCH' && c.path === '/api/v1/settings')
     expect(patch?.headers.get('If-Match')).toBe('"1"')
-    expect(patch?.body).toMatchObject({ fiscal_year_start_month: 1, timezone: 'Asia/Dhaka' })
+    expect(patch?.body).toMatchObject({ currency_code: 'EUR', fiscal_year_start_month: 1, timezone: 'Asia/Dhaka' })
   })
 
   it('shows field errors from the API next to the field', async () => {

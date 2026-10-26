@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,113 +7,93 @@ import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { TextField } from '../../components/ui/TextField'
-import { ZERO, dec } from '../../lib/decimal'
-import { formatMoney } from '../../lib/format'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { type CartCustomer, toCartCustomer } from './cart'
-import { useDebounced } from './hooks'
 
-/** Customer selector (F4): walk-in, search by name/phone, quick add. */
-export function CustomerDialog({
+/** What was typed in the customer search goes to the phone field when it looks like a number. */
+function splitTyped(typed: string): { name: string; phone: string } {
+  const value = typed.trim()
+  return /^[+\d][\d\s-]*$/.test(value) ? { name: '', phone: value } : { name: value, phone: '' }
+}
+
+/** Quick add from the POS: name, phone and address, then the customer is put on the cart. */
+export function NewCustomerDialog({
   tenantId,
+  typed,
   onClose,
-  onSelect,
+  onCreated,
 }: {
   tenantId: string
+  typed: string
   onClose: () => void
-  onSelect: (customer: CartCustomer | null) => void
+  onCreated: (customer: CartCustomer) => void
 }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [text, setText] = useState('')
-  const q = useDebounced(text.trim(), 250)
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-
-  const found = useQuery({
-    queryKey: [...partyKeys.customers(tenantId), 'pos-search', q],
-    queryFn: () => partiesApi.customers({ q: q || undefined, status: 'active' }, null, 10),
-  })
+  const initial = splitTyped(typed)
+  const [name, setName] = useState(initial.name)
+  const [phone, setPhone] = useState(initial.phone)
+  const [address, setAddress] = useState('')
   const create = useMutation({
-    mutationFn: () => partiesApi.createCustomer({ name: name.trim(), phone: phone.trim() || undefined }),
+    mutationFn: () =>
+      partiesApi.createCustomer({ name: name.trim(), phone: phone.trim() || undefined, address: address.trim() || undefined }),
     onSuccess: (c) => {
       void queryClient.invalidateQueries({ queryKey: partyKeys.customers(tenantId) })
-      onSelect(toCartCustomer(c))
+      onCreated(toCartCustomer(c))
     },
   })
+  const errors = fieldErrors(create.error, t)
 
-  function submitNew(e: FormEvent) {
+  function submit(e: FormEvent) {
     e.preventDefault()
     if (name.trim()) create.mutate()
   }
 
-  const errors = fieldErrors(create.error, t)
-  const customers = (found.data?.data ?? []).filter((c) => !c.is_walk_in)
   return (
-    <Dialog open onClose={onClose} title={t('pos.chooseCustomer')} wide>
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end gap-2">
-          <TextField
-            className="min-w-56 flex-1"
-            label={t('pos.customerSearch')}
-            type="search"
-            value={text}
-            placeholder={t('pos.customerSearchHint')}
-            onChange={(e) => setText(e.target.value)}
-            autoFocus
-          />
-          <Button variant="secondary" onClick={() => onSelect(null)}>
-            {t('pos.walkIn')}
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('pos.newCustomerTitle')}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            {t('common.cancel')}
           </Button>
-          <Button variant="secondary" onClick={() => setAdding((a) => !a)} aria-expanded={adding}>
-            {t('pos.quickAdd')}
+          <Button type="submit" form="pos-new-customer" disabled={create.isPending || !name.trim()}>
+            {create.isPending ? t('common.saving') : t('pos.addCustomer')}
           </Button>
-        </div>
-
-        {adding && (
-          <form onSubmit={submitNew} className="flex flex-col gap-3 rounded-lg border border-border p-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <TextField label={t('pos.customerName')} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} required />
-              <TextField label={t('pos.customerPhone')} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} error={errors.phone} />
-            </div>
-            {create.isError && hasFormError(create.error) && <Alert tone="danger">{problemMessage(create.error, t)}</Alert>}
-            <Button type="submit" className="self-start" disabled={create.isPending || !name.trim()}>
-              {create.isPending ? t('common.saving') : t('pos.addCustomer')}
-            </Button>
-          </form>
-        )}
-
-        {found.isError ? (
-          <Alert tone="danger">{problemMessage(found.error, t)}</Alert>
-        ) : found.isPending ? (
-          <p className="text-sm text-ink-muted">{t('common.loading')}</p>
-        ) : customers.length === 0 ? (
-          <p className="text-sm text-ink-muted">{t('common.noResults')}</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border" aria-label={t('pos.customers')}>
-            {customers.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(toCartCustomer(c))}
-                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-canvas"
-                >
-                  <span>
-                    <span className="block font-medium">{c.name}</span>
-                    <span className="block text-xs text-ink-muted">{c.phone ?? c.code}</span>
-                  </span>
-                  {dec(c.current_balance) > ZERO && (
-                    <span className="text-xs font-medium text-danger">
-                      {t('pos.customerDue', { amount: formatMoney(c.current_balance, i18n.language) })}
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        </>
+      }
+    >
+      <form id="pos-new-customer" onSubmit={submit} className="flex flex-col gap-3" noValidate>
+        {create.isError && hasFormError(create.error) && <Alert tone="danger">{problemMessage(create.error, t)}</Alert>}
+        <TextField
+          label={t('pos.customerName')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          error={errors.name}
+          required
+          autoFocus={initial.name === ''}
+          data-autofocus={initial.name === '' || undefined}
+        />
+        <TextField
+          label={t('pos.customerPhone')}
+          type="tel"
+          inputMode="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          error={errors.phone}
+          hint={t('pos.customerPhoneHint')}
+          autoFocus={initial.name !== '' && initial.phone === ''}
+          data-autofocus={(initial.name !== '' && initial.phone === '') || undefined}
+        />
+        <TextField
+          label={`${t('pos.customerAddress')} (${t('common.optional')})`}
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          error={errors.address}
+        />
+      </form>
     </Dialog>
   )
 }

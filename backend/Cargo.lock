@@ -1897,6 +1897,7 @@ dependencies = [
  "pos-catalog",
  "pos-core",
  "pos-db",
+ "pos-files",
  "pos-inventory",
  "pos-money",
  "pos-notify",
@@ -2008,6 +2009,23 @@ dependencies = [
  "sqlx",
  "tokio",
  "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "pos-files"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "pos-core",
+ "pos-db",
+ "pos-tenancy",
+ "serde",
+ "sha2 0.11.1",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "utoipa",
  "uuid",
 ]
 

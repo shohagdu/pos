@@ -1,14 +1,24 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { formatMoney, formatQuantity } from './format'
+import { currencySymbol, formatMoney, formatQuantity, setBusinessCurrency } from './format'
 
 describe('formatMoney', () => {
+  afterEach(() => setBusinessCurrency('BDT'))
+
   it('uses lakh/crore grouping in English', () => {
     expect(formatMoney('1234567.5')).toBe('৳12,34,567.50')
   })
 
   it('uses Bengali digits in Bengali', () => {
     expect(formatMoney('1234567.5', 'bn')).toBe('১২,৩৪,৫৬৭.৫০৳')
+  })
+
+  it("uses the business's currency, with thousands grouping outside South Asia", () => {
+    setBusinessCurrency('EUR')
+    expect(formatMoney('1234567.5')).toBe('€1,234,567.50')
+    expect(currencySymbol()).toBe('€')
+    setBusinessCurrency('INR')
+    expect(formatMoney('1234567.5')).toBe('₹12,34,567.50')
   })
 
   it('keeps precision for large values passed as strings', () => {

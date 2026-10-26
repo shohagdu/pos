@@ -70,6 +70,8 @@ pub struct Product {
     pub min_selling_price: Option<Decimal>,
     #[schema(value_type = Option<String>)]
     pub reorder_level: Option<Decimal>,
+    /// The product photo (`GET /files/{id}`); set with `PUT /products/{id}/image`.
+    pub image_file_id: Option<Uuid>,
     /// `active` or `archived` (hidden from the POS, kept in history).
     pub status: String,
     pub version: i32,
@@ -190,6 +192,7 @@ struct Row {
     wholesale_price: Option<Decimal>,
     min_selling_price: Option<Decimal>,
     reorder_level: Option<Decimal>,
+    image_file_id: Option<Uuid>,
     status: String,
     version: i32,
     created_at: DateTime<Utc>,
@@ -222,6 +225,7 @@ impl Row {
             wholesale_price: self.wholesale_price,
             min_selling_price: self.min_selling_price,
             reorder_level: self.reorder_level,
+            image_file_id: self.image_file_id,
             status: self.status,
             version: self.version,
             created_at: self.created_at,
@@ -236,7 +240,7 @@ fn select(tenant_id: Uuid) -> QueryBuilder<MySql> {
          p.category_id, c.name AS category_name, p.brand_id, b.name AS brand_name, p.base_unit_id AS unit_id, \
          u.short_name AS unit_short_name, u.allow_fraction, p.tax_rate_id, t.rate_pct AS tax_rate_pct, \
          p.track_inventory, v.purchase_price, v.selling_price, v.wholesale_price, v.min_selling_price, \
-         v.reorder_level, p.status, p.version, p.created_at, p.updated_at \
+         v.reorder_level, p.image_file_id, p.status, p.version, p.created_at, p.updated_at \
          FROM products p \
          JOIN product_variants v ON v.tenant_id = p.tenant_id AND v.product_id = p.id AND v.is_default \
          JOIN units u ON u.tenant_id = p.tenant_id AND u.id = p.base_unit_id \
@@ -701,6 +705,13 @@ pub async fn create(tx: &mut TenantTx, meta: &RequestMeta, viewer: Viewer, input
 }
 
 /// Locks the product row and checks the `If-Match` version.
+/// Locks the product for the rest of the transaction; `NotFound` when it is
+/// not this business's. For work (like storing a photo) that must not start
+/// for a product that is not there.
+pub async fn lock_existing(tx: &mut TenantTx, id: Uuid) -> AppResult<()> {
+    lock(tx, id, None).await.map(drop)
+}
+
 async fn lock(tx: &mut TenantTx, id: Uuid, expected_version: Option<i32>) -> AppResult<Product> {
     let tenant_id = tx.tenant_id();
     let version: Option<i32> = sqlx::query_scalar(
@@ -825,6 +836,39 @@ pub async fn update(
     )
     .await?;
     get(tx, id, viewer).await
+}
+
+/// Points the product at a new photo (or none) and returns the previous one,
+/// which the caller removes (`pos_files::remove`).
+pub async fn set_image(
+    tx: &mut TenantTx,
+    meta: &RequestMeta,
+    viewer: Viewer,
+    id: Uuid,
+    image_file_id: Option<Uuid>,
+) -> AppResult<(Product, Option<Uuid>)> {
+    let current = lock(tx, id, None).await?;
+    sqlx::query(
+        "UPDATE products SET image_file_id = ?, updated_by = ?, version = version + 1 WHERE tenant_id = ? AND id = ?",
+    )
+    .bind(image_file_id)
+    .bind(viewer.user_id)
+    .bind(tx.tenant_id())
+    .bind(id)
+    .execute(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    let action = if image_file_id.is_some() { "product.image_set" } else { "product.image_removed" };
+    pos_audit::record(
+        tx,
+        meta,
+        AuditEntry::new(action).entity("product", id).change(
+            Some(serde_json::json!({ "image_file_id": current.image_file_id })),
+            Some(serde_json::json!({ "image_file_id": image_file_id })),
+        ),
+    )
+    .await?;
+    Ok((get(tx, id, viewer).await?, current.image_file_id))
 }
 
 /// `active ⇄ archived` (AC-PROD-02). Restoring counts against `products.max`.

@@ -1,17 +1,21 @@
 {
   "plan": {
-    "renewSoon": "The business owner can choose a plan and pay by bKash, Nagad, Rocket or bank transfer on this page."
+    "renewSoon": "The business owner can choose a plan and pay by bKash, Nagad, Rocket or bank transfer on this page.",
+    "licence": "Licence",
+    "neverEnds": "Never — one-time licence"
   },
   "billing": {
     "cycles": {
       "monthly": "Monthly",
       "quarterly": "Quarterly",
-      "annual": "Annual"
+      "annual": "Annual",
+      "lifetime": "One-time licence"
     },
     "per": {
       "monthly": "month",
       "quarterly": "3 months",
-      "annual": "year"
+      "annual": "year",
+      "lifetime": "one-time payment"
     },
     "choose": {
       "title": "Choose a plan / Renew",

@@ -5,6 +5,7 @@ const KEYS = [
   ['F4', 'customer'],
   ['F7', 'discount'],
   ['F8', 'pay'],
+  ['F8 / Ctrl+Enter', 'confirm'],
   ['F9', 'hold'],
   ['F10', 'held'],
   ['Ctrl+Del', 'removeLine'],

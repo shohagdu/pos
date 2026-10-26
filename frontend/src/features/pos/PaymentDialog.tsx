@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { PaymentMethod } from '../../api/money'
@@ -23,7 +23,11 @@ const NOTE_STEPS = ['10', '50', '100', '500', '1000']
 const select =
   'min-h-11 rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100'
 
-/** Pay (F8): split tenders, change, due; confirm posts the sale. */
+/**
+ * Pay (F8): split tenders, change, due; confirm posts the sale. Enter in a
+ * field, F8 again or Ctrl+Enter confirms from anywhere in the dialog. Tab
+ * order is amount(s) → Confirm, then the rest of the dialog.
+ */
 export function PaymentDialog({
   methods,
   grandTotal,
@@ -47,6 +51,7 @@ export function PaymentDialog({
   const [lines, setLines] = useState<PayLine[]>([{ id: 1, methodId: cashMethod?.id ?? '', amount: toFixed(grandTotal, 2), reference: '' }])
   const [note, setNote] = useState('')
   const [submitted, setSubmitted] = useState<number[]>([])
+  const formRef = useRef<HTMLFormElement>(null)
   const methodOf = (id: string) => methods.find((m) => m.id === id)
   const isCash = (l: PayLine) => methodOf(l.methodId)?.method_type === 'cash'
 
@@ -106,6 +111,20 @@ export function PaymentDialog({
     )
   }
 
+  // A held-down F8 auto-repeats; ignore repeats so the key that opened the
+  // dialog cannot also post the sale.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.repeat) return
+      if (e.key === 'F8' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
+        e.preventDefault()
+        formRef.current?.requestSubmit()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const errors = fieldErrors(error, t)
   const lineError = (id: number, field: string) => {
     const i = submitted.indexOf(id)
@@ -123,13 +142,22 @@ export function PaymentDialog({
           <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="pos-pay" disabled={pending || invalid || overpayNotCash || dueWalkIn || missingRef}>
-            {pending ? t('pos.posting') : t('pos.confirmSale')}
+          <Button
+            type="submit"
+            form="pos-pay"
+            tabIndex={2}
+            aria-keyshortcuts="F8 Control+Enter"
+            disabled={pending || invalid || overpayNotCash || dueWalkIn || missingRef}
+          >
+            {pending ? t('pos.posting') : t('pos.confirmSale')}{' '}
+            <kbd aria-hidden="true" className="text-sm opacity-80">
+              F8
+            </kbd>
           </Button>
         </>
       }
     >
-      <form id="pos-pay" onSubmit={submit} className="flex flex-col gap-4">
+      <form ref={formRef} id="pos-pay" onSubmit={submit} className="flex flex-col gap-4">
         <div className="flex items-baseline justify-between gap-3 rounded-lg bg-brand-50 px-4 py-3">
           <span className="font-semibold">{t('pos.grandTotal')}</span>
           <span className="text-2xl font-bold text-brand-700 tabular-nums">{money(grandTotal)}</span>
@@ -156,6 +184,8 @@ export function PaymentDialog({
                   inputMode="decimal"
                   value={l.amount}
                   autoFocus={i === 0}
+                  data-autofocus={i === 0 ? true : undefined}
+                  tabIndex={1}
                   onFocus={(e) => e.target.select()}
                   onChange={(e) => set(l.id, { amount: e.target.value })}
                   error={amounts[i] === null || (amounts[i] ?? ZERO) < ZERO ? t('pos.errors.amount') : lineError(l.id, 'amount')}

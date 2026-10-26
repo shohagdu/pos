@@ -23,7 +23,20 @@
     "audit": "Audit log",
     "admin": "Super Admin",
     "income": "Other income",
-    "shifts": "Shifts"
+    "shifts": "Shifts",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "newSale": "New sale",
+    "account": "Account menu",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "sections": {
+      "selling": "Selling",
+      "buying": "Buying",
+      "stock": "Stock",
+      "money": "Money",
+      "business": "Business"
+    }
   },
   "auth": {
     "signIn": "Sign in",
@@ -101,10 +114,10 @@
       "title": "Regional settings",
       "intro": "Currency, time zone and language for receipts and reports.",
       "currency": "Currency",
-      "bdt": "Bangladeshi Taka (৳ BDT)",
       "timezone": "Time zone",
       "language": "Business language",
-      "fiscalYear": "Fiscal year starts in"
+      "fiscalYear": "Fiscal year starts in",
+      "currencyHint": "Amounts are not converted. The currency can be changed only until the first sale, purchase or payment."
     },
     "branch": {
       "title": "Your shop",
@@ -296,7 +309,7 @@
     "INVALID_PREFIX": "Use 1–10 letters or digits.",
     "INVALID_MONTH": "Choose a month.",
     "UNSUPPORTED_TIMEZONE": "Choose a time zone from the list.",
-    "UNSUPPORTED_CURRENCY": "Only BDT is supported.",
+    "UNSUPPORTED_CURRENCY": "This currency is not supported.",
     "INVALID_PAPER": "Choose a paper size.",
     "TENANT_SUSPENDED": "This business is suspended. The owner can renew the subscription.",
     "TENANT_REQUIRED": "Choose a business first.",
@@ -422,7 +435,8 @@
     "TRIAL_PLAN": "The trial plan cannot be retired.",
     "PAST_DATE": "The date must be in the future.",
     "INVALID_LIMIT": "A limit cannot be negative.",
-    "INVALID_DAYS": "Use 1 to 365 days."
+    "INVALID_DAYS": "Use 1 to 365 days.",
+    "CURRENCY_LOCKED": "The currency cannot change after sales, purchases or payments are recorded."
   },
   "users": {
     "title": "Users & roles",
@@ -603,6 +617,7 @@
     "accounting_view": "View ledgers and statements",
     "accounting_journal_create": "Create journal entries",
     "accounting_period_lock": "Lock accounting periods",
+    "accounting_coa_manage": "Add and edit the chart of accounts",
     "reports_sales": "Sales reports",
     "reports_purchases": "Purchase reports",
     "reports_inventory": "Stock reports",

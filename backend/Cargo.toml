@@ -27,6 +27,7 @@ pos-purchasing = { path = "crates/purchasing" }
 pos-reporting = { path = "crates/reporting" }
 pos-platform = { path = "crates/platform" }
 pos-notify = { path = "crates/notify" }
+pos-files = { path = "crates/files" }
 
 # web
 actix-web = { version = "4.17", default-features = false, features = ["macros", "cookies"] }

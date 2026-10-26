@@ -42,6 +42,8 @@ pub struct SubscriptionSummary {
     pub plan_name: String,
     pub trial_ends_at: Option<DateTime<Utc>>,
     pub current_period_end: Option<DateTime<Utc>>,
+    /// `monthly`, `quarterly`, `annual`, `lifetime` (one-time licence, no end) or `custom`.
+    pub billing_cycle: String,
     /// Whole days left in the current phase (trial, period, grace, read-only).
     pub days_left: Option<i64>,
 }
@@ -52,6 +54,7 @@ pub struct Entitlements {
     pub tenant_id: Uuid,
     pub plan_code: String,
     pub plan_name: String,
+    pub billing_cycle: String,
     pub stored_status: SubscriptionStatus,
     pub dates: Dates,
     pub features: BTreeMap<String, Feature>,
@@ -82,6 +85,7 @@ impl Entitlements {
             plan_name: self.plan_name.clone(),
             trial_ends_at: self.dates.trial_ends_at,
             current_period_end: self.dates.current_period_end,
+            billing_cycle: self.billing_cycle.clone(),
             days_left: status::days_left(status, &self.dates, now),
         }
     }
@@ -147,6 +151,7 @@ struct SubscriptionRow {
     status: String,
     plan_code: String,
     plan_name: String,
+    billing_cycle: String,
     trial_ends_at: Option<DateTime<Utc>>,
     current_period_end: Option<DateTime<Utc>>,
     grace_ends_at: Option<DateTime<Utc>>,
@@ -167,7 +172,7 @@ struct FeatureRow {
 /// transaction for an exact answer; request checks use the cache.
 pub async fn resolve(conn: &mut MySqlConnection, tenant_id: Uuid) -> AppResult<Entitlements> {
     let sub: Option<SubscriptionRow> = sqlx::query_as(
-        "SELECT s.status, p.code AS plan_code, p.name AS plan_name, s.trial_ends_at, s.current_period_end, \
+        "SELECT s.status, p.code AS plan_code, p.name AS plan_name, s.billing_cycle, s.trial_ends_at, s.current_period_end, \
                 s.grace_ends_at, s.read_only_ends_at \
          FROM subscriptions s JOIN plans p ON p.id = s.plan_id WHERE s.tenant_id = ?",
     )
@@ -183,6 +188,7 @@ pub async fn resolve(conn: &mut MySqlConnection, tenant_id: Uuid) -> AppResult<E
             tenant_id,
             plan_code: String::new(),
             plan_name: String::new(),
+            billing_cycle: String::new(),
             stored_status: SubscriptionStatus::Suspended,
             dates: Dates::default(),
             features: BTreeMap::new(),
@@ -231,6 +237,7 @@ pub async fn resolve(conn: &mut MySqlConnection, tenant_id: Uuid) -> AppResult<E
         stored_status: SubscriptionStatus::parse(&sub.status).unwrap_or(SubscriptionStatus::Suspended),
         plan_code: sub.plan_code,
         plan_name: sub.plan_name,
+        billing_cycle: sub.billing_cycle,
         dates: Dates {
             trial_ends_at: sub.trial_ends_at,
             current_period_end: sub.current_period_end,
@@ -250,6 +257,7 @@ mod tests {
             tenant_id: Uuid::nil(),
             plan_code: "starter".into(),
             plan_name: "Starter".into(),
+            billing_cycle: "monthly".into(),
             stored_status: SubscriptionStatus::Active,
             dates: Dates::default(),
             features: features

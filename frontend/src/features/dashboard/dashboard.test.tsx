@@ -43,11 +43,11 @@ const dashboard = (profit: string | null) => ({
   ],
 })
 
-function signedIn(perms: string[], profit: string | null) {
+function signedIn(perms: string[], profit: string | null, data: object = dashboard(profit)) {
   return {
     'POST /api/v1/auth/refresh': token('t1'),
     'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant: currentTenant('t1', 'Rahim Store', perms) },
-    'GET /api/v1/dashboard': dashboard(profit),
+    'GET /api/v1/dashboard': data,
     'GET /readyz': { status: 'ready' },
     'GET /api/v1/meta': { name: 'pos-api', version: '0.1.0', environment: 'test' },
   }
@@ -65,6 +65,57 @@ describe('dashboard', () => {
     expect(screen.getByText('Miniket Rice 5kg')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'New sale' })).toHaveAttribute('href', '/pos')
     expect(screen.queryByRole('link', { name: 'New purchase' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /Rahim/ })).toBeInTheDocument()
+    expect(screen.getByText('Yesterday: ৳100.00')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Out of stock/ })).toHaveAttribute('href', '/inventory?status=out')
+    expect(screen.getByRole('link', { name: /Customers owe/ })).toHaveAttribute('href', '/customers')
+    expect(screen.queryByRole('region', { name: /get your shop selling/ })).not.toBeInTheDocument()
+  })
+
+  it('shows only the quick actions the user is allowed to use', async () => {
+    mockApi(signedIn(['dashboard.view', 'pos.sell', 'products.create', 'purchases.create', 'expenses.create', 'customers.manage', 'reports.sales'], null))
+    renderRoute('/')
+    const nav = await screen.findByRole('navigation', { name: 'Quick actions' })
+    const links = within(nav).getAllByRole('link')
+    expect(links.map((l) => [l.textContent, l.getAttribute('href')])).toEqual([
+      ['New sale', '/pos'],
+      ['Add product', '/products/new'],
+      ['New purchase', '/purchases/new'],
+      ['Record expense', '/expenses'],
+      ['Add customer', '/customers/new'],
+      ['Reports', '/reports'],
+    ])
+  })
+
+  it('hides quick actions without permissions', async () => {
+    mockApi(signedIn(['dashboard.view'], null))
+    renderRoute('/')
+    await screen.findByRole('region', { name: 'Today' })
+    expect(screen.queryByRole('navigation', { name: 'Quick actions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'New sale' })).not.toBeInTheDocument()
+  })
+
+  it('guides a new shop without sales through getting started', async () => {
+    const empty = {
+      ...dashboard(null),
+      today_figures: { ...figures('0', null), invoices: 0 },
+      month_figures: { ...figures('0', null), invoices: 0 },
+      top_products: [],
+      recent_sales: [],
+      last_14_days: [
+        { date: '2026-10-17', sales: '0' },
+        { date: '2026-10-18', sales: '0' },
+      ],
+    }
+    mockApi(signedIn(['dashboard.view', 'pos.sell', 'products.create'], null, empty))
+    renderRoute('/')
+    const start = await screen.findByRole('region', { name: /get your shop selling/ })
+    expect(within(start).getByRole('link', { name: 'Add products' })).toHaveAttribute('href', '/products/new')
+    expect(within(start).getByRole('link', { name: 'Start selling' })).toHaveAttribute('href', '/pos')
+    // Opening stock needs its own permission.
+    expect(within(start).queryByRole('link', { name: 'Add opening stock' })).not.toBeInTheDocument()
+    expect(screen.getByText('No sales in the last 14 days yet.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'New sale' })).toHaveAttribute('href', '/pos')
   })
 
   it('hides profit without the financials permission', async () => {

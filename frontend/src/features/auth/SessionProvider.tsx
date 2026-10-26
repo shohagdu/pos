@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState, useSyncExter
 
 import { authApi, authKeys } from '../../api/auth'
 import { getSession, refreshSession, setTokens, subscribeSession, type TokenResponse } from '../../api/session'
+import { setBusinessCurrency } from '../../lib/format'
 import { SessionContext, type SessionStatus, type SessionValue } from './session'
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -20,7 +21,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const me = useQuery({
     queryKey: authKeys.me(session.tenantId),
-    queryFn: authApi.me,
+    queryFn: async () => {
+      const me = await authApi.me()
+      // Set before anything renders, so every amount shows the business's currency.
+      setBusinessCurrency(me.tenant?.currency_code)
+      return me
+    },
     enabled: session.token !== null,
     staleTime: 60_000,
   })

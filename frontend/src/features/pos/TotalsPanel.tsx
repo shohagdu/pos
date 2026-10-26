@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { DiscountType } from '../../api/sales'
 import { type Dec, ZERO, toFixed } from '../../lib/decimal'
-import { formatMoney } from '../../lib/format'
+import { currencySymbol, formatMoney } from '../../lib/format'
 import type { Totals } from '../../lib/pricing'
 import type { LineProblem } from './cart'
 
@@ -63,7 +63,7 @@ export function TotalsPanel({
             value={discountType}
             onChange={(e) => onDiscount(e.target.value as DiscountType, discountValue)}
           >
-            <option value="amount">{t('pos.discountAmount')}</option>
+            <option value="amount">{currencySymbol()}</option>
             <option value="percent">{t('pos.discountPercent')}</option>
           </select>
         </div>

@@ -32,9 +32,10 @@ pub struct PlatformMetrics {
     pub by_plan: BTreeMap<String, i64>,
 }
 
-/// The monthly value of a subscription price.
+/// The monthly value of a subscription price (a one-time licence recurs never).
 pub fn monthly(price: Decimal, cycle: &str) -> Decimal {
     match cycle {
+        "lifetime" => Decimal::ZERO,
         "quarterly" => price / Decimal::from(3),
         "annual" => price / Decimal::from(12),
         _ => price,

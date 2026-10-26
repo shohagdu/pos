@@ -1,100 +1,100 @@
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation } from 'react-router'
 
-import { LanguageSwitcher } from '../../components/LanguageSwitcher'
-import { Button } from '../../components/ui/Button'
-import { useStaff } from '../../api/platform'
 import { useSession } from '../../features/auth/session'
-import { BranchSwitcher } from '../../features/branches/BranchSwitcher'
+import { LANGUAGES } from '../../i18n'
+import { NotificationBell } from '../../features/notifications/NotificationBell'
 import { SuspendedNotice } from '../../features/billing/SuspendedNotice'
 import { TrialBanner } from '../../features/dashboard/TrialBanner'
+import { Icon } from './Icon'
+import { navKeyFor } from './nav'
+import { Sidebar } from './Sidebar'
+import { UserMenu } from './UserMenu'
 
-// Each entry names the permissions that show it (any of them; `null` = every
-// member). Further modules add themselves here.
-const NAV: { to: string; key: string; permission: string | string[] | null }[] = [
-  { to: '/', key: 'nav.dashboard', permission: null },
-  { to: '/pos', key: 'nav.pos', permission: 'pos.sell' },
-  { to: '/sales', key: 'nav.sales', permission: 'sales.view' },
-  { to: '/purchases', key: 'nav.purchases', permission: 'purchases.view' },
-  { to: '/inventory', key: 'nav.inventory', permission: 'inventory.view' },
-  { to: '/products', key: 'nav.products', permission: 'products.view' },
-  { to: '/customers', key: 'nav.customers', permission: 'customers.view' },
-  { to: '/suppliers', key: 'nav.suppliers', permission: 'suppliers.view' },
-  { to: '/accounts', key: 'nav.money', permission: 'accounts.view' },
-  { to: '/expenses', key: 'nav.expenses', permission: 'expenses.view' },
-  { to: '/incomes', key: 'nav.income', permission: ['income.create', 'expenses.view'] },
-  { to: '/shifts', key: 'nav.shifts', permission: 'pos.sell' },
-  {
-    to: '/reports',
-    key: 'nav.reports',
-    permission: ['reports.sales', 'reports.purchases', 'reports.inventory', 'reports.financial', 'reports.parties', 'accounting.view'],
-  },
-  { to: '/accounting/journals', key: 'nav.accounting', permission: 'accounting.view' },
-  { to: '/users', key: 'nav.users', permission: 'users.view' },
-  { to: '/audit', key: 'nav.audit', permission: 'audit.view' },
-  { to: '/settings', key: 'nav.settings', permission: ['settings.manage', 'branches.manage'] },
-  { to: '/plan', key: 'nav.plan', permission: null },
-]
+// Header titles for pages that are not in the sidebar.
+const EXTRA_TITLES: Record<string, string> = {
+  notifications: 'notifications.title',
+  account: 'sessions.title',
+  admin: 'nav.admin',
+}
+
+// Pages with their own "New sale" button (or the till itself) skip the header shortcut.
+const OWN_NEW_SALE = ['/', '/pos', '/sales']
+
+const COLLAPSED_KEY = 'pos.sidebar.collapsed'
+
+function readCollapsed() {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export function AppLayout() {
-  const { t } = useTranslation()
-  const { me, can, signOut } = useSession()
-  const staff = useStaff()
-  const items = NAV.filter(
-    (item) =>
-      item.permission === null || (Array.isArray(item.permission) ? item.permission.some((p) => can(p)) : can(item.permission)),
-  )
-  const multiple = (me?.memberships.length ?? 0) > 1
+  const { t, i18n } = useTranslation()
+  const { me, can } = useSession()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(readCollapsed)
+  const closeMenu = useCallback(() => setMenuOpen(false), [])
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(COLLAPSED_KEY, c ? '0' : '1')
+      } catch {
+        // Storage unavailable: the choice just won't survive a reload.
+      }
+      return !c
+    })
   const { pathname } = useLocation()
   // Suspended: only the plan page is usable (the API refuses everything else).
   const suspended = me?.tenant?.subscription?.status === 'suspended' && pathname !== '/plan'
+  const titleKey = navKeyFor(pathname) ?? EXTRA_TITLES[pathname.split('/')[1] ?? '']
+  const title = titleKey ? t(titleKey) : ''
+  // One tap switches to the other language; the label is written in that language.
+  const otherLanguage = LANGUAGES.find((l) => l.code !== i18n.language) ?? LANGUAGES[0]
 
   return (
     <div className="flex min-h-svh flex-col md:flex-row">
-      <aside className="border-b border-border bg-surface md:w-60 md:shrink-0 md:border-r md:border-b-0 print:hidden">
-        <div className="px-4 pt-4 text-lg font-bold text-brand-700">{t('app.name')}</div>
-        <div className="px-4 pb-3 text-sm">
-          <span className="font-semibold text-ink">{me?.tenant?.name}</span>
-          {multiple && (
-            <Link to="/choose-business" className="ml-2 text-brand-700 hover:underline">
-              {t('tenant.switch')}
-            </Link>
-          )}
-        </div>
-        <BranchSwitcher />
-        <nav aria-label={t('nav.main')} className="flex flex-wrap gap-1 px-2 pb-2 md:flex-col md:flex-nowrap">
-          {items.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              className={({ isActive }) =>
-                `rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-muted hover:bg-canvas hover:text-ink'}`
-              }
-            >
-              {t(item.key)}
-            </NavLink>
-          ))}
-        </nav>
-      </aside>
+      <Sidebar open={menuOpen} onClose={closeMenu} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="print:hidden">
           <TrialBanner />
         </div>
-        <header className="flex flex-wrap items-center justify-end gap-3 border-b border-border bg-surface px-4 py-3 sm:px-8 print:hidden">
-          {staff.data && (
-            <Link to="/admin" className="text-sm font-semibold text-brand-700 hover:underline">
-              {t('nav.admin')}
+        <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-surface/95 px-4 py-2 backdrop-blur sm:gap-3 sm:px-8 print:hidden">
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="-ml-1.5 rounded-lg p-1.5 text-ink-muted hover:bg-canvas hover:text-ink md:hidden"
+            aria-label={t('nav.openMenu')}
+            aria-expanded={menuOpen}
+          >
+            <Icon name="menu" className="size-6" />
+          </button>
+          <div className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{title}</div>
+          {can('pos.sell') && !OWN_NEW_SALE.includes(pathname) && (
+            <Link
+              to="/pos"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-semibold text-white hover:bg-brand-700"
+              aria-label={t('nav.newSale')}
+            >
+              <Icon name="plus" className="size-4" />
+              <span className="hidden sm:inline">{t('nav.newSale')}</span>
             </Link>
           )}
-          <span className="text-sm text-ink-muted">{me?.user.full_name}</span>
-          <Link to="/account/sessions" className="text-sm font-medium text-brand-700 hover:underline">
-            {t('sessions.title')}
-          </Link>
-          <LanguageSwitcher />
-          <Button variant="ghost" onClick={() => void signOut()}>
-            {t('auth.signOut')}
-          </Button>
+          <button
+            type="button"
+            onClick={() => void i18n.changeLanguage(otherLanguage.code)}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-ink-muted hover:bg-canvas hover:text-ink"
+            title={t('common.language')}
+            lang={otherLanguage.code}
+          >
+            <Icon name="language" className="size-5" />
+            <span className="hidden sm:inline">{otherLanguage.label}</span>
+          </button>
+          <NotificationBell />
+          <UserMenu />
         </header>
         <main className="flex-1 px-4 py-6 sm:px-8 print:p-0">
           {suspended ? <SuspendedNotice /> : <Outlet />}

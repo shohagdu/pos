@@ -128,6 +128,9 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/income-categories"
             | "/api/v1/incomes"
             | "/api/v1/bank-reconciliations"
+            | "/api/v1/notifications"
+            | "/api/v1/notifications/unread-count"
+            | "/api/v1/notification-preferences"
             | "/api/v1/reports/aging"
             | "/api/v1/reports/vat-summary"
             | "/api/v1/reports/discounts"
@@ -140,6 +143,7 @@ fn access(method: &str, path: &str) -> Option<Access> {
         (_, p) if p.starts_with("/api/v1/admin/") => Platform,
         ("get", "/api/v1/reports/general-ledger") => QueryResource("account_id"),
         ("patch", "/api/v1/settings")
+        | ("put", "/api/v1/notification-preferences")
         | ("post", "/api/v1/onboarding/steps/{step}" | "/api/v1/onboarding/dismiss")
         | ("post", "/api/v1/invitations" | "/api/v1/roles")
         | (
@@ -156,6 +160,7 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/income-categories"
             | "/api/v1/incomes"
             | "/api/v1/bank-reconciliations"
+            | "/api/v1/notifications/read-all"
             | "/api/v1/stock-adjustments"
             | "/api/v1/customers"
             | "/api/v1/suppliers"
@@ -171,6 +176,7 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/supplier-payments"
             | "/api/v1/purchase-returns"
             | "/api/v1/journals"
+            | "/api/v1/ledger-accounts"
             | "/api/v1/fiscal-periods/lock"
             | "/api/v1/fiscal-periods/reopen",
         ) => TenantWrite,
@@ -190,6 +196,8 @@ fn access(method: &str, path: &str) -> Option<Access> {
         | ("get" | "put" | "delete", "/api/v1/products/{id}")
         | ("post", "/api/v1/products/{id}/archive" | "/api/v1/products/{id}/restore")
         | ("get", "/api/v1/products/{id}/price-history")
+        | ("put" | "delete", "/api/v1/products/{id}/image")
+        | ("get", "/api/v1/files/{id}")
         | ("get" | "put" | "delete", "/api/v1/customers/{id}" | "/api/v1/suppliers/{id}")
         | ("get", "/api/v1/customers/{id}/statement" | "/api/v1/suppliers/{id}/statement")
         | ("get" | "put", "/api/v1/payment-accounts/{id}")
@@ -217,7 +225,9 @@ fn access(method: &str, path: &str) -> Option<Access> {
         | ("get", "/api/v1/purchase-returns/{id}")
         | ("get", "/api/v1/stock-adjustments/{id}")
         | ("get", "/api/v1/journals/{id}")
+        | ("put", "/api/v1/ledger-accounts/{id}")
         | ("post", "/api/v1/journals/{id}/reverse")
+        | ("post", "/api/v1/notifications/{id}/read")
         | ("get", "/api/v1/bank-reconciliations/{id}")
         | ("put", "/api/v1/bank-reconciliations/{id}/lines")
         | (
@@ -311,6 +321,9 @@ struct Victim {
     category_id: String,
     brand_id: String,
     product_id: String,
+    /// Alice's product photo.
+    file_id: String,
+    notification_id: String,
     trade: Trade,
 }
 
@@ -365,6 +378,8 @@ impl Victim {
             &self.category_id
         } else if path.starts_with("/api/v1/brands/") {
             &self.brand_id
+        } else if path.starts_with("/api/v1/files/") {
+            &self.file_id
         } else if path.starts_with("/api/v1/products/") {
             &self.product_id
         } else if path.starts_with("/api/v1/customers/") {
@@ -409,11 +424,13 @@ impl Victim {
             &self.trade.income_category_id
         } else if path.starts_with("/api/v1/incomes/") {
             &self.trade.income_id
+        } else if path.starts_with("/api/v1/notifications/") {
+            &self.notification_id
         } else if path.starts_with("/api/v1/bank-reconciliations/") {
             &self.trade.reconciliation_id
         } else if path.starts_with("/api/v1/subscription/invoices/") {
             &self.trade.invoice_id
-        } else if path.starts_with("/api/v1/reports/general-ledger") {
+        } else if path.starts_with("/api/v1/reports/general-ledger") || path.starts_with("/api/v1/ledger-accounts/") {
             &self.trade.ledger_account_id
         } else {
             panic!("no fixture id for {path}; add one to Victim")
@@ -537,6 +554,7 @@ fn body_for(method: &str, path: &str, b_role: &str, b_unit: &str, a: &Trade) -> 
         ("post", "/api/v1/shifts") => json!({ "register_id": a.register_id, "opening_cash": "0" }),
         ("post", "/api/v1/income-categories") => json!({ "name": "Bob Income" }),
         ("post", "/api/v1/incomes") => json!({ "category_id": a.income_category_id, "amount": "1" }),
+        ("put", "/api/v1/notification-preferences") => json!([]),
         ("post", "/api/v1/bank-reconciliations") => {
             json!({ "account_id": a.account_id, "statement_date": "2026-01-31", "statement_balance": "0" })
         }
@@ -574,6 +592,10 @@ fn body_for(method: &str, path: &str, b_role: &str, b_unit: &str, a: &Trade) -> 
         ("post", "/api/v1/journals") => json!({
             "memo": "Hijack", "lines": [{ "account_id": a.ledger_account_id, "debit": "1" }, { "account_id": a.ledger_account_id, "credit": "1" }],
         }),
+        ("post", "/api/v1/ledger-accounts") => {
+            json!({ "code": "9990", "name": "Bob Under Alice", "parent_id": a.ledger_account_id })
+        }
+        ("put", "/api/v1/ledger-accounts/{id}") => json!({ "code": "9991", "name": "Hijacked" }),
         ("patch", "/api/v1/settings") => json!({ "district": "Dhaka" }),
         ("post", "/api/v1/invitations") => json!({ "destination": "01711000499", "role_ids": [b_role] }),
         ("post", "/api/v1/roles") => json!({ "name": "Bob Role", "permissions": ["pos.sell"] }),
@@ -600,6 +622,9 @@ fn body_for(method: &str, path: &str, b_role: &str, b_unit: &str, a: &Trade) -> 
         _ => return None,
     })
 }
+
+/// Enough of a PNG for the upload's type check.
+const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR-pretend-image-data";
 
 fn request(method: &str, uri: &str, body: Option<Value>) -> Req {
     match (method, body) {
@@ -711,10 +736,24 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
         ),
     )
     .await;
+    let photo = call(
+        &srv,
+        Req::put_bytes(&format!("/api/v1/products/{}/image", id_of(&product)), PNG, "image/png")
+            .bearer(&alice.token)
+            .build(),
+    )
+    .await;
+    let file_id = photo.body["image_file_id"].as_str().unwrap_or_else(|| panic!("photo: {}", photo.body)).to_owned();
     let trade = alice_trades(&srv, &alice, &id_of(&product)).await;
     let members = call(&srv, Req::get("/api/v1/members").bearer(&alice.token).build()).await;
     let branches = call(&srv, Req::get("/api/v1/branches").bearer(&alice.token).build()).await;
     let sessions = call(&srv, Req::get("/api/v1/auth/sessions").bearer(&alice.token).build()).await;
+    // A notification for Alice: tomorrow at 10:00 in Dhaka (UTC+6, no DST) brings today's sales summary.
+    let dhaka_today = (chrono::Utc::now() + chrono::Duration::hours(6)).date_naive();
+    let tomorrow = (dhaka_today + chrono::Duration::days(1)).and_hms_opt(4, 0, 0).expect("time").and_utc();
+    pos_notify::jobs::run(&pool, tomorrow).await.expect("notification checks");
+    let notifications = call(&srv, Req::get("/api/v1/notifications").bearer(&alice.token).build()).await;
+    let notification_id = notifications.body["data"][0]["id"].as_str().expect("a notification for Alice").to_owned();
     let victim = Victim {
         member_id: find_id(&members.body, "full_name", "Alice Staff"),
         role_id: role.body["id"].as_str().expect("role id").to_owned(),
@@ -725,6 +764,8 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
         category_id: id_of(&category),
         brand_id: id_of(&brand),
         product_id: id_of(&product),
+        file_id,
+        notification_id,
         trade,
         invitation_id,
         tenant_id,
@@ -780,6 +821,7 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
                         json!({ "feature_code": "users.max", "limit_value": 99, "reason": "Hijack" })
                     }
                     p if p.contains("/admin/plans") => json!({ "name": "Hijack", "is_public": true }),
+                    p if p.ends_with("/licence") => json!({ "kind": "trial", "days": 7, "reason": "Hijack" }),
                     _ => json!({}),
                 };
                 let req = request(&method, &uri, Some(body)).bearer(&bob.token);
@@ -818,10 +860,14 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
             }
             Access::Resource => {
                 let uri = path.replace("{id}", victim.id_for(&path));
-                let req = request(&method, &uri, body_for(&method, &path, &b_role, &b_unit, &victim.trade))
-                    .bearer(&bob.token)
-                    .if_match(1)
-                    .header("idempotency-key", &uuid::Uuid::now_v7().to_string());
+                // A real image, so the 404 comes from the product lookup, not from the upload checks.
+                let req = if (method.as_str(), path.as_str()) == ("put", "/api/v1/products/{id}/image") {
+                    Req::put_bytes(&uri, PNG, "image/png")
+                } else {
+                    request(&method, &uri, body_for(&method, &path, &b_role, &b_unit, &victim.trade))
+                };
+                let req =
+                    req.bearer(&bob.token).if_match(1).header("idempotency-key", &uuid::Uuid::now_v7().to_string());
                 let res = call(&srv, req.build()).await;
                 if res.status != StatusCode::NOT_FOUND {
                     failures.push(format!("{label}: expected 404, got {} {}", res.status, res.body));

@@ -51,6 +51,7 @@ export function ReasonDialog({
           maxLength={500}
           required
           autoFocus
+          data-autofocus
           error={errors.reason ?? (missing ? t('money.reasonRequired') : undefined)}
         />
         <div className="flex flex-wrap justify-end gap-2">

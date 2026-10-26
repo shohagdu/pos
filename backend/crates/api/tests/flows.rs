@@ -2,7 +2,8 @@
 //! (Roadmap §17.4), with the acceptance checks AC-PUR-01/02, AC-POS-02…04,
 //! idempotency (POS-R06), FIFO collection, returns, cancellation, and the
 //! books: the trial balance and balance sheet balance and the P&L agrees
-//! with the profit estimate. Also cross-tenant isolation of the new ids.
+//! with the profit estimate. Chart-of-accounts edits (ACC-R01). Also
+//! cross-tenant isolation of the new ids.
 //!
 //! One test function: every `#[sqlx::test]` migrates a fresh database.
 
@@ -352,6 +353,86 @@ async fn trade_cycle_keeps_stock_money_parties_and_books_consistent(pool: MySqlP
     let dashboard = get(&srv, &owner, "/api/v1/dashboard").await;
     assert_eq!(dashboard.status, StatusCode::OK, "{}", dashboard.body);
     assert_eq!(dashboard.body["payables"], "650.00");
+
+    // Chart of accounts (ACC-R01): own groups and accounts; system accounts
+    // can only be renamed; accounts in use keep their shape.
+    let ledger = get(&srv, &owner, "/api/v1/ledger-accounts").await;
+    let cash_ledger = find(&ledger.body, "code", "1010").clone();
+    let rent_ledger = find(&ledger.body, "code", "6010").clone();
+    assert_eq!(rent_ledger["has_entries"], true, "{rent_ledger}");
+    let group = post(
+        &srv,
+        &owner,
+        "/api/v1/ledger-accounts",
+        json!({ "code": "7000", "name": "Other Expenses", "account_type": "expense", "is_postable": false }),
+    )
+    .await;
+    assert_eq!(group.status, StatusCode::CREATED, "{}", group.body);
+    assert_eq!(group.body["normal_side"], "debit");
+    let group_id = s(&group.body, "id");
+    let donations = post(
+        &srv,
+        &owner,
+        "/api/v1/ledger-accounts",
+        json!({ "code": "7010", "name": "Donations", "parent_id": group_id }),
+    )
+    .await;
+    assert_eq!(donations.status, StatusCode::CREATED, "{}", donations.body);
+    assert_eq!(
+        (donations.body["account_type"].as_str(), donations.body["is_postable"].as_bool()),
+        (Some("expense"), Some(true))
+    );
+    for (body, field, code) in [
+        (json!({ "code": "7010", "name": "Again", "parent_id": group_id }), "code", "DUPLICATE_CODE"),
+        (
+            json!({ "code": "7020", "name": "Under cash", "parent_id": s(&cash_ledger, "id") }),
+            "parent_id",
+            "PARENT_NOT_GROUP",
+        ),
+        (
+            json!({ "code": "7030", "name": "Wrong type", "parent_id": group_id, "account_type": "income" }),
+            "account_type",
+            "TYPE_MISMATCH",
+        ),
+        (json!({ "code": "7040", "name": "No type" }), "account_type", "REQUIRED"),
+    ] {
+        let res = post(&srv, &owner, "/api/v1/ledger-accounts", body).await;
+        assert_eq!(res.status, StatusCode::BAD_REQUEST, "{}", res.body);
+        let errors = res.body["errors"].as_array().cloned().unwrap_or_default();
+        assert!(errors.iter().any(|e| e["field"] == field && e["code"] == code), "{field} {code}: {}", res.body);
+    }
+    let put = |uri: String, version: i64, body: Value| {
+        call(&srv, Req::put(&uri, body).bearer(&owner.token).if_match(version).build())
+    };
+    let cash_uri = format!("/api/v1/ledger-accounts/{}", s(&cash_ledger, "id"));
+    let renamed = put(cash_uri.clone(), 1, json!({ "code": "1010", "name": "Cash Box" })).await;
+    assert_eq!(renamed.status, StatusCode::OK, "{}", renamed.body);
+    assert_eq!((renamed.body["name"].as_str(), renamed.body["version"].as_i64()), (Some("Cash Box"), Some(2)));
+    let stale = put(cash_uri.clone(), 1, json!({ "code": "1010", "name": "Till" })).await;
+    assert_eq!(stale.status, StatusCode::PRECONDITION_FAILED, "{}", stale.body);
+    let recoded = put(cash_uri, 2, json!({ "code": "1011", "name": "Cash Box" })).await;
+    assert_eq!(recoded.status, StatusCode::BAD_REQUEST, "{}", recoded.body);
+    let rent_uri = format!("/api/v1/ledger-accounts/{}", s(&rent_ledger, "id"));
+    let regroup = put(rent_uri.clone(), 1, json!({ "code": "6010", "name": "Rent", "is_postable": false })).await;
+    assert_eq!(regroup.status, StatusCode::BAD_REQUEST, "{}", regroup.body);
+    let linked = put(rent_uri, 1, json!({ "code": "6010", "name": "Rent", "status": "inactive" })).await;
+    assert_eq!(linked.body["code"], "ACCOUNT_LINKED", "{}", linked.body);
+    let retired = put(
+        format!("/api/v1/ledger-accounts/{}", s(&donations.body, "id")),
+        1,
+        json!({ "code": "7011", "name": "Charity", "parent_id": group_id, "status": "inactive" }),
+    )
+    .await;
+    assert_eq!(retired.status, StatusCode::OK, "{}", retired.body);
+    assert_eq!((retired.body["code"].as_str(), retired.body["status"].as_str()), (Some("7011"), Some("inactive")));
+    let to_retired = post(
+        &srv,
+        &owner,
+        "/api/v1/journals",
+        json!({ "memo": "Gift", "lines": [{ "account_id": s(&donations.body, "id"), "debit": "10" }, { "account_id": s(&cash_ledger, "id"), "credit": "10" }] }),
+    )
+    .await;
+    assert_eq!(to_retired.status, StatusCode::BAD_REQUEST, "{}", to_retired.body);
 
     // Another business cannot see any of it.
     let mut other = sign_up(&srv, "Other", "01711000902").await;

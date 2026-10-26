@@ -25,7 +25,12 @@ pub struct PreferenceInput {
 }
 
 /// The user's channels for a type, or the type's defaults.
-pub async fn channels_for(tx: &mut TenantTx, user_id: Uuid, notif_type: &str, defaults: &[&str]) -> AppResult<Vec<String>> {
+pub async fn channels_for(
+    tx: &mut TenantTx,
+    user_id: Uuid,
+    notif_type: &str,
+    defaults: &[&str],
+) -> AppResult<Vec<String>> {
     let tenant_id = tx.tenant_id();
     let saved: Option<sqlx::types::Json<Vec<String>>> = sqlx::query_scalar(
         "SELECT channels FROM notification_preferences WHERE tenant_id = ? AND user_id = ? AND notif_type = ?",
@@ -54,7 +59,12 @@ fn available(sms_allowed: bool) -> Vec<String> {
 }
 
 /// The signed-in member's preferences for the types they can receive.
-pub async fn list(tx: &mut TenantTx, is_owner: bool, can: &dyn Fn(&str) -> bool, sms_allowed: bool) -> AppResult<Vec<Preference>> {
+pub async fn list(
+    tx: &mut TenantTx,
+    is_owner: bool,
+    can: &dyn Fn(&str) -> bool,
+    sms_allowed: bool,
+) -> AppResult<Vec<Preference>> {
     let user_id = tx.user_id();
     let mut out = Vec::new();
     for t in TYPES.iter().filter(|t| receives(t.audience, is_owner, can)) {
@@ -87,7 +97,11 @@ pub async fn set(
         let mut channels: Vec<String> = Vec::new();
         for c in &input.channels {
             if !allowed.contains(c) {
-                return Err(AppError::field(&format!("[{i}].channels"), "INVALID_CHANNEL", "this channel is not available"));
+                return Err(AppError::field(
+                    &format!("[{i}].channels"),
+                    "INVALID_CHANNEL",
+                    "this channel is not available",
+                ));
             }
             if !channels.contains(c) {
                 channels.push(c.clone());

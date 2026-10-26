@@ -1,36 +1,31 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { type FormEvent, type ReactNode, useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router'
 
-import { usePaymentMethods } from '../../api/money'
 import {
   type GoodsReceipt,
-  type PurchaseDetail,
   type PurchaseItem,
   type PurchasePayment,
   purchasingApi,
   purchasingKeys,
   usePurchase,
 } from '../../api/purchasing'
-import { newKey } from '../../api/query'
 import { Alert } from '../../components/ui/Alert'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
-import { Checkbox } from '../../components/ui/Checkbox'
 import { type Column, DataTable } from '../../components/ui/DataTable'
-import { Dialog } from '../../components/ui/Dialog'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Spinner } from '../../components/ui/Spinner'
 import { dec, toFixed } from '../../lib/decimal'
 import { formatDate, formatDateTime } from '../../lib/dates'
 import { formatMoney, formatQuantity } from '../../lib/format'
-import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
+import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
-import { LINK, type PaymentValues, SECONDARY_LINK, checkPayment, toPayInput, trimDecimal, useRefreshAfterMoney } from './helpers'
+import { LINK, SECONDARY_LINK, trimDecimal, useRefreshAfterMoney } from './helpers'
 import { ReceiveGoodsDialog } from './ReceiveGoodsDialog'
-import { PaySupplierDialog, PaymentBadge, PaymentFields, ReasonDialog, StatusBadge, VoidPaymentDialog } from './shared'
+import { PaySupplierDialog, PaymentBadge, PostDialog, ReasonDialog, StatusBadge, VoidPaymentDialog } from './shared'
 
 type Open = 'post' | 'cancel' | 'pay' | 'receive' | 'close' | { void: string } | null
 
@@ -295,7 +290,9 @@ export function PurchaseDetailPage() {
         </section>
       )}
 
-      {open === 'post' && <PostDialog tenantId={tenantId} purchase={p} onClose={() => setOpen(null)} />}
+      {open === 'post' && (
+        <PostDialog tenantId={tenantId} grandTotal={p.grand_total} draft={() => Promise.resolve(p)} onClose={() => setOpen(null)} onPosted={() => setOpen(null)} />
+      )}
       {open === 'pay' && (
         <PaySupplierDialog
           tenantId={tenantId}
@@ -349,71 +346,5 @@ function TotalRow({ label, value, strong = false }: { label: string; value: stri
       <dt className={strong ? '' : 'text-ink-muted'}>{label}</dt>
       <dd className="tabular-nums">{value}</dd>
     </div>
-  )
-}
-
-/** Post a draft: goods receipt, stock, ledger and an optional payment. */
-function PostDialog({ tenantId, purchase, onClose }: { tenantId: string; purchase: PurchaseDetail; onClose: () => void }) {
-  const { t, i18n } = useTranslation()
-  const { can } = useSession()
-  const queryClient = useQueryClient()
-  const [key] = useState(newKey)
-  const canPay = can('suppliers.pay')
-  const methods = usePaymentMethods(tenantId).data ?? []
-  const [withPayment, setWithPayment] = useState(false)
-  const [values, setValues] = useState<PaymentValues>({ method_id: '', amount: trimDecimal(purchase.grand_total), account_id: '', reference: '' })
-  const [clientErrors, setClientErrors] = useState<Record<string, string>>({})
-  const refresh = useRefreshAfterMoney(tenantId)
-  const post = useMutation({
-    mutationFn: () => purchasingApi.postPurchase(purchase.id, withPayment ? toPayInput(values) : undefined, key),
-    onSuccess: async (saved) => {
-      queryClient.setQueryData(purchasingKeys.purchase(tenantId, saved.id), saved)
-      await refresh()
-      onClose()
-    },
-  })
-  const server = fieldErrors(post.error, t)
-  const errors: Record<string, string | undefined> = {
-    method_id: server['payment.method_id'],
-    amount: server['payment.amount'],
-    account_id: server['payment.account_id'],
-    reference: server['payment.reference'],
-    ...clientErrors,
-  }
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (withPayment) {
-      const method = methods.find((m) => m.id === values.method_id)
-      const found = checkPayment(values, purchase.grand_total, t, Boolean(method?.requires_reference))
-      setClientErrors(found)
-      if (Object.keys(found).length > 0) return
-    }
-    post.mutate()
-  }
-
-  return (
-    <Dialog
-      open
-      onClose={onClose}
-      title={t('purchases.post.title')}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button type="submit" form="post-purchase" disabled={post.isPending}>
-            {post.isPending ? t('common.saving') : t('purchases.post.submit')}
-          </Button>
-        </>
-      }
-    >
-      <form id="post-purchase" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        <p className="text-sm text-ink-muted">{t('purchases.post.hint', { total: formatMoney(purchase.grand_total, i18n.language) })}</p>
-        {canPay && <Checkbox label={t('purchases.post.withPayment')} checked={withPayment} onChange={(e) => setWithPayment(e.target.checked)} />}
-        {withPayment && <PaymentFields tenantId={tenantId} value={values} onChange={setValues} errors={errors} />}
-        {post.isError && hasFormError(post.error) && <Alert tone="danger">{problemMessage(post.error, t)}</Alert>}
-      </form>
-    </Dialog>
   )
 }

@@ -118,6 +118,8 @@ pub struct AppConfig {
     pub log: LogConfig,
     pub auth: AuthConfig,
     pub run_migrations_on_start: bool,
+    /// Directory for uploaded files (product images) until object storage is set up.
+    pub storage_dir: String,
 }
 
 impl AppConfig {
@@ -166,6 +168,7 @@ impl AppConfig {
                 expose_otp,
             },
             run_migrations_on_start: parse_or("RUN_MIGRATIONS_ON_START", false)?,
+            storage_dir: string_or("STORAGE_DIR", "storage"),
         })
     }
 }

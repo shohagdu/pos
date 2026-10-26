@@ -7,6 +7,8 @@ export type BusinessType = (typeof BUSINESS_TYPES)[number]
 
 export const TIMEZONES = ['Asia/Dhaka', 'Asia/Kolkata', 'Asia/Kathmandu', 'UTC'] as const
 export const RECEIPT_PAPERS = ['80mm', '58mm', 'a4'] as const
+/** Mirrors `pos_tenancy::settings::CURRENCIES` (2-decimal currencies only). */
+export const CURRENCIES = ['BDT', 'INR', 'PKR', 'NPR', 'LKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'QAR', 'MYR', 'SGD', 'AUD', 'CAD'] as const
 
 export interface NewBusiness {
   name: string

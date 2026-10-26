@@ -17,7 +17,7 @@ import { formatMoney } from '../../lib/format'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { cycleLabel, featureName, useStaffRole } from './labels'
 
-const CYCLES = ['monthly', 'quarterly', 'annual'] as const
+const CYCLES = ['monthly', 'quarterly', 'annual', 'lifetime'] as const
 type Cycle = (typeof CYCLES)[number]
 
 /** Plans and pricing (ADM-R05). */
@@ -143,7 +143,7 @@ function PlanEditor({
   const [status, setStatus] = useState<'active' | 'retired'>(plan?.status ?? 'active')
   const [trialDays, setTrialDays] = useState(plan?.trial_days ? String(plan.trial_days) : '')
   const [prices, setPrices] = useState<Record<Cycle, string>>(() => {
-    const out = { monthly: '', quarterly: '', annual: '' }
+    const out = { monthly: '', quarterly: '', annual: '', lifetime: '' }
     for (const p of plan?.prices ?? []) out[p.billing_cycle] = p.amount
     return out
   })

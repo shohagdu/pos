@@ -101,7 +101,7 @@ function CategoryDialog({ category, tenantId, onClose }: { category?: ExpenseCat
     <Dialog open onClose={onClose} title={category ? t('expenses.editCategory') : t('expenses.addCategory')}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
-        <TextField label={t('expenses.categoryName')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} autoFocus error={errors.name} />
+        <TextField label={t('expenses.categoryName')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} autoFocus data-autofocus error={errors.name} />
         {category && (
           <Checkbox label={t('expenses.categoryActive')} hint={t('expenses.categoryActiveHint')} checked={active} onChange={(e) => setActive(e.target.checked)} />
         )}

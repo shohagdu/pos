@@ -9,6 +9,7 @@
 pub mod billing;
 pub mod claims;
 pub mod export;
+pub mod licence;
 pub mod lifecycle;
 pub mod metrics;
 pub mod overrides;

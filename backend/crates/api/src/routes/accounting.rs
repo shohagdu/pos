@@ -1,19 +1,24 @@
 //! Accounting (ACC-R01…R06): chart of accounts, journals, manual journals,
 //! fiscal-period locks and the financial statements (R-25).
 
-use actix_web::{HttpResponse, get, post, web};
+use actix_web::{HttpRequest, HttpResponse, get, post, put, web};
 use pos_accounting::{
     journal::{self, JournalDetail, JournalFilter, JournalPage, ManualJournalInput},
-    ledger::{self, LedgerAccount},
+    ledger::{self, LedgerAccount, LedgerAccountInput},
     periods::{self, FiscalPeriod, PeriodInput},
     statements::{self, AsOfQuery, BalanceSheet, GeneralLedger, LedgerQuery, PeriodQuery, ProfitAndLoss, TrialBalance},
 };
 use uuid::Uuid;
 
-use crate::{ApiError, AppState, auth::TenantAuth};
+use crate::{
+    ApiError, AppState,
+    auth::{TenantAuth, etag, if_match_version},
+};
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(list_ledger_accounts)
+        .service(create_ledger_account)
+        .service(update_ledger_account)
         .service(list_journals)
         .service(create_journal)
         .service(get_journal)
@@ -44,6 +49,44 @@ pub async fn list_ledger_accounts(state: web::Data<AppState>, auth: TenantAuth) 
     let list = ledger::list(&mut tx).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(list))
+}
+
+/// Adds an account or group to the chart (ACC-R01).
+#[utoipa::path(post, path = "/api/v1/ledger-accounts", tag = "accounting", request_body = LedgerAccountInput,
+    security(("bearer" = [])),
+    responses((status = 201, body = LedgerAccount), (status = 422, body = crate::error::Problem)))]
+#[post("/ledger-accounts")]
+pub async fn create_ledger_account(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    body: web::Json<LedgerAccountInput>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounting.coa_manage")?;
+    let mut tx = auth.begin(&state).await?;
+    let account = ledger::create(&mut tx, &auth.ctx.meta, body.into_inner()).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Created().insert_header(etag(account.version)).json(account))
+}
+
+/// Edits an account; system accounts can only be renamed.
+#[utoipa::path(put, path = "/api/v1/ledger-accounts/{id}", tag = "accounting", request_body = LedgerAccountInput,
+    params(("id" = Uuid, Path), ("If-Match" = String, Header)), security(("bearer" = [])),
+    responses((status = 200, body = LedgerAccount), (status = 412, body = crate::error::Problem),
+              (status = 422, body = crate::error::Problem)))]
+#[put("/ledger-accounts/{id}")]
+pub async fn update_ledger_account(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+    body: web::Json<LedgerAccountInput>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("accounting.coa_manage")?;
+    let version = if_match_version(&req)?;
+    let mut tx = auth.begin(&state).await?;
+    let account = ledger::update(&mut tx, &auth.ctx.meta, path.into_inner(), version, body.into_inner()).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().insert_header(etag(account.version)).json(account))
 }
 
 #[utoipa::path(get, path = "/api/v1/journals", tag = "accounting", params(JournalFilter), security(("bearer" = [])),

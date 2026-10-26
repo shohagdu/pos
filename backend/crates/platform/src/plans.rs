@@ -50,7 +50,7 @@ struct Row {
 async fn hydrate(conn: &mut MySqlConnection, row: Row) -> AppResult<Plan> {
     let prices = sqlx::query_as(
         "SELECT billing_cycle, amount FROM plan_prices WHERE plan_id = ? AND is_active AND currency_code = 'BDT' \
-         ORDER BY FIELD(billing_cycle, 'monthly', 'quarterly', 'annual')",
+         ORDER BY FIELD(billing_cycle, 'monthly', 'quarterly', 'annual', 'lifetime')",
     )
     .bind(row.id)
     .fetch_all(&mut *conn)
@@ -136,7 +136,7 @@ pub struct PlanInput {
     /// Trial plans only.
     #[serde(default)]
     pub trial_days: Option<i32>,
-    /// Price per cycle (`monthly`, `quarterly`, `annual`); a missing cycle is not sold.
+    /// Price per cycle (`monthly`, `quarterly`, `annual`, `lifetime`); a missing cycle is not sold.
     #[serde(default)]
     #[schema(value_type = Object)]
     pub prices: std::collections::BTreeMap<String, Decimal>,
@@ -151,7 +151,7 @@ fn validate(input: &PlanInput) -> AppResult<()> {
     }
     for (cycle, value) in &input.prices {
         if !CYCLES.contains(&cycle.as_str()) {
-            return Err(AppError::field("prices", "INVALID_CYCLE", "use monthly, quarterly or annual"));
+            return Err(AppError::field("prices", "INVALID_CYCLE", "use monthly, quarterly, annual or lifetime"));
         }
         amount(*value, &format!("prices.{cycle}"), false)?;
     }

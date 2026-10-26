@@ -166,6 +166,8 @@ pub async fn post_purchase(
 }
 
 /// Places a draft as a purchase order: numbers it and freezes its lines (PUR-R06).
+/// Needs the plan feature `purchases.orders`; orders already placed can still be
+/// approved and received after a downgrade.
 #[utoipa::path(post, path = "/api/v1/purchases/{id}/order", tag = "purchasing", params(("id" = Uuid, Path)),
     security(("bearer" = [])), responses((status = 200, body = PurchaseDetail), (status = 422, body = crate::error::Problem)))]
 #[post("/purchases/{id}/order")]
@@ -175,6 +177,7 @@ pub async fn order_purchase(
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, ApiError> {
     auth.require("purchases.create")?;
+    auth.entitlements.require("purchases.orders")?;
     let mut tx = auth.begin(&state).await?;
     let detail = purchases::order(&mut tx, &auth.ctx.meta, path.into_inner()).await?;
     tx.commit().await?;

@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{MySql, MySqlPool, QueryBuilder};
 use uuid::Uuid;
 
-use crate::billing::{CLAIM_SELECT, PaymentClaim, cycle_months, renewal_start};
+use crate::billing::{CLAIM_SELECT, LIFETIME, PaymentClaim, cycle_months, renewal_start};
 
 #[derive(Debug, Clone, Default, Deserialize, utoipa::IntoParams)]
 #[serde(deny_unknown_fields)]
@@ -148,9 +148,11 @@ pub async fn approve(
     let (subscription_id, from_status, from_plan, period_end) = sub;
     let now = Utc::now();
     let start = renewal_start(&from_status, period_end, now);
-    let end = start
+    let invoice_end = start
         .checked_add_months(Months::new(cycle_months(&cycle)))
         .ok_or_else(|| AppError::internal("subscription period overflow"))?;
+    // A lifetime licence has no period end: the subscription stays active.
+    let end = (cycle != LIFETIME).then_some(invoice_end);
 
     sqlx::query(
         "UPDATE subscriptions SET plan_id = ?, status = 'active', billing_cycle = ?, price_amount = ?, \
@@ -174,7 +176,7 @@ pub async fn approve(
     )
     .bind(now)
     .bind(start)
-    .bind(end)
+    .bind(invoice_end)
     .bind(tenant_id)
     .bind(invoice_id)
     .execute(&mut **tx)

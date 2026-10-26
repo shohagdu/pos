@@ -54,13 +54,34 @@ where
     call(srv, req.to_request()).await
 }
 
+/// Sets the business currency (`PATCH /settings` with the current version).
+async fn set_currency<S, B>(srv: &S, who: &Session, code: &str) -> Res
+where
+    S: actix_web::dev::Service<
+            actix_http::Request,
+            Response = actix_web::dev::ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    B: actix_web::body::MessageBody,
+{
+    let settings = send(srv, who, "get", "/api/v1/settings", None, None).await;
+    let version = settings.body["version"].as_i64().expect("settings version");
+    let req = test::TestRequest::patch()
+        .uri("/api/v1/settings")
+        .insert_header(("authorization", format!("Bearer {}", who.token)))
+        .insert_header(("if-match", format!("\"{version}\"")))
+        .set_json(json!({ "currency_code": code }))
+        .to_request();
+    call(srv, req).await
+}
+
 #[sqlx::test(migrator = "pos_db::MIGRATOR")]
 async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     // Room for a second branch, transfers and registers on the trial plan.
     sqlx::query(
         "UPDATE plan_features pf JOIN plans p ON p.id = pf.plan_id \
          SET pf.enabled = TRUE, pf.limit_value = IF(pf.feature_code IN ('branches.max', 'registers.max'), 3, pf.limit_value) \
-         WHERE p.code = 'trial' AND pf.feature_code IN ('branches.max', 'registers.max', 'inventory.transfers')",
+         WHERE p.code = 'trial' AND pf.feature_code IN ('branches.max', 'registers.max', 'inventory.transfers', 'notifications.sms')",
     )
     .execute(&pool)
     .await
@@ -68,6 +89,14 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     let srv = test::init_service(app(AppState::new(pool.clone(), common::config()))).await;
     let mut owner = sign_up(&srv, "Owner", "01711000951").await;
     create_business(&srv, &mut owner, "Karim Traders").await;
+    // A new business may pick its currency; it is reported with the session.
+    let euro = set_currency(&srv, &owner, "EUR").await;
+    assert_eq!(euro.body["currency_code"], "EUR", "{}", euro.body);
+    let me = send(&srv, &owner, "get", "/api/v1/auth/me", None, None).await;
+    assert_eq!(me.body["tenant"]["currency_code"], "EUR", "{}", me.body);
+    let unknown = set_currency(&srv, &owner, "XYZ").await;
+    assert_eq!(unknown.status, StatusCode::BAD_REQUEST, "{}", unknown.body);
+    assert_eq!(set_currency(&srv, &owner, "BDT").await.body["currency_code"], "BDT");
     macro_rules! get {
         ($uri:expr) => {
             send(&srv, &owner, "get", $uri, None, None)
@@ -292,7 +321,8 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     assert_eq!(num(&incomes.body, "total_amount"), 40.0, "{}", incomes.body);
 
     // --- a purchase order: 10 ordered (+20 shipping), approved, 4 then 2 arrive, closed short
-    let supplier = send(&srv, &owner, "post", "/api/v1/suppliers", Some(json!({ "name": "Rahman Distributors" })), None).await;
+    let supplier =
+        send(&srv, &owner, "post", "/api/v1/suppliers", Some(json!({ "name": "Rahman Distributors" })), None).await;
     assert_eq!(supplier.status, StatusCode::CREATED, "{}", supplier.body);
     let supplier_id = s(&supplier.body, "id");
     let draft = send(
@@ -356,7 +386,8 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     assert_eq!(num(&second.body, "received_total"), 312.0);
     assert_eq!(second.body["receipts"].as_array().map(Vec::len), Some(2));
     assert_eq!(num(&second.body["items"][0], "received_quantity"), 6.0);
-    let closed = send(&srv, &owner, "post", &po_uri("close"), Some(json!({ "reason": "Supplier out of stock" })), None).await;
+    let closed =
+        send(&srv, &owner, "post", &po_uri("close"), Some(json!({ "reason": "Supplier out of stock" })), None).await;
     assert_eq!(closed.body["status"], "received", "{}", closed.body);
     assert!(closed.body["closed_at"].is_string());
     assert_eq!(num(&closed.body, "grand_total"), 520.0);
@@ -469,6 +500,92 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     assert_eq!(reopened.body["lines"].as_array().map(Vec::len), Some(2));
     let redone = send(&srv, &owner, "post", &rec_uri("complete"), None, None).await;
     assert_eq!(redone.body["status"], "completed", "{}", redone.body);
+
+    // --- notifications: a low-stock product and today's sales, checked tomorrow morning
+    let gum = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/products",
+        Some(
+            json!({ "name": "Gum", "unit_id": pcs, "selling_price": "5", "purchase_price": "3", "reorder_level": "5" }),
+        ),
+        None,
+    )
+    .await;
+    assert_eq!(gum.status, StatusCode::CREATED, "{}", gum.body);
+    let gum_stock = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/stock-adjustments",
+        Some(json!({ "reason": "opening", "lines": [{ "variant_id": s(&gum.body, "variant_id"), "quantity": "2", "unit_cost": "3" }] })),
+        None,
+    )
+    .await;
+    assert_eq!(gum_stock.status, StatusCode::CREATED, "{}", gum_stock.body);
+    // 10:00 in Dhaka (UTC+6, the business's zone) on the following days.
+    let dhaka_today = (chrono::Utc::now() + chrono::Duration::hours(6)).date_naive();
+    let morning =
+        |days: i64| (dhaka_today + chrono::Duration::days(days)).and_hms_opt(4, 0, 0).expect("time").and_utc();
+    let created = pos_notify::jobs::run(&pool, morning(1)).await.expect("notification checks");
+    assert!(created >= 2, "created {created}");
+    let again = pos_notify::jobs::run(&pool, morning(1)).await.expect("notification checks");
+    assert_eq!(again, 0, "checks are idempotent");
+    let inbox = get!("/api/v1/notifications").await;
+    let types: Vec<&str> =
+        inbox.body["data"].as_array().expect("notifications").iter().filter_map(|n| n["notif_type"].as_str()).collect();
+    assert!(types.contains(&"stock.low") && types.contains(&"sales.daily_summary"), "{}", inbox.body);
+    let low = find(&inbox.body["data"], "notif_type", "stock.low");
+    assert_eq!(low["link"], "/inventory?status=low");
+    assert!(low["title"].as_str().is_some_and(|t| t.contains("low on stock")), "{low}");
+    let unread = get!("/api/v1/notifications/unread-count").await;
+    assert_eq!(unread.body["unread_count"].as_i64(), Some(types.len() as i64), "{}", unread.body);
+    let read = send(&srv, &owner, "post", &format!("/api/v1/notifications/{}/read", s(low, "id")), None, None).await;
+    assert_eq!(read.status, StatusCode::NO_CONTENT, "{}", read.body);
+
+    let prefs = get!("/api/v1/notification-preferences").await;
+    let low_pref = find(&prefs.body, "notif_type", "stock.low");
+    assert_eq!(low_pref["channels"], json!(["in_app"]), "{}", prefs.body);
+    assert!(low_pref["available_channels"].as_array().is_some_and(|c| c.contains(&json!("sms"))), "{}", prefs.body);
+    let bad = send(
+        &srv,
+        &owner,
+        "put",
+        "/api/v1/notification-preferences",
+        Some(json!([{ "notif_type": "stock.low", "channels": ["fax"] }])),
+        None,
+    )
+    .await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST, "{}", bad.body);
+    let saved = send(
+        &srv,
+        &owner,
+        "put",
+        "/api/v1/notification-preferences",
+        Some(json!([{ "notif_type": "stock.low", "channels": ["in_app", "sms"] }])),
+        None,
+    )
+    .await;
+    assert_eq!(find(&saved.body, "notif_type", "stock.low")["channels"], json!(["in_app", "sms"]), "{}", saved.body);
+    pos_notify::jobs::run(&pool, morning(2)).await.expect("notification checks");
+    let sent = pos_notify::delivery::dispatch(&pool, &pos_notify::delivery::Gateways::log_only(), morning(2))
+        .await
+        .expect("delivery");
+    assert_eq!(sent.sent, 1, "{sent:?}");
+    let statuses: Vec<(String, String)> = sqlx::query_as("SELECT channel, status FROM notification_deliveries")
+        .fetch_all(&pool)
+        .await
+        .expect("deliveries");
+    assert_eq!(statuses, vec![("sms".to_owned(), "sent".to_owned())]);
+    let all = send(&srv, &owner, "post", "/api/v1/notifications/read-all", None, None).await;
+    assert_eq!(all.status, StatusCode::NO_CONTENT);
+    let unread = get!("/api/v1/notifications/unread-count").await;
+    assert_eq!(unread.body["unread_count"], 0, "{}", unread.body);
+
+    // --- once money is recorded the currency is fixed
+    let locked = set_currency(&srv, &owner, "USD").await;
+    assert_eq!(locked.body["errors"][0]["code"], "CURRENCY_LOCKED", "{}", locked.body);
 
     // --- reports
     for uri in [

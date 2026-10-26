@@ -8,8 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::provisioning::{clean, validate_business_type, validate_contact, validate_name};
 
-/// Currencies and time zones the product supports today (D-15).
-pub const CURRENCIES: &[&str] = &["BDT"];
+/// Currencies and time zones the product supports today (D-15). Money is
+/// kept with 2 decimals, so only currencies with 2 minor digits are offered.
+pub const CURRENCIES: &[&str] =
+    &["BDT", "INR", "PKR", "NPR", "LKR", "USD", "EUR", "GBP", "AED", "SAR", "QAR", "MYR", "SGD", "AUD", "CAD"];
 pub const TIMEZONES: &[&str] = &["Asia/Dhaka", "Asia/Kolkata", "Asia/Kathmandu", "UTC"];
 pub const RECEIPT_PAPERS: &[&str] = &["58mm", "80mm", "a4"];
 
@@ -226,6 +228,23 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
 }
 
 /// Applies `patch` if `expected_version` is still current (API-07).
+/// Whether any money has been recorded (book lines, sales or purchases).
+async fn has_money(tx: &mut TenantTx) -> AppResult<bool> {
+    let tenant_id = tx.tenant_id();
+    let found: Option<i32> = sqlx::query_scalar(
+        "SELECT 1 FROM account_transactions WHERE tenant_id = ? \
+         UNION ALL SELECT 1 FROM sales WHERE tenant_id = ? \
+         UNION ALL SELECT 1 FROM purchases WHERE tenant_id = ? AND status <> 'draft' LIMIT 1",
+    )
+    .bind(tenant_id)
+    .bind(tenant_id)
+    .bind(tenant_id)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    Ok(found.is_some())
+}
+
 pub async fn update(
     tx: &mut TenantTx,
     meta: &RequestMeta,
@@ -242,6 +261,14 @@ pub async fn update(
     let mut next = apply(&current, patch)?;
     if next == current {
         return Ok(current);
+    }
+    if next.currency_code != current.currency_code && has_money(tx).await? {
+        // Amounts are stored without a currency; switching would relabel them, not convert them.
+        return Err(AppError::field(
+            "currency_code",
+            "CURRENCY_LOCKED",
+            "the currency cannot change after sales, purchases or payments are recorded",
+        ));
     }
     next.version = current.version + 1;
 
@@ -367,7 +394,7 @@ mod tests {
             Some("invoice_prefix")
         );
         assert_eq!(
-            field(SettingsPatch { currency_code: Some("USD".into()), ..Default::default() }).as_deref(),
+            field(SettingsPatch { currency_code: Some("XYZ".into()), ..Default::default() }).as_deref(),
             Some("currency_code")
         );
         assert_eq!(field(SettingsPatch { name: Some("x".into()), ..Default::default() }).as_deref(), Some("name"));

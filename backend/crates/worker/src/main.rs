@@ -1,4 +1,5 @@
-//! `pos-worker`: runs scheduled maintenance on an interval until SIGINT/SIGTERM.
+//! `pos-worker`: runs scheduled maintenance on an interval, and notification
+//! checks and delivery on a shorter one, until SIGINT/SIGTERM.
 
 use std::time::Duration;
 
@@ -15,10 +16,14 @@ async fn main() -> anyhow::Result<()> {
     init_tracing(&config);
 
     let tick_secs: u64 = std::env::var("WORKER_TICK_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(3600);
+    // Notification checks and email/SMS delivery need a shorter cycle (NOT-R02 retries).
+    let notify_secs: u64 = std::env::var("NOTIFY_TICK_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(120);
     let pool = pos_db::connect(&config.database).await.context("database connection failed")?;
+    let gateways = pos_notify::delivery::Gateways::from_env().context("invalid notification gateway settings")?;
 
-    tracing::info!(tick_secs, "pos-worker started");
+    tracing::info!(tick_secs, notify_secs, "pos-worker started");
     let mut ticker = tokio::time::interval(Duration::from_secs(tick_secs));
+    let mut notify_ticker = tokio::time::interval(Duration::from_secs(notify_secs));
     // Reconciliation runs at start-up and then once per (UTC) day.
     let mut reconciled_on = None;
     loop {
@@ -41,6 +46,7 @@ async fn main() -> anyhow::Result<()> {
                     Err(err) => tracing::error!(error = %err, job = "subscription_lifecycle", "maintenance job failed"),
                 }
             }
+            _ = notify_ticker.tick() => run_notifications(&pool, &gateways).await,
             _ = shutdown_signal() => break,
         }
     }
@@ -56,6 +62,21 @@ async fn run_maintenance(pool: &sqlx::MySqlPool) {
     }
     if let Err(err) = cleanup::purge_expired_idempotency_keys(pool).await {
         tracing::error!(error = %err, job = "idempotency_cleanup", "maintenance job failed");
+    }
+}
+
+/// Scheduled notification checks, then delivery of what is due.
+async fn run_notifications(pool: &sqlx::MySqlPool, gateways: &pos_notify::delivery::Gateways) {
+    let now = Utc::now();
+    match pos_notify::jobs::run(pool, now).await {
+        Ok(0) => {}
+        Ok(created) => tracing::info!(created, "notifications created"),
+        Err(err) => tracing::error!(error = %err, job = "notifications", "maintenance job failed"),
+    }
+    match pos_notify::delivery::dispatch(pool, gateways, now).await {
+        Ok(o) if o == pos_notify::delivery::Outcome::default() => {}
+        Ok(o) => tracing::info!(sent = o.sent, failed = o.failed, gave_up = o.gave_up, "notifications delivered"),
+        Err(err) => tracing::error!(error = %err, job = "notification_delivery", "maintenance job failed"),
     }
 }
 

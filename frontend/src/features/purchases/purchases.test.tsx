@@ -69,18 +69,24 @@ describe('purchases', () => {
       'GET /api/v1/purchases/pur1': draft,
     })
     const { router } = renderRoute('/purchases/new')
-    await screen.findByRole('option', { name: /Karim Traders/ })
-    await userEvent.selectOptions(screen.getByLabelText('Supplier'), 's1')
+    const product = await screen.findByRole('combobox', { name: 'Add product' })
+    expect(product).toHaveFocus()
+    await userEvent.keyboard('{F4}')
+    expect(screen.getByRole('combobox', { name: 'Find supplier' })).toHaveFocus()
+    await userEvent.click(await screen.findByRole('option', { name: /Karim Traders/ }))
+    expect(screen.getByTestId('purchase-supplier')).toHaveTextContent('Karim Traders')
+    expect(product).toHaveFocus()
     await userEvent.type(screen.getByLabelText('Supplier bill no (optional)'), 'KT-77')
-    await userEvent.type(screen.getByLabelText('Add product'), 'rice{Enter}')
-    await userEvent.click(await screen.findByRole('button', { name: 'Add Miniket Rice 5kg' }))
 
-    const qty = screen.getByLabelText('Qty Miniket Rice 5kg')
-    await userEvent.clear(qty)
-    await userEvent.type(qty, '10')
-    const cost = screen.getByLabelText('Unit cost Miniket Rice 5kg')
-    await userEvent.clear(cost)
-    await userEvent.type(cost, '420')
+    // Pick from the live results; the cursor goes to the new line's quantity,
+    // Enter moves on to the unit cost and then back to the search.
+    await userEvent.type(product, 'rice')
+    await userEvent.click(await screen.findByRole('option', { name: /Miniket Rice 5kg/ }))
+    await waitFor(() => expect(screen.getByLabelText('Qty Miniket Rice 5kg')).toHaveFocus())
+    await userEvent.keyboard('10{Enter}')
+    expect(screen.getByLabelText('Unit cost Miniket Rice 5kg')).toHaveFocus()
+    await userEvent.keyboard('420{Enter}')
+    expect(product).toHaveFocus()
     await userEvent.type(screen.getByLabelText('Shipping'), '50')
 
     expect(await screen.findByText(/Last: .*400\.00/)).toBeInTheDocument()
@@ -89,7 +95,7 @@ describe('purchases', () => {
     expect(within(totals).getByText(/4,250\.00/)).toBeInTheDocument()
     expect(screen.getByText(/425\.00/)).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }))
+    await userEvent.keyboard('{F8}')
     await waitFor(() => expect(router.state.location.pathname).toBe('/purchases/pur1'))
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/purchases')?.body).toEqual({
       supplier_id: 's1',
@@ -99,6 +105,72 @@ describe('purchases', () => {
       lines: [{ variant_id: 'v1', quantity: '10', unit_cost: '420', tax_rate_pct: '0' }],
       shipping_cost: '50',
     })
+  })
+
+  it('adds a scanned SKU at once and quick-adds a new supplier', async () => {
+    const calls = mockApi({
+      ...signedIn([...perms, 'suppliers.manage']),
+      'GET /api/v1/suppliers': { data: [], next_cursor: null, total_payable: '0' },
+      'POST /api/v1/suppliers': (call: { body: unknown }) => Response.json({ ...supplier, id: 's9', ...(call.body as object) }, { status: 201 }),
+      'GET /api/v1/products': { data: [rice], next_cursor: null },
+      'GET /api/v1/purchases/last-prices': [],
+    })
+    renderRoute('/purchases/new')
+    const product = await screen.findByRole('combobox', { name: 'Add product' })
+    await userEvent.type(product, 'P000001{Enter}')
+    expect(await screen.findByLabelText('Qty Miniket Rice 5kg')).toHaveValue('1')
+    await userEvent.type(product, 'P000001{Enter}')
+    await waitFor(() => expect(screen.getByLabelText('Qty Miniket Rice 5kg')).toHaveValue('2'))
+
+    await userEvent.type(screen.getByRole('combobox', { name: 'Find supplier' }), 'Salam Traders')
+    await userEvent.click(await screen.findByRole('option', { name: /Add “Salam Traders” as a new supplier/ }))
+    const dialog = screen.getByRole('dialog', { name: 'New supplier' })
+    expect(within(dialog).getByLabelText('Supplier name')).toHaveValue('Salam Traders')
+    await userEvent.type(within(dialog).getByLabelText('Phone (optional)'), '01811000009')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add supplier' }))
+    await waitFor(() => expect(screen.getByTestId('purchase-supplier')).toHaveTextContent('Salam Traders'))
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/suppliers')?.body).toEqual({ name: 'Salam Traders', phone: '01811000009' })
+  })
+
+  it('saves and posts a new bill in one go (F9), saving the draft only once on retry', async () => {
+    let posts = 0
+    const calls = mockApi({
+      ...signedIn(),
+      'GET /api/v1/suppliers': { data: [supplier], next_cursor: null, total_payable: '0' },
+      'GET /api/v1/products': { data: [rice], next_cursor: null },
+      'GET /api/v1/purchases/last-prices': [],
+      'POST /api/v1/purchases': () => Response.json(draft, { status: 201 }),
+      'POST /api/v1/purchases/pur1/post': () => {
+        posts += 1
+        if (posts === 1) return Promise.reject(new TypeError('Failed to fetch'))
+        return Response.json({ ...draft, purchase_no: 'PUR-0001', status: 'received', paid_total: '4250.00', due_total: '0.00', payment_status: 'paid' })
+      },
+      'GET /api/v1/purchases/pur1': draft,
+    })
+    const { router } = renderRoute('/purchases/new')
+    const product = await screen.findByRole('combobox', { name: 'Add product' })
+    await userEvent.click(screen.getByRole('combobox', { name: 'Find supplier' }))
+    await userEvent.click(await screen.findByRole('option', { name: /Karim Traders/ }))
+    await userEvent.type(product, 'P000001{Enter}')
+    await waitFor(() => expect(screen.getByLabelText('Qty Miniket Rice 5kg')).toHaveFocus())
+    await userEvent.keyboard('10{Enter}420{Enter}')
+
+    await userEvent.keyboard('{F9}')
+    const dialog = await screen.findByRole('dialog', { name: 'Post bill' })
+    await userEvent.click(within(dialog).getByLabelText('Record a payment now'))
+    await within(dialog).findByRole('option', { name: 'Cash' })
+    await userEvent.selectOptions(within(dialog).getByLabelText('Payment method'), 'pm-cash')
+    expect(within(dialog).getByLabelText('Amount')).toHaveValue('4200')
+    await userEvent.keyboard('{F8}')
+    expect(await within(dialog).findByText('Cannot reach the server. Check your connection.')).toBeInTheDocument()
+    await userEvent.keyboard('{Control>}{Enter}{/Control}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/purchases/pur1'))
+
+    expect(calls.filter((c) => c.method === 'POST' && c.path === '/api/v1/purchases')).toHaveLength(1)
+    const postCalls = calls.filter((c) => c.method === 'POST' && c.path === '/api/v1/purchases/pur1/post')
+    expect(postCalls).toHaveLength(2)
+    expect(postCalls[0]?.headers.get('Idempotency-Key')).toBe(postCalls[1]?.headers.get('Idempotency-Key'))
+    expect(postCalls[1]?.body).toEqual({ payment: { method_id: 'pm-cash', amount: '4200', account_id: 'acc-cash' } })
   })
 
   it('posts a draft with a payment and an Idempotency-Key', async () => {

@@ -4,8 +4,10 @@
     "actions": {
       "newSale": "New sale",
       "newPurchase": "New purchase",
-      "addExpense": "Add expense",
-      "reports": "Reports"
+      "addExpense": "Record expense",
+      "reports": "Reports",
+      "addProduct": "Add product",
+      "addCustomer": "Add customer"
     },
     "today": "Today",
     "thisMonth": "This month",
@@ -15,8 +17,8 @@
     "expenses": "Expenses",
     "grossProfit": "Gross profit",
     "netProfit": "Net profit",
-    "invoices_one": "{{count}} invoice",
-    "invoices_other": "{{count}} invoices",
+    "invoices_one": "{{formatted}} invoice",
+    "invoices_other": "{{formatted}} invoices",
     "balances": "Balances",
     "receivables": "Customers owe",
     "payables": "We owe suppliers",
@@ -24,11 +26,13 @@
     "lowStock": "Low stock",
     "outOfStock": "Out of stock",
     "chart": {
-      "title": "Sales, last 14 days"
+      "title": "Sales, last 14 days",
+      "total": "Total:",
+      "empty": "No sales in the last 14 days yet."
     },
     "topProducts": "Top products this month",
     "recentSales": "Recent sales",
-    "noSales": "No sales yet.",
+    "noSales": "No sales yet. Your latest sales will show up here.",
     "product": "Product",
     "invoice": "Invoice",
     "customer": "Customer",
@@ -38,6 +42,43 @@
       "partially_returned": "Partly returned",
       "returned": "Returned",
       "cancelled": "Cancelled"
+    },
+    "greeting": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}"
+    },
+    "yesterday": "Yesterday: {{amount}}",
+    "netSalesHint": "After returns",
+    "attention": "Needs attention",
+    "allGood": "All good",
+    "lowStockHint": "Items running low — reorder soon",
+    "outOfStockHint": "Items you cannot sell right now",
+    "receivablesHint": "Dues to collect",
+    "payablesHint": "Dues to pay",
+    "moneyBalanceHint": "Cash, bank and mobile wallets",
+    "noTopProducts": "Best sellers will appear here after your first sales.",
+    "viewAllSales": "View all sales",
+    "start": {
+      "title": "Let’s get your shop selling",
+      "subtitle": "No sales yet — these steps will get you ready for your first customer.",
+      "steps": {
+        "products": {
+          "title": "Add your products",
+          "body": "Name, price and unit for what you sell.",
+          "cta": "Add products"
+        },
+        "stock": {
+          "title": "Enter opening stock",
+          "body": "Record how much of each product you have now.",
+          "cta": "Add opening stock"
+        },
+        "sale": {
+          "title": "Make your first sale",
+          "body": "Open the sale screen and print or share the receipt.",
+          "cta": "Start selling"
+        }
+      }
     }
   }
 }

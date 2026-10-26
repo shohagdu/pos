@@ -11,7 +11,6 @@
     "emptyCart": "বিক্রি শুরু করতে বারকোড স্ক্যান করুন বা পণ্য খুঁজুন।",
     "item": "পণ্য",
     "discount": "ছাড়",
-    "discountAmount": "৳",
     "discountPercent": "%",
     "decrease": "{{name}} কমান",
     "increase": "{{name}} বাড়ান",
@@ -25,7 +24,7 @@
     "changeCustomer": "পরিবর্তন",
     "chooseCustomer": "গ্রাহক বাছাই করুন",
     "customerSearch": "গ্রাহক খুঁজুন",
-    "customerSearchHint": "নাম বা ফোন",
+    "customerSearchHint": "নাম বা ফোন নম্বর দিয়ে খুঁজুন",
     "quickAdd": "নতুন গ্রাহক",
     "customerName": "নাম",
     "customerPhone": "ফোন",
@@ -89,10 +88,17 @@
       "customer": "গ্রাহক",
       "discount": "ছাড়",
       "pay": "পেমেন্ট",
+      "confirm": "বিক্রি নিশ্চিত (পেমেন্টে)",
       "hold": "হোল্ড",
       "held": "হোল্ড কার্ট",
       "removeLine": "লাইন সরান",
       "close": "ডায়ালগ বন্ধ"
-    }
+    },
+    "noCustomerFound": "কোনো গ্রাহক পাওয়া যায়নি।",
+    "addAsNew": "+ “{{text}}” কে নতুন গ্রাহক হিসেবে যোগ করুন",
+    "useWalkIn": "সাধারণ গ্রাহক",
+    "newCustomerTitle": "নতুন গ্রাহক",
+    "customerPhoneHint": "যেমন 01712345678। পরের বার গ্রাহক খুঁজতে কাজে লাগবে।",
+    "customerAddress": "ঠিকানা"
   }
 }

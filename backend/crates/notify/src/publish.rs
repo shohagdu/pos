@@ -45,24 +45,30 @@ const MEMBER_SELECT: &str = "SELECT DISTINCT u.id AS user_id, u.email, u.phone, 
 pub async fn recipients(tx: &mut TenantTx, audience: Audience, subject: Option<Uuid>) -> AppResult<Vec<Recipient>> {
     let tenant_id = tx.tenant_id();
     let rows = match audience {
-        Audience::Owners => sqlx::query_as(sqlx::AssertSqlSafe(format!("{MEMBER_SELECT} AND m.is_owner")))
-            .bind(tenant_id)
-            .fetch_all(&mut **tx)
-            .await,
-        Audience::Subject => sqlx::query_as(sqlx::AssertSqlSafe(format!("{MEMBER_SELECT} AND m.user_id = ?")))
-            .bind(tenant_id)
-            .bind(subject)
-            .fetch_all(&mut **tx)
-            .await,
-        Audience::Permission(permission) => sqlx::query_as(sqlx::AssertSqlSafe(format!(
-            "{MEMBER_SELECT} AND (m.is_owner OR EXISTS (SELECT 1 FROM membership_roles mr \
+        Audience::Owners => {
+            sqlx::query_as(sqlx::AssertSqlSafe(format!("{MEMBER_SELECT} AND m.is_owner")))
+                .bind(tenant_id)
+                .fetch_all(&mut **tx)
+                .await
+        }
+        Audience::Subject => {
+            sqlx::query_as(sqlx::AssertSqlSafe(format!("{MEMBER_SELECT} AND m.user_id = ?")))
+                .bind(tenant_id)
+                .bind(subject)
+                .fetch_all(&mut **tx)
+                .await
+        }
+        Audience::Permission(permission) => {
+            sqlx::query_as(sqlx::AssertSqlSafe(format!(
+                "{MEMBER_SELECT} AND (m.is_owner OR EXISTS (SELECT 1 FROM membership_roles mr \
                JOIN role_permissions rp ON rp.tenant_id = mr.tenant_id AND rp.role_id = mr.role_id \
                WHERE mr.tenant_id = m.tenant_id AND mr.membership_id = m.id AND rp.permission_code = ?))"
-        )))
-        .bind(tenant_id)
-        .bind(permission)
-        .fetch_all(&mut **tx)
-        .await,
+            )))
+            .bind(tenant_id)
+            .bind(permission)
+            .fetch_all(&mut **tx)
+            .await
+        }
     };
     rows.map_err(map_db_error)
 }
@@ -70,12 +76,13 @@ pub async fn recipients(tx: &mut TenantTx, audience: Audience, subject: Option<U
 /// Whether a notification with this key was already created in the business.
 pub async fn already_sent(tx: &mut TenantTx, dedupe_key: &str) -> AppResult<bool> {
     let tenant_id = tx.tenant_id();
-    let found: Option<i32> = sqlx::query_scalar("SELECT 1 FROM notifications WHERE tenant_id = ? AND dedupe_key = ? LIMIT 1")
-        .bind(tenant_id)
-        .bind(dedupe_key)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(map_db_error)?;
+    let found: Option<i32> =
+        sqlx::query_scalar("SELECT 1 FROM notifications WHERE tenant_id = ? AND dedupe_key = ? LIMIT 1")
+            .bind(tenant_id)
+            .bind(dedupe_key)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(map_db_error)?;
     Ok(found.is_some())
 }
 

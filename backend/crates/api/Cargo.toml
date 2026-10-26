@@ -25,6 +25,7 @@ pos-purchasing.workspace = true
 pos-reporting.workspace = true
 pos-platform.workspace = true
 pos-notify.workspace = true
+pos-files.workspace = true
 zip = { version = "9", default-features = false, features = ["deflate"] }
 rust_decimal.workspace = true
 uuid.workspace = true

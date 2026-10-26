@@ -38,6 +38,8 @@ export interface SubscriptionSummary {
   plan_name: string
   trial_ends_at: string | null
   current_period_end: string | null
+  /** `lifetime` = one-time licence with no end date. */
+  billing_cycle?: string
   days_left: number | null
 }
 
@@ -53,6 +55,8 @@ export interface CurrentTenant {
   features: string[]
   /** Branches the member may work in; `null` (or absent) = every branch. */
   branch_ids?: string[] | null
+  /** ISO 4217 code money is kept in (formatting only). */
+  currency_code?: string
 }
 
 export interface Me {

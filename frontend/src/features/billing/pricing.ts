@@ -4,9 +4,10 @@
 import type { BillingCycle, PlanOffer } from '../../api/billing'
 import { dec, div, mul, round, sub, toFixed, toPlain } from '../../lib/decimal'
 
-export const CYCLES: BillingCycle[] = ['monthly', 'quarterly', 'annual']
+export const CYCLES: BillingCycle[] = ['monthly', 'quarterly', 'annual', 'lifetime']
 
-export const CYCLE_MONTHS: Record<BillingCycle, number> = { monthly: 1, quarterly: 3, annual: 12 }
+/** Months a cycle buys; 0 for a one-time licence, which never ends. */
+export const CYCLE_MONTHS: Record<BillingCycle, number> = { monthly: 1, quarterly: 3, annual: 12, lifetime: 0 }
 
 /** The plan's price for a billing cycle, or `null` when it is not sold that way. */
 export function priceFor(plan: PlanOffer, cycle: BillingCycle): string | null {
@@ -25,7 +26,7 @@ export function perMonth(amount: string, cycle: BillingCycle): string {
 export function savings(plan: PlanOffer, cycle: BillingCycle): { amount: string; pct: string } | null {
   const monthly = priceFor(plan, 'monthly')
   const price = priceFor(plan, cycle)
-  if (cycle === 'monthly' || monthly === null || price === null) return null
+  if (cycle === 'monthly' || cycle === 'lifetime' || monthly === null || price === null) return null
   const full = mul(dec(monthly), dec(CYCLE_MONTHS[cycle]))
   const saved = sub(full, dec(price))
   if (saved <= 0n || full <= 0n) return null

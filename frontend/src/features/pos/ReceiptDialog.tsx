@@ -31,7 +31,7 @@ export function ReceiptDialog({ sale, onPrint, onNewSale }: { sale: SaleDetail; 
           <Button variant="secondary" onClick={onPrint}>
             {t('common.print')}
           </Button>
-          <Button onClick={onNewSale} autoFocus>
+          <Button onClick={onNewSale} autoFocus data-autofocus>
             {t('pos.newSale')}
           </Button>
         </>

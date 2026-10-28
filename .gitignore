@@ -21,3 +21,6 @@ frontend/*.tsbuildinfo
 !.vscode/extensions.json
 .DS_Store
 *.log
+
+# cPanel package (infra/cpanel/build.sh)
+/dist/

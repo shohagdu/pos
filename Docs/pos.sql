@@ -255,7 +255,7 @@ CREATE TABLE `auth_events` (
   `user_agent` varchar(500) DEFAULT NULL,
   `metadata` json NOT NULL DEFAULT (json_object()),
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `auth_events`
@@ -363,7 +363,7 @@ CREATE TABLE `bank_reconciliation_items` (
   `account_transaction_id` binary(16) NOT NULL,
   `amount` decimal(18,2) NOT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Triggers `bank_reconciliation_items`
@@ -1024,7 +1024,7 @@ CREATE TABLE `goods_receipts` (
   `business_date` date NOT NULL,
   `note` varchar(500) DEFAULT NULL,
   `received_by` binary(16) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `goods_receipts`
@@ -1130,7 +1130,7 @@ CREATE TABLE `held_carts` (
   `held_by` binary(16) NOT NULL,
   `expires_at` datetime(6) NOT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Triggers `held_carts`
@@ -1623,7 +1623,7 @@ CREATE TABLE `membership_roles` (
   `branch_key` binary(16) GENERATED ALWAYS AS (coalesce(`branch_id`,0x00000000000000000000000000000000)) VIRTUAL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   `created_by` binary(16) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `membership_roles`
@@ -1678,7 +1678,7 @@ CREATE TABLE `notifications` (
   `dedupe_key` varchar(150) DEFAULT NULL,
   `read_at` datetime(6) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Triggers `notifications`
@@ -1769,7 +1769,7 @@ CREATE TABLE `notification_preferences` (
   `notif_type` varchar(50) NOT NULL,
   `channels` json NOT NULL DEFAULT (json_array(_utf8mb4'in_app')),
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Triggers `notification_preferences`
@@ -1903,7 +1903,7 @@ CREATE TABLE `outbox_events` (
   `published_at` datetime(6) DEFAULT NULL,
   `attempts` int NOT NULL DEFAULT '0',
   `last_error` varchar(1000) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Triggers `outbox_events`
@@ -2266,7 +2266,7 @@ CREATE TABLE `permissions` (
   `module` varchar(30) NOT NULL,
   `description` varchar(255) NOT NULL,
   `is_sensitive` tinyint(1) NOT NULL DEFAULT '0'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `permissions`
@@ -2492,7 +2492,7 @@ INSERT INTO `plan_prices` (`id`, `plan_id`, `billing_cycle`, `currency_code`, `a
 CREATE TABLE `platform_sequences` (
   `name` varchar(50) NOT NULL,
   `next_value` bigint NOT NULL DEFAULT '1'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `platform_sequences`
@@ -2512,7 +2512,7 @@ CREATE TABLE `platform_settings` (
   `value` json NOT NULL,
   `updated_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   `updated_by` binary(16) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `platform_settings`
@@ -3166,7 +3166,7 @@ CREATE TABLE `role_permissions` (
   `tenant_id` binary(16) NOT NULL,
   `role_id` binary(16) NOT NULL,
   `permission_code` varchar(60) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `role_permissions`
@@ -4866,7 +4866,7 @@ CREATE TABLE `user_sessions` (
   `revoked_at` datetime(6) DEFAULT NULL,
   `revoked_reason` varchar(40) DEFAULT NULL,
   `created_at` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `user_sessions`
@@ -5018,7 +5018,7 @@ CREATE TABLE `_sqlx_migrations` (
   `success` tinyint(1) NOT NULL,
   `checksum` blob NOT NULL,
   `execution_time` bigint NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `_sqlx_migrations`

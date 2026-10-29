@@ -50,7 +50,7 @@ async fn seeds_are_present(pool: MySqlPool) {
         sqlx::query_scalar("SELECT COUNT(*) FROM plan_features").fetch_one(&pool).await.expect("plan features");
     let features: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM features").fetch_one(&pool).await.expect("features");
     assert_eq!(plans, 4);
-    assert_eq!(permissions, 64);
+    assert_eq!(permissions, 65);
     assert_eq!(plan_features, plans * features, "every plan must define every feature");
 }
 
@@ -174,4 +174,31 @@ async fn partial_unique_keys_allow_one_default_branch(pool: MySqlPool) {
         .await
         .expect_err("second default");
     assert!(matches!(pos_db::map_db_error(err), AppError::Conflict { code: "DUPLICATE", .. }));
+}
+
+async fn current_isolation(conn: &mut sqlx::MySqlConnection) -> String {
+    sqlx::query_scalar(
+        "SELECT ISOLATION_LEVEL FROM performance_schema.events_transactions_current \
+         WHERE THREAD_ID = PS_CURRENT_THREAD_ID() AND STATE = 'ACTIVE'",
+    )
+    .fetch_one(conn)
+    .await
+    .expect("isolation level")
+}
+
+#[sqlx::test(migrator = "pos_db::MIGRATOR")]
+async fn isolation_level_applies_to_one_transaction(_: MySqlPoolOptions, opts: MySqlConnectOptions) {
+    // One connection with the real session hooks, so the second transaction
+    // reuses the first one's session.
+    let pool = pos_db::pool_options().max_connections(1).connect_with(opts).await.expect("pool");
+    let a = create_tenant(&pool, "shop-a").await;
+
+    let mut tx = pos_db::begin_tenant_with(&pool, &tenant_ctx(a), pos_db::IsolationLevel::Serializable)
+        .await
+        .expect("begin serializable");
+    assert_eq!(current_isolation(&mut tx).await, "SERIALIZABLE");
+    tx.commit().await.expect("commit");
+
+    let mut tx = pos_db::begin_tenant(&pool, &tenant_ctx(a)).await.expect("begin default");
+    assert_eq!(current_isolation(&mut tx).await, "READ COMMITTED");
 }

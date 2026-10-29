@@ -9,8 +9,9 @@ use serde::Serialize;
 use sqlx::MySqlPool;
 use uuid::Uuid;
 
-/// Every permission code. Must match the `permissions` seed in migration 0005
-/// (checked by a database test).
+/// Every permission code. Must match the `permissions` rows seeded by the
+/// migrations (0005, plus later ones such as 0112); checked by
+/// `permission_catalogue_matches_the_seed` in `crates/api/tests/tenancy.rs`.
 pub const PERMISSIONS: &[&str] = &[
     "dashboard.view",
     "dashboard.view_financials",

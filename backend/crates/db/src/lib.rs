@@ -12,7 +12,7 @@ mod tx;
 
 pub use error::map_db_error;
 pub use pool::{connect, connect_lazy, connect_options, pool_options};
-pub use tx::{PlatformTx, TenantTx, begin_platform, begin_tenant};
+pub use tx::{IsolationLevel, PlatformTx, TenantTx, begin_platform, begin_tenant, begin_tenant_with};
 
 pub use sqlx::{MySql, MySqlPool};
 

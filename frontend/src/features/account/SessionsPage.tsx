@@ -9,6 +9,7 @@ import { Spinner } from '../../components/ui/Spinner'
 import { describeDevice } from '../../lib/device'
 import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
+import { dateLocale } from '../../lib/dates'
 
 /** US-AUTH-05 for the user's own devices. */
 export function SessionsPage() {
@@ -21,7 +22,7 @@ export function SessionsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: authKeys.sessions }),
   })
   const when = (iso: string) =>
-    new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+    new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">

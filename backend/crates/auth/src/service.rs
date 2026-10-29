@@ -151,7 +151,8 @@ impl Auth {
         let locale = match input.locale.as_deref() {
             None | Some("en") => "en",
             Some("bn") => "bn",
-            Some(_) => return Err(AppError::field("locale", "INVALID_LOCALE", "language must be en or bn")),
+            Some("it") => "it",
+            Some(_) => return Err(AppError::field("locale", "INVALID_LOCALE", "language must be en, bn or it")),
         };
         let personal = [full_name.as_str(), phone.as_str(), email.as_deref().unwrap_or("")];
         password::validate_policy(&input.password, "password", &personal)?;

@@ -52,16 +52,23 @@ export function presetRange(preset: RangePreset): { from: string; to: string } {
   }
 }
 
+const DATE_LOCALES: Record<string, string> = { en: 'en-GB', bn: 'bn-BD', it: 'it-IT' }
+
+/** The Intl locale for dates in a UI language. */
+export function dateLocale(lang: string): string {
+  return DATE_LOCALES[lang] ?? 'en-GB'
+}
+
 /** Formats an ISO date or timestamp for display in the UI language. */
 export function formatDate(value: string | null | undefined, lang = 'en'): string {
   if (!value) return '—'
   const date = value.length === 10 ? new Date(`${value}T00:00:00`) : new Date(value)
-  return new Intl.DateTimeFormat(lang === 'bn' ? 'bn-BD' : 'en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
+  return new Intl.DateTimeFormat(dateLocale(lang), { day: '2-digit', month: 'short', year: 'numeric' }).format(date)
 }
 
 export function formatDateTime(value: string | null | undefined, lang = 'en'): string {
   if (!value) return '—'
-  return new Intl.DateTimeFormat(lang === 'bn' ? 'bn-BD' : 'en-GB', {
+  return new Intl.DateTimeFormat(dateLocale(lang), {
     day: '2-digit',
     month: 'short',
     year: 'numeric',

@@ -103,6 +103,15 @@ function start(name, args) {
   child.stdout.pipe(out, { end: false })
   child.stderr.pipe(out, { end: false })
   child.on('close', () => out.end())
+  // EAGAIN here means the host's process limit was hit. Without a handler the
+  // 'error' event would take the whole launcher down.
+  child.on('error', (err) => {
+    launcherLog(`${name} could not start: ${err.message}`)
+    if (child.pid !== undefined) return
+    children.delete(name)
+    out.end()
+    if (!shuttingDown) setTimeout(() => start(name, args), 15000)
+  })
   fs.writeFileSync(path.join(LOG_DIR, `${name}.pid`), String(child.pid))
   children.set(name, child)
   const startedAt = Date.now()
@@ -279,15 +288,20 @@ const HINTS = [
   [/Unknown database/, 'The database name in DATABASE_URL does not exist. Use the full name with your cPanel prefix (e.g. jsaebike_pos).'],
   [/UUID_TO_BIN|You have an error in your SQL syntax|MariaDB/i, 'The host runs MariaDB; this app needs MySQL 8. Ask the hosting company to switch your account to MySQL 8.'],
   [/SUPER privilege|log_bin_trust_function_creators/, 'The host blocks database triggers. Ask the hosting company to set log_bin_trust_function_creators=1 for your database.'],
-  [/Connection refused|timed out|Can't connect/i, 'Cannot reach MySQL. Keep "localhost" as the host in DATABASE_URL.'],
+  [/failed to lookup address|Name does not resolve|Name or service not known/, 'The database host in DATABASE_URL is unreadable, usually because the password contains @ # $ : / ? unencoded. Use a password of letters and digits only, or encode them (@ -> %40, # -> %23, $ -> %24, : -> %3A, / -> %2F, ? -> %3F).'],
+  [/Unknown system variable 'transaction_isolation'/, 'The host runs MariaDB or MySQL older than 5.7.20; this app needs MySQL 8. Check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for MySQL 8.'],
+  [/EAGAIN/, 'The host refused to start another process (CloudLinux process limit). Stop and Start the app once; if it repeats, ask the hosting company to raise the process (NPROC) limit.'],
+  [/Connection refused|Can't connect|Connection timed out/i, 'Cannot reach MySQL. Keep "localhost" as the host in DATABASE_URL.'],
   [/invalid configuration|missing required environment variable/, 'A setting in pos-app/.env is missing or invalid; the line above names it.'],
   [/Address (already )?in use/, 'The internal port was taken; the launcher has already picked another one. Reload in 30 seconds.'],
   [/Permission denied|Exec format error|EACCES/, 'The host does not allow running bin/pos-api. Ask the hosting company whether executing programs from your home directory is allowed.'],
 ]
 
 function redact(text) {
-  let out = text.replace(/(mysql:\/\/[^:\s]+:)[^@\s]+@/g, '$1***@')
-  for (const secret of [env.JWT_SECRET, env.SMTP_PASSWORD, (/:\/\/[^:]+:([^@]+)@/.exec(env.DATABASE_URL || '') || [])[1]]) {
+  // Greedy up to the last '@': an unencoded '@' in the password must not
+  // leave the rest of it visible.
+  let out = text.replace(/(mysql:\/\/[^:\s]+:)\S*@/g, '$1***@')
+  for (const secret of [env.JWT_SECRET, env.SMTP_PASSWORD, (/:\/\/[^:]+:(\S+)@/.exec(env.DATABASE_URL || '') || [])[1]]) {
     if (secret && secret.length >= 4) out = out.split(secret).join('***')
   }
   return out

@@ -29,6 +29,7 @@ import { useFields } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { isWizardStep, nextStep } from './steps'
+import { dateLocale } from '../../lib/dates'
 
 /** Wizard steps 3–5 (regional, branch, invoice & tax). Defaults are already
  * set by provisioning, so every step can be skipped and revisited later. */
@@ -143,7 +144,7 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
 function currencyLabel(code: string, lang: string): string {
   let name = code
   try {
-    name = new Intl.DisplayNames([lang === 'bn' ? 'bn-BD' : 'en'], { type: 'currency' }).of(code) ?? code
+    name = new Intl.DisplayNames([lang === 'en' ? 'en' : dateLocale(lang)], { type: 'currency' }).of(code) ?? code
   } catch {
     // older browsers without DisplayNames: the code alone
   }
@@ -163,7 +164,7 @@ function RegionalForm({ settings, tenantId, mode }: { settings: BusinessSettings
   })
   const save = useSaveSettings(tenantId, 'regional', settings.version, mode)
   const errors = fieldErrors(save.error, t)
-  const monthName = (m: number) => new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long' }).format(new Date(2026, m - 1, 1))
+  const monthName = (m: number) => new Intl.DateTimeFormat(dateLocale(i18n.language), { month: 'long' }).format(new Date(2026, m - 1, 1))
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()

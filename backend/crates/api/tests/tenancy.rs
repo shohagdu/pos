@@ -196,6 +196,35 @@ async fn settings_use_optimistic_concurrency(pool: MySqlPool) {
     )
     .await;
     assert_eq!(unknown_field.status, StatusCode::BAD_REQUEST, "tenant ids are never taken from the body");
+
+    // An Italian shop: Partita IVA and codice fiscale are checked, and the receipt prints them.
+    let italy = json!({ "country_code": "IT", "legal_name": "di Uddin Md Jashim", "bin_number": "IT03580690984",
+        "tax_code": "ddnmjs87t15z249i", "rea_number": "546330", "registry_office": "Brescia",
+        "timezone": "Europe/Rome", "currency_code": "EUR" });
+    let wrong = call(
+        &srv,
+        Req::patch("/api/v1/settings", json!({ "country_code": "IT", "bin_number": "03580690985" }))
+            .bearer(&session.token)
+            .if_match(2)
+            .build(),
+    )
+    .await;
+    assert_eq!(
+        (wrong.status, wrong.body["errors"][0]["code"].as_str()),
+        (StatusCode::BAD_REQUEST, Some("INVALID_VAT_NUMBER"))
+    );
+    let italian = call(&srv, Req::patch("/api/v1/settings", italy).bearer(&session.token).if_match(2).build()).await;
+    assert_eq!(italian.status, StatusCode::OK, "{}", italian.body);
+    assert_eq!(italian.body["bin_number"], "03580690984");
+    assert_eq!(italian.body["tax_code"], "DDNMJS87T15Z249I");
+    let pos = call(&srv, Req::get("/api/v1/pos/context").bearer(&session.token).build()).await;
+    assert_eq!(pos.status, StatusCode::OK, "{}", pos.body);
+    let receipt = &pos.body["receipt"];
+    assert_eq!(
+        (&receipt["country_code"], &receipt["legal_name"], &receipt["bin_number"], &receipt["tax_code"]),
+        (&json!("IT"), &json!("di Uddin Md Jashim"), &json!("03580690984"), &json!("DDNMJS87T15Z249I"))
+    );
+    assert_eq!((&receipt["rea_number"], &receipt["registry_office"]), (&json!("546330"), &json!("Brescia")));
 }
 
 #[sqlx::test(migrator = "pos_db::MIGRATOR")]

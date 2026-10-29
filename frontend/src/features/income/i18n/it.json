@@ -1,0 +1,50 @@
+{
+  "income": {
+    "title": "Altre entrate",
+    "subtitle": "Denaro ricevuto non derivante da vendite: interessi, commissioni, affitti, vendita di scarti e altro.",
+    "new": "Registra entrata",
+    "save": "Salva entrata",
+    "no": "N.",
+    "category": "Categoria",
+    "chooseCategory": "Scegli una categoria…",
+    "allCategories": "Tutte le categorie",
+    "account": "Incassato su",
+    "receivedInto": "Incassato su",
+    "defaultCash": "Cassa (predefinito)",
+    "defaultCashNamed": "{{name}} (predefinito)",
+    "source": "Ricevuto da",
+    "reference": "Riferimento",
+    "amount": "Importo",
+    "statuses": {
+      "posted": "Registrata",
+      "voided": "Stornata",
+      "all": "Tutte"
+    },
+    "total": "Totale entrate",
+    "totalHint": "Per i filtri selezionati",
+    "none": "Nessuna entrata per questo filtro.",
+    "void": "Storna",
+    "voidNo": "Storna entrata {{no}}",
+    "voidHint": "Lo storno annulla questa entrata di {{amount}} e preleva di nuovo il denaro dal conto.",
+    "errors": {
+      "category": "Scegli una categoria.",
+      "amount": "Inserisci un importo maggiore di 0.",
+      "futureDate": "La data non può essere nel futuro."
+    },
+    "categories": "Categorie di entrata",
+    "categoriesSubtitle": "Raggruppa le altre entrate, come interessi o commissioni.",
+    "categoryName": "Nome",
+    "system": "Sistema",
+    "incomeCount": "Registrazioni",
+    "categoryStatuses": {
+      "active": "Attiva",
+      "inactive": "Inattiva"
+    },
+    "addCategory": "Aggiungi categoria",
+    "editCategory": "Modifica categoria",
+    "editCategoryName": "Modifica {{name}}",
+    "categoryActive": "Attiva",
+    "categoryActiveHint": "Le categorie inattive non possono essere usate per nuove entrate.",
+    "noCategories": "Ancora nessuna categoria di entrata."
+  }
+}

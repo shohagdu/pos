@@ -12,7 +12,7 @@ import { DataTable } from '../../components/ui/DataTable'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { Spinner } from '../../components/ui/Spinner'
 import { TextField } from '../../components/ui/TextField'
-import { formatDate, formatDateTime, isoDate, today } from '../../lib/dates'
+import { formatDate, formatDateTime, isoDate, today, dateLocale } from '../../lib/dates'
 import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { AccountingNav } from './AccountingNav'
@@ -49,7 +49,7 @@ export function PeriodsPage() {
   const error = lock.error ?? reopen.error
 
   function formatMonth(m: string) {
-    return new Intl.DateTimeFormat(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'long', year: 'numeric' }).format(new Date(`${m}-01T00:00:00`))
+    return new Intl.DateTimeFormat(dateLocale(lang), { month: 'long', year: 'numeric' }).format(new Date(`${m}-01T00:00:00`))
   }
   const run = (action: 'lock' | 'reopen', m: string) => {
     setDone('')

@@ -1,0 +1,91 @@
+{
+  "plan": {
+    "renewSoon": "Il titolare dell'attività può scegliere un piano e pagare con bKash, Nagad, Rocket o bonifico bancario da questa pagina.",
+    "licence": "Licenza",
+    "neverEnds": "Mai — licenza una tantum"
+  },
+  "billing": {
+    "cycles": {
+      "monthly": "Mensile",
+      "quarterly": "Trimestrale",
+      "annual": "Annuale",
+      "lifetime": "Licenza una tantum"
+    },
+    "per": {
+      "monthly": "mese",
+      "quarterly": "3 mesi",
+      "annual": "anno",
+      "lifetime": "pagamento una tantum"
+    },
+    "choose": {
+      "title": "Scegli un piano / Rinnova",
+      "subtitle": "Scegli un piano e un ciclo di fatturazione, paga e poi segnala il pagamento. Il piano viene attivato dopo la verifica del pagamento.",
+      "cycle": "Ciclo di fatturazione",
+      "none": "Al momento non ci sono piani in vendita. Contatta l'assistenza.",
+      "current": "Piano attuale",
+      "notOffered": "Non disponibile per questo ciclo di fatturazione.",
+      "perMonth": "{{amount}} al mese",
+      "save": "Risparmi {{amount}} ({{pct}}%) rispetto al mensile",
+      "pay": "Paga questo piano",
+      "renew": "Rinnova questo piano",
+      "payFor": "Paga {{plan}}"
+    },
+    "invoice": {
+      "number": "N. fattura",
+      "plan": "Piano",
+      "cycle": "Ciclo di fatturazione",
+      "period": "Periodo",
+      "total": "Totale",
+      "paidAt": "Pagata il"
+    },
+    "invoiceStatus": {
+      "open": "Aperta",
+      "paid": "Pagata",
+      "void": "Annullata"
+    },
+    "claimStatus": {
+      "pending": "In attesa di verifica",
+      "approved": "Approvato",
+      "rejected": "Rifiutato"
+    },
+    "methods": {
+      "bkash": "bKash",
+      "nagad": "Nagad",
+      "rocket": "Rocket",
+      "bank_transfer": "Bonifico bancario",
+      "cash": "Contanti",
+      "other": "Altro"
+    },
+    "claim": {
+      "title": "Paga fattura",
+      "method": "Metodo di pagamento",
+      "howToPay": "Come pagare con {{method}}",
+      "amount": "Importo pagato",
+      "amountInvalid": "Inserisci l'importo che hai pagato.",
+      "reference": "ID transazione",
+      "referenceHint": "Come indicato nell'SMS di pagamento o nella ricevuta bancaria (4–60 caratteri).",
+      "payer": "Pagato da (conto o numero)",
+      "payerHint": "Il numero bKash/Nagad o il conto bancario da cui hai pagato.",
+      "submit": "Ho pagato",
+      "submitted": "Grazie! Attiveremo il tuo piano appena il pagamento sarà verificato."
+    },
+    "invoices": {
+      "title": "Fatture e pagamenti",
+      "invoices": "Fatture",
+      "claims": "Pagamenti segnalati",
+      "noInvoices": "Nessuna fattura.",
+      "noClaims": "Nessun pagamento segnalato.",
+      "report": "Segnala pagamento",
+      "reportFor": "Segnala pagamento per {{no}}",
+      "awaiting": "Pagamento in attesa di verifica",
+      "rejection": "Motivo del rifiuto"
+    },
+    "export": {
+      "title": "I tuoi dati",
+      "body": "Scarica un file ZIP con tutti i dati della tua attività in file CSV (si aprono in Excel).",
+      "button": "Scarica tutti i miei dati (ZIP)",
+      "preparing": "Preparazione del download…",
+      "failed": "Impossibile preparare il download. Riprova."
+    }
+  }
+}

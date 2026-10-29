@@ -157,8 +157,8 @@ pub async fn provision(
     }
     let locale = match input.locale.as_deref() {
         None => owner_locale,
-        Some(l @ ("en" | "bn")) => l.to_owned(),
-        Some(_) => return Err(AppError::field("locale", "INVALID_LOCALE", "language must be en or bn")),
+        Some(l @ ("en" | "bn" | "it")) => l.to_owned(),
+        Some(_) => return Err(AppError::field("locale", "INVALID_LOCALE", "language must be en, bn or it")),
     };
 
     let owned: i64 = sqlx::query_scalar(

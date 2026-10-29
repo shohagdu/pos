@@ -24,3 +24,5 @@ frontend/*.tsbuildinfo
 
 # cPanel package (infra/cpanel/build.sh)
 /dist/
+/deploy/pos-app/
+/deploy/pos-cpanel.zip

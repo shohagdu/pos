@@ -15,6 +15,7 @@ import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { roleName } from './labels'
 import { BranchScopePicker, RolePicker } from './RolePicker'
+import { dateLocale } from '../../lib/dates'
 
 /** One member: roles (with branch scope), status changes and their sessions. */
 export function MemberPage() {
@@ -149,7 +150,7 @@ function MemberSessions({ member, tenantId }: { member: Member; tenantId: string
     onSuccess: () => queryClient.invalidateQueries({ queryKey: usersKeys.memberSessions(tenantId, member.id) }),
   })
   const when = (iso: string) =>
-    new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+    new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 
   return (
     <Card className="flex flex-col gap-3">

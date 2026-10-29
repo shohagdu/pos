@@ -10,7 +10,7 @@ import { Card } from '../../components/ui/Card'
 import { DataTable } from '../../components/ui/DataTable'
 import { Spinner } from '../../components/ui/Spinner'
 import { type Status, StatusDot } from '../../components/ui/StatusDot'
-import { isoDate } from '../../lib/dates'
+import { isoDate, dateLocale } from '../../lib/dates'
 import { dec } from '../../lib/decimal'
 import { formatMoney, formatQuantity } from '../../lib/format'
 import { problemMessage } from '../../lib/problem'
@@ -42,10 +42,6 @@ const SALE_TONES: Record<string, 'good' | 'warn' | 'bad' | 'neutral'> = {
   partially_returned: 'warn',
   returned: 'neutral',
   cancelled: 'bad',
-}
-
-function dateLocale(lang: string) {
-  return lang === 'bn' ? 'bn-BD' : 'en-GB'
 }
 
 function partOfDay(hour: number): 'morning' | 'afternoon' | 'evening' {

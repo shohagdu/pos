@@ -12,8 +12,11 @@ use crate::provisioning::{clean, validate_business_type, validate_contact, valid
 /// kept with 2 decimals, so only currencies with 2 minor digits are offered.
 pub const CURRENCIES: &[&str] =
     &["BDT", "INR", "PKR", "NPR", "LKR", "USD", "EUR", "GBP", "AED", "SAR", "QAR", "MYR", "SGD", "AUD", "CAD"];
-pub const TIMEZONES: &[&str] = &["Asia/Dhaka", "Asia/Kolkata", "Asia/Kathmandu", "UTC"];
+pub const TIMEZONES: &[&str] = &["Asia/Dhaka", "Asia/Kolkata", "Asia/Kathmandu", "Europe/Rome", "UTC"];
 pub const RECEIPT_PAPERS: &[&str] = &["58mm", "80mm", "a4"];
+/// Countries whose registration details the profile knows: Bangladesh (BIN,
+/// trade licence) and Italy (Partita IVA, codice fiscale, R.E.A.).
+pub const COUNTRIES: &[&str] = &["BD", "IT"];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, utoipa::ToSchema)]
 pub struct BusinessSettings {
@@ -26,8 +29,17 @@ pub struct BusinessSettings {
     pub email: Option<String>,
     pub address: Option<String>,
     pub district: Option<String>,
+    /// `BD` or `IT`; decides which registration fields apply.
+    pub country_code: String,
+    /// The VAT registration number: BIN in Bangladesh, Partita IVA in Italy.
     pub bin_number: Option<String>,
     pub trade_license_no: Option<String>,
+    /// Italy: codice fiscale.
+    pub tax_code: Option<String>,
+    /// Italy: R.E.A. number at the Registro Imprese.
+    pub rea_number: Option<String>,
+    /// Italy: the Registro Imprese office, e.g. `Brescia`.
+    pub registry_office: Option<String>,
     // regional
     pub currency_code: String,
     pub timezone: String,
@@ -56,8 +68,12 @@ pub struct SettingsPatch {
     pub email: Option<String>,
     pub address: Option<String>,
     pub district: Option<String>,
+    pub country_code: Option<String>,
     pub bin_number: Option<String>,
     pub trade_license_no: Option<String>,
+    pub tax_code: Option<String>,
+    pub rea_number: Option<String>,
+    pub registry_office: Option<String>,
     pub currency_code: Option<String>,
     pub timezone: Option<String>,
     pub locale: Option<String>,
@@ -80,8 +96,12 @@ struct Row {
     email: Option<String>,
     address: Option<String>,
     district: Option<String>,
+    country_code: String,
     bin_number: Option<String>,
     trade_license_no: Option<String>,
+    tax_code: Option<String>,
+    rea_number: Option<String>,
+    registry_office: Option<String>,
     currency_code: String,
     timezone: String,
     locale: String,
@@ -97,13 +117,13 @@ struct Row {
 async fn load(tx: &mut TenantTx, lock: bool) -> AppResult<BusinessSettings> {
     let tenant_id = tx.tenant_id();
     let sql = if lock {
-        "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.bin_number, \
-         t.trade_license_no, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
+        "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.country_code, \
+         t.bin_number, t.trade_license_no, t.tax_code, t.rea_number, t.registry_office, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
          s.receipt_footer, s.auto_print_receipt, s.is_vat_registered, s.prices_include_tax, s.version \
          FROM tenant_settings s JOIN tenants t ON t.id = s.tenant_id WHERE s.tenant_id = ? FOR UPDATE"
     } else {
-        "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.bin_number, \
-         t.trade_license_no, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
+        "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.country_code, \
+         t.bin_number, t.trade_license_no, t.tax_code, t.rea_number, t.registry_office, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
          s.receipt_footer, s.auto_print_receipt, s.is_vat_registered, s.prices_include_tax, s.version \
          FROM tenant_settings s JOIN tenants t ON t.id = s.tenant_id WHERE s.tenant_id = ?"
     };
@@ -126,8 +146,12 @@ async fn load(tx: &mut TenantTx, lock: bool) -> AppResult<BusinessSettings> {
         email: row.email,
         address: row.address,
         district: row.district,
+        country_code: row.country_code,
         bin_number: row.bin_number,
         trade_license_no: row.trade_license_no,
+        tax_code: row.tax_code,
+        rea_number: row.rea_number,
+        registry_office: row.registry_office,
         currency_code: row.currency_code,
         timezone: row.timezone,
         locale: row.locale,
@@ -187,6 +211,23 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
     if let Some(v) = patch.trade_license_no {
         next.trade_license_no = clean(Some(v), "trade_license_no", 50)?;
     }
+    if let Some(v) = patch.country_code {
+        next.country_code = one_of(v.trim().to_uppercase(), COUNTRIES, "country_code", "UNSUPPORTED_COUNTRY")?;
+    }
+    if let Some(v) = patch.tax_code {
+        next.tax_code = clean(Some(v), "tax_code", 30)?;
+    }
+    if let Some(v) = patch.rea_number {
+        next.rea_number = clean(Some(v), "rea_number", 20)?;
+    }
+    if let Some(v) = patch.registry_office {
+        next.registry_office = clean(Some(v), "registry_office", 100)?;
+    }
+    if next.country_code == "IT" {
+        // Checked in Italy only; a Bangladeshi BIN has no published check digit.
+        next.bin_number = next.bin_number.as_deref().map(partita_iva).transpose()?;
+        next.tax_code = next.tax_code.as_deref().map(codice_fiscale).transpose()?;
+    }
     if let Some(v) = patch.currency_code {
         next.currency_code = one_of(v, CURRENCIES, "currency_code", "UNSUPPORTED_CURRENCY")?;
     }
@@ -194,7 +235,7 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
         next.timezone = one_of(v, TIMEZONES, "timezone", "UNSUPPORTED_TIMEZONE")?;
     }
     if let Some(v) = patch.locale {
-        next.locale = one_of(v, &["en", "bn"], "locale", "INVALID_LOCALE")?;
+        next.locale = one_of(v, &["en", "bn", "it"], "locale", "INVALID_LOCALE")?;
     }
     if let Some(month) = patch.fiscal_year_start_month {
         if !(1..=12).contains(&month) {
@@ -227,7 +268,54 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
     Ok(next)
 }
 
-/// Applies `patch` if `expected_version` is still current (API-07).
+/// A Partita IVA: 11 digits with a Luhn-style check digit; spaces and an
+/// `IT` prefix are dropped.
+fn partita_iva(raw: &str) -> AppResult<String> {
+    let invalid = || AppError::field("bin_number", "INVALID_VAT_NUMBER", "enter the 11-digit Partita IVA");
+    let compact: String = raw.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_uppercase();
+    let digits = compact.strip_prefix("IT").unwrap_or(&compact);
+    if digits.len() != 11 || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(invalid());
+    }
+    let d: Vec<u32> = digits.bytes().map(|b| u32::from(b - b'0')).collect();
+    let sum: u32 = d[..10]
+        .iter()
+        .enumerate()
+        .map(|(i, &x)| if i % 2 == 1 { (x * 2) - if x * 2 > 9 { 9 } else { 0 } } else { x })
+        .sum();
+    if (10 - sum % 10) % 10 != d[10] {
+        return Err(invalid());
+    }
+    Ok(digits.to_owned())
+}
+
+/// A codice fiscale: 16 letters and digits ending in a check letter (people),
+/// or a company's 11-digit number (checked like a Partita IVA).
+fn codice_fiscale(raw: &str) -> AppResult<String> {
+    let invalid = || AppError::field("tax_code", "INVALID_TAX_CODE", "enter the 16-character codice fiscale");
+    let code: String = raw.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_uppercase();
+    if code.len() == 11 && code.bytes().all(|b| b.is_ascii_digit()) {
+        return partita_iva(&code).map_err(|_| invalid());
+    }
+    if code.len() != 16 || !code.bytes().all(|b| b.is_ascii_uppercase() || b.is_ascii_digit()) {
+        return Err(invalid());
+    }
+    // Values of each character in odd (1st, 3rd, …) positions, 0–9 then A–Z.
+    const ODD: [u32; 26] =
+        [1, 0, 5, 7, 9, 13, 15, 17, 19, 21, 2, 4, 18, 20, 11, 3, 6, 8, 12, 14, 16, 10, 22, 25, 24, 23];
+    let index = |b: u8| u32::from(if b.is_ascii_digit() { b - b'0' } else { b - b'A' });
+    let sum: u32 = code
+        .bytes()
+        .take(15)
+        .enumerate()
+        .map(|(i, b)| if i % 2 == 0 { ODD[index(b) as usize] } else { index(b) })
+        .sum();
+    if code.as_bytes()[15] != b'A' + (sum % 26) as u8 {
+        return Err(invalid());
+    }
+    Ok(code)
+}
+
 /// Whether any money has been recorded (book lines, sales or purchases).
 async fn has_money(tx: &mut TenantTx) -> AppResult<bool> {
     let tenant_id = tx.tenant_id();
@@ -276,7 +364,8 @@ pub async fn update(
     let user_id = tx.user_id();
     sqlx::query(
         "UPDATE tenants SET name = ?, legal_name = ?, business_type = ?, phone = ?, email = ?, address = ?, \
-         district = ?, bin_number = ?, trade_license_no = ?, currency_code = ?, timezone = ?, locale = ? WHERE id = ?",
+         district = ?, country_code = ?, bin_number = ?, trade_license_no = ?, tax_code = ?, rea_number = ?, \
+         registry_office = ?, currency_code = ?, timezone = ?, locale = ? WHERE id = ?",
     )
     .bind(&next.name)
     .bind(&next.legal_name)
@@ -285,8 +374,12 @@ pub async fn update(
     .bind(&next.email)
     .bind(&next.address)
     .bind(&next.district)
+    .bind(&next.country_code)
     .bind(&next.bin_number)
     .bind(&next.trade_license_no)
+    .bind(&next.tax_code)
+    .bind(&next.rea_number)
+    .bind(&next.registry_office)
     .bind(&next.currency_code)
     .bind(&next.timezone)
     .bind(&next.locale)
@@ -345,8 +438,12 @@ mod tests {
             email: None,
             address: Some("Mirpur 10".into()),
             district: None,
+            country_code: "BD".into(),
             bin_number: None,
             trade_license_no: None,
+            tax_code: None,
+            rea_number: None,
+            registry_office: None,
             currency_code: "BDT".into(),
             timezone: "Asia/Dhaka".into(),
             locale: "en".into(),
@@ -398,5 +495,38 @@ mod tests {
             Some("currency_code")
         );
         assert_eq!(field(SettingsPatch { name: Some("x".into()), ..Default::default() }).as_deref(), Some("name"));
+    }
+
+    #[test]
+    fn checks_italian_registration() {
+        let italy = |bin: &str, tax: &str| {
+            apply(
+                &sample(),
+                SettingsPatch {
+                    country_code: Some("it".into()),
+                    bin_number: Some(bin.into()),
+                    tax_code: Some(tax.into()),
+                    ..Default::default()
+                },
+            )
+        };
+        let next = italy("IT 03580690984", "ddnmjs87t15z249i").expect("valid Italian numbers");
+        assert_eq!(next.country_code, "IT");
+        assert_eq!(next.bin_number.as_deref(), Some("03580690984"));
+        assert_eq!(next.tax_code.as_deref(), Some("DDNMJS87T15Z249I"));
+        // A company's codice fiscale is its 11-digit number.
+        assert!(italy("03580690984", "03580690984").is_ok());
+        let code =
+            |r: AppResult<BusinessSettings>| r.err().and_then(|e| e.field_errors().first().map(|f| f.code.clone()));
+        assert_eq!(code(italy("03580690985", "DDNMJS87T15Z249I")).as_deref(), Some("INVALID_VAT_NUMBER"));
+        assert_eq!(code(italy("0358069098", "DDNMJS87T15Z249I")).as_deref(), Some("INVALID_VAT_NUMBER"));
+        assert_eq!(code(italy("03580690984", "DDNMJS87T15Z249A")).as_deref(), Some("INVALID_TAX_CODE"));
+        assert_eq!(
+            code(apply(&sample(), SettingsPatch { country_code: Some("FR".into()), ..Default::default() })).as_deref(),
+            Some("UNSUPPORTED_COUNTRY")
+        );
+        // Bangladesh keeps the BIN as entered.
+        let bd = apply(&sample(), SettingsPatch { bin_number: Some("000123456-0101".into()), ..Default::default() });
+        assert_eq!(bd.expect("BIN").bin_number.as_deref(), Some("000123456-0101"));
     }
 }

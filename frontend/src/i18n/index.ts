@@ -3,10 +3,12 @@ import { initReactI18next } from 'react-i18next'
 
 import bn from './bn.json'
 import en from './en.json'
+import it from './it.json'
 
 export const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'bn', label: 'বাংলা' },
+  { code: 'it', label: 'Italiano' },
 ] as const
 
 export type LanguageCode = (typeof LANGUAGES)[number]['code']
@@ -16,7 +18,7 @@ const STORAGE_KEY = 'pos.lang'
 function initialLanguage(): LanguageCode {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved === 'en' || saved === 'bn') return saved
+    if (LANGUAGES.some((l) => l.code === saved)) return saved as LanguageCode
   } catch {
     // storage unavailable (private mode): fall back to default
   }
@@ -47,7 +49,11 @@ function messages(base: Messages, lang: string): Messages {
 }
 
 void i18n.use(initReactI18next).init({
-  resources: { en: { translation: messages(en, 'en') }, bn: { translation: messages(bn, 'bn') } },
+  resources: {
+    en: { translation: messages(en, 'en') },
+    bn: { translation: messages(bn, 'bn') },
+    it: { translation: messages(it, 'it') },
+  },
   lng: initialLanguage(),
   fallbackLng: 'en',
   interpolation: { escapeValue: false },

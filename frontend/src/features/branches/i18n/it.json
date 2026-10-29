@@ -1,0 +1,44 @@
+{
+  "branches": {
+    "working": "Lavori in",
+    "all": "Tutte le filiali",
+    "mainNamed": "{{name}} (principale)",
+    "intro": "Ogni filiale ha le proprie ubicazioni di magazzino, cassa, numerazione fatture e scontrini.",
+    "add": "Aggiungi filiale",
+    "code": "Codice",
+    "codeHint": "2–10 lettere o cifre, es. DHN. Usato nei numeri di fattura; non può essere modificato in seguito.",
+    "name": "Nome filiale",
+    "phone": "Telefono",
+    "address": "Indirizzo",
+    "receiptHeader": "Intestazione scontrino",
+    "receiptHeaderHint": "Stampata in cima agli scontrini di questa filiale.",
+    "main": "Principale",
+    "none": "Ancora nessuna filiale.",
+    "editNamed": "Modifica {{name}}",
+    "activate": "Attiva",
+    "deactivate": "Disattiva",
+    "activateNamed": "Attiva {{name}}",
+    "deactivateNamed": "Disattiva {{name}}",
+    "changed": "Qualcun altro ha modificato questa filiale. Sono stati caricati i dati più recenti: controlla e salva di nuovo.",
+    "statuses": {
+      "active": "Attiva",
+      "inactive": "Inattiva"
+    },
+    "errors": {
+      "code": "Usa 2–10 lettere o cifre.",
+      "name": "Inserisci un nome."
+    },
+    "registersIntro": "Casse (cassetti) dove i cassieri aprono e chiudono i turni. Scegli una filiale nella barra laterale per aggiungervi delle casse.",
+    "registersIntroBranch": "Casse di {{branch}}, dove i cassieri aprono e chiudono i turni.",
+    "addRegister": "Aggiungi cassa",
+    "registerName": "Nome cassa",
+    "branch": "Filiale",
+    "cashAccount": "Conto cassa",
+    "openShift": "Turno aperto",
+    "shiftOpen": "Aperto",
+    "noRegisters": "Ancora nessuna cassa.",
+    "registerGoesTo": "La cassa viene aggiunta a {{branch}}.",
+    "registerGoesToMain": "La cassa viene aggiunta alla filiale principale. Scegli un'altra filiale nella barra laterale per aggiungerla lì.",
+    "defaultCash": "Conto cassa della filiale (predefinito)"
+  }
+}

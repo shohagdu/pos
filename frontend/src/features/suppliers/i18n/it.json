@@ -1,0 +1,64 @@
+{
+  "suppliers": {
+    "title": "Fornitori",
+    "new": "Nuovo fornitore",
+    "editTitle": "Modifica fornitore",
+    "none": "Nessun fornitore.",
+    "searchHint": "Nome, codice o telefono",
+    "code": "Codice",
+    "name": "Nome",
+    "contactPerson": "Referente",
+    "phone": "Telefono",
+    "email": "Email",
+    "address": "Indirizzo",
+    "notes": "Note",
+    "openingBalance": "Saldo iniziale",
+    "openingBalanceHint": "Quanto devi già a questo fornitore (negativo = anticipo versato). Non potrà essere modificato in seguito.",
+    "balance": "Saldo",
+    "payable": "Da pagare",
+    "advance": "Anticipo",
+    "settled": "Saldato",
+    "dueOnly": "Solo fornitori a cui dobbiamo",
+    "totalPayable": "Totale debiti",
+    "totalPayableHint": "Quanto dobbiamo ai fornitori elencati",
+    "statuses": {
+      "active": "Attivo",
+      "inactive": "Inattivo",
+      "all": "Tutti"
+    },
+    "pay": "Paga fornitore",
+    "deactivate": "Disattiva",
+    "activate": "Attiva",
+    "inUse": "Questo fornitore ha movimenti e non può essere eliminato. Disattivalo invece.",
+    "noBills": "Nessuna fattura da questo fornitore.",
+    "unallocated": "Anticipo",
+    "tabs": {
+      "label": "Sezioni fornitore",
+      "statement": "Estratto conto",
+      "bills": "Fatture",
+      "payments": "Pagamenti"
+    },
+    "statement": {
+      "title": "Estratto conto: {{name}}",
+      "type": "Tipo",
+      "reference": "Riferimento",
+      "debit": "Dare",
+      "credit": "Avere",
+      "opening": "Saldo iniziale",
+      "closing": "Saldo finale",
+      "hint": "Il Dare aumenta quanto dobbiamo; l'Avere lo diminuisce."
+    },
+    "entryTypes": {
+      "opening": "Saldo iniziale",
+      "purchase": "Acquisto",
+      "payment_out": "Pagamento",
+      "payment_void": "Pagamento annullato",
+      "purchase_return": "Reso a fornitore",
+      "refund_in": "Rimborso ricevuto"
+    },
+    "errors": {
+      "nameRequired": "Inserisci un nome di almeno 2 caratteri.",
+      "amountInvalid": "Inserisci un importo valido."
+    }
+  }
+}

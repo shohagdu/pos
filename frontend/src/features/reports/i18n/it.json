@@ -1,0 +1,316 @@
+{
+  "reports": {
+    "title": "Report",
+    "subtitle": "Vendite, acquisti, magazzino, incassi e contabilità per qualsiasi periodo.",
+    "noReports": "Non hai accesso a nessun report.",
+    "noAccess": "Non hai i permessi per visualizzare questa pagina.",
+    "noData": "Nessun dato per questo periodo.",
+    "periodRange": "{{from}} – {{to}}",
+    "upTo": "Fino al {{to}}",
+    "asOf": "Al {{date}}",
+    "asOfLabel": "Alla data",
+    "uncategorised": "Senza categoria",
+    "allCategories": "Tutte le categorie",
+    "allSuppliers": "Tutti i fornitori",
+    "sku": "SKU",
+    "unit": "Unità",
+    "method": "Metodo",
+    "moneyIn": "Entrate",
+    "moneyOut": "Uscite",
+    "net": "Netto",
+    "count": "Numero",
+    "item": "Articolo",
+    "account": "Conto",
+    "code": "Codice",
+    "dr": "Dare",
+    "cr": "Avere",
+    "balanced": "In pareggio",
+    "outOfBalance": "Non in pareggio",
+    "groups": {
+      "business": "Report aziendali",
+      "accounts": "Contabilità",
+      "analysis": "Analisi"
+    },
+    "cards": {
+      "sales": {
+        "title": "Vendite",
+        "description": "Vendite giornaliere o mensili, per prodotto, categoria e cassiere."
+      },
+      "purchases": {
+        "title": "Acquisti",
+        "description": "Fatture, resi e debiti per fornitore e prodotto."
+      },
+      "inventory": {
+        "title": "Magazzino",
+        "description": "Valore delle scorte per categoria, articoli in esaurimento ed esauriti."
+      },
+      "expenses": {
+        "title": "Spese",
+        "description": "Spese per categoria e mese."
+      },
+      "payments": {
+        "title": "Pagamenti",
+        "description": "Entrate e uscite per metodo e conto."
+      },
+      "profit": {
+        "title": "Utile",
+        "description": "Vendite nette, costo del venduto, spese e utile netto."
+      },
+      "trialBalance": {
+        "title": "Bilancio di verifica",
+        "description": "Dare e avere di ogni conto di contabilità generale."
+      },
+      "profitLoss": {
+        "title": "Conto economico",
+        "description": "Ricavi e costi dalla contabilità generale."
+      },
+      "balanceSheet": {
+        "title": "Stato patrimoniale",
+        "description": "Attività, passività e patrimonio netto a una data."
+      },
+      "generalLedger": {
+        "title": "Libro mastro",
+        "description": "Tutti i movimenti di un conto con saldo progressivo."
+      },
+      "journals": {
+        "title": "Prima nota",
+        "description": "Scritture contabili, scritture manuali e piano dei conti."
+      },
+      "periods": {
+        "title": "Periodi contabili",
+        "description": "Blocca i mesi chiusi contro le modifiche."
+      },
+      "aging": {
+        "title": "Scadenzario crediti e debiti",
+        "description": "Crediti verso clienti e debiti verso fornitori per anzianità."
+      },
+      "vat": {
+        "title": "Riepilogo IVA",
+        "description": "IVA a debito sulle vendite, IVA a credito sugli acquisti e saldo da versare."
+      },
+      "discounts": {
+        "title": "Sconti",
+        "description": "Sconti concessi, per cassiere e le fatture con sconti maggiori."
+      },
+      "productMovement": {
+        "title": "Prodotti veloci e lenti",
+        "description": "Prodotti per velocità di vendita, con giorni di scorta residui e articoli invenduti."
+      }
+    },
+    "sales": {
+      "title": "Report vendite",
+      "groupBy": "Raggruppa per",
+      "byDay": "Giorno",
+      "byMonth": "Mese",
+      "tabs": {
+        "summary": "Riepilogo",
+        "product": "Per prodotto",
+        "category": "Per categoria",
+        "cashier": "Per cassiere"
+      },
+      "period": "Periodo",
+      "invoices": "Fatture",
+      "gross": "Lordo",
+      "discount": "Sconto",
+      "vat": "IVA",
+      "returns": "Resi",
+      "netSales": "Vendite nette",
+      "cogs": "Costo del venduto",
+      "grossProfit": "Utile lordo",
+      "collected": "Incassato",
+      "due": "Da incassare",
+      "grandTotal": "Totale",
+      "margin": "Margine",
+      "product": "Prodotto",
+      "category": "Categoria",
+      "cashier": "Cassiere",
+      "cancelledCol": "Annullate",
+      "paymentsByMethod": "Pagamenti per metodo",
+      "cancelledNote_one": "{{count}} fattura annullata non è inclusa.",
+      "cancelledNote_other": "{{count}} fatture annullate non sono incluse."
+    },
+    "purchases": {
+      "title": "Report acquisti",
+      "supplier": "Fornitore",
+      "bills": "Fatture",
+      "total": "Totale",
+      "returned": "Reso",
+      "paid": "Pagato",
+      "due": "Da pagare",
+      "vat": "IVA",
+      "bySupplier": "Per fornitore",
+      "byProduct": "Per prodotto",
+      "netCost": "Costo netto",
+      "avgCost": "Costo unitario medio",
+      "lastCost": "Ultimo costo unitario"
+    },
+    "inventory": {
+      "title": "Report magazzino",
+      "valuation": "Valorizzazione scorte per categoria",
+      "items": "Articoli",
+      "costValue": "Valore al costo",
+      "retailValue": "Valore al dettaglio",
+      "noCost": "Ti serve il permesso di vedere i costi per visualizzare la valorizzazione delle scorte.",
+      "lowStock": "Scorte basse",
+      "outOfStock": "Esaurito",
+      "onHand": "Giacenza",
+      "reorderLevel": "Livello di riordino",
+      "noneLow": "Nessun articolo con scorte basse.",
+      "noneOut": "Nessun articolo esaurito.",
+      "firstRows": "Vengono mostrati i primi {{count}} articoli.",
+      "location": "Ubicazione",
+      "allLocations": "Tutte le ubicazioni",
+      "stockLink": "Magazzino",
+      "movementsLink": "Movimenti di magazzino"
+    },
+    "expenses": {
+      "title": "Report spese",
+      "byCategory": "Per categoria",
+      "byMonth": "Per mese",
+      "category": "Categoria",
+      "month": "Mese",
+      "vat": "IVA",
+      "share": "Quota"
+    },
+    "payments": {
+      "title": "Report pagamenti",
+      "byMethod": "Per metodo",
+      "byAccount": "Per conto",
+      "account": "Conto"
+    },
+    "profit": {
+      "title": "Report utile",
+      "netSales": "Vendite nette",
+      "lessCogs": "Meno: costo del venduto",
+      "grossProfit": "Utile lordo",
+      "lessExpenses": "Meno: spese",
+      "netProfit": "Utile netto",
+      "netMargin": "Margine netto",
+      "plLink": "Conto economico",
+      "note": "Le vendite nette sono al netto dell'IVA e dei resi. Il costo del venduto usa il costo medio al momento della vendita."
+    },
+    "tb": {
+      "title": "Bilancio di verifica",
+      "opening": "Saldo iniziale",
+      "debit": "Dare",
+      "credit": "Avere",
+      "closingDebit": "Saldo finale dare",
+      "closingCredit": "Saldo finale avere",
+      "fromHint": "Lascia vuoto il campo Da per includere tutto dall'inizio."
+    },
+    "pl": {
+      "title": "Conto economico",
+      "revenue": "Ricavi",
+      "totalRevenue": "Totale ricavi",
+      "costOfSales": "Costo del venduto",
+      "totalCostOfSales": "Totale costo del venduto",
+      "grossProfit": "Utile lordo",
+      "otherIncome": "Altri proventi",
+      "totalOtherIncome": "Totale altri proventi",
+      "expenses": "Costi",
+      "totalExpenses": "Totale costi",
+      "netProfit": "Utile netto"
+    },
+    "bs": {
+      "title": "Stato patrimoniale",
+      "assets": "Attività",
+      "totalAssets": "Totale attività",
+      "liabilities": "Passività",
+      "totalLiabilities": "Totale passività",
+      "equity": "Patrimonio netto",
+      "totalEquity": "Totale patrimonio netto",
+      "currentEarnings": "Risultato d'esercizio (non ancora chiuso)",
+      "totalLiabilitiesEquity": "Totale passività e patrimonio netto",
+      "earningsNote": "Il risultato d'esercizio è l'utile o la perdita non ancora girata a utili portati a nuovo."
+    },
+    "gl": {
+      "title": "Libro mastro",
+      "chooseAccount": "Scegli un conto…",
+      "pickAccount": "Scegli un conto per vedere il suo mastrino.",
+      "opening": "Saldo iniziale",
+      "closing": "Saldo finale",
+      "entryNo": "N. scrittura",
+      "source": "Origine",
+      "sourceNo": "N. documento",
+      "memo": "Descrizione",
+      "balance": "Saldo",
+      "noEntries": "Nessun movimento in questo periodo.",
+      "truncated": "Vengono mostrati solo i primi movimenti. Scegli un periodo più breve per vedere tutto."
+    },
+    "aging": {
+      "title": "Scadenzario",
+      "parties": "Clienti o fornitori",
+      "customers": "Crediti verso clienti",
+      "suppliers": "Debiti verso fornitori",
+      "party": "Nome",
+      "phone": "Telefono",
+      "current": "0–30 giorni",
+      "d31": "31–60 giorni",
+      "d61": "61–90 giorni",
+      "d90": "Oltre 90 giorni",
+      "other": "Altro",
+      "total": "Totale dovuto",
+      "oldest": "Più vecchio",
+      "otherHint": "Altro = saldo non collegato a una fattura aperta (saldi iniziali, anticipi, pagamenti non abbinati)."
+    },
+    "vat": {
+      "title": "Riepilogo IVA",
+      "output": "IVA a debito (vendite meno resi)",
+      "input": "IVA a credito (acquisti meno resi, più spese)",
+      "rate": "Aliquota",
+      "taxable": "Imponibile",
+      "vat": "IVA",
+      "expensesRow": "Spese",
+      "noRate": "Senza aliquota",
+      "outputVat": "IVA a debito",
+      "inputVat": "IVA a credito",
+      "netPayable": "IVA netta da versare",
+      "netRefundable": "IVA netta a credito",
+      "notRegistered": "Questa attività non risulta registrata ai fini IVA nelle impostazioni, quindi i dati sono solo indicativi."
+    },
+    "discounts": {
+      "title": "Report sconti",
+      "gross": "Vendite lorde",
+      "itemDiscount": "Sconti sugli articoli",
+      "invoiceDiscount": "Sconti in fattura",
+      "totalDiscount": "Sconto totale",
+      "discountPct": "Incidenza sconti",
+      "discountPctHint": "Sconto totale in percentuale sulle vendite lorde",
+      "byCashier": "Per cassiere",
+      "cashier": "Cassiere",
+      "invoices": "Fatture",
+      "discountedInvoices": "Con sconto",
+      "topInvoices": "Sconti maggiori",
+      "invoice": "Fattura",
+      "customer": "Cliente",
+      "subtotal": "Subtotale",
+      "discount": "Sconto",
+      "grandTotal": "Totale",
+      "unknownCashier": "Sconosciuto"
+    },
+    "movement": {
+      "title": "Prodotti veloci e lenti",
+      "class": "Rotazione",
+      "classes": {
+        "all": "Tutti",
+        "fast": "Veloci",
+        "slow": "Lenti",
+        "non_moving": "Fermi"
+      },
+      "fastCount": "Prodotti veloci",
+      "slowCount": "Prodotti lenti",
+      "nonMovingCount": "Fermi",
+      "nonMovingValue": "Valore scorte ferme",
+      "product": "Prodotto",
+      "category": "Categoria",
+      "sold": "Venduti",
+      "netSales": "Vendite nette",
+      "dailyRate": "Al giorno",
+      "stock": "Scorte",
+      "stockValue": "Valore scorte",
+      "daysOfStock": "Giorni di scorta",
+      "lastSold": "Ultima vendita",
+      "never": "Mai"
+    }
+  }
+}

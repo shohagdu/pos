@@ -8,6 +8,7 @@ import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { Billing } from './Billing'
 import { featureName } from './labels'
+import { dateLocale } from '../../lib/dates'
 
 /**
  * SUB-R05: plan, state, renewal date, usage meters and included features; the
@@ -29,7 +30,7 @@ function PlanSummary({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation()
   const overview = useSubscription(tenantId)
   const date = (iso: string | null) =>
-    iso ? new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { dateStyle: 'long' }).format(new Date(iso)) : '—'
+    iso ? new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'long' }).format(new Date(iso)) : '—'
 
   if (overview.isPending) return <Spinner />
   if (overview.isError) return <Alert tone="danger">{problemMessage(overview.error, t)}</Alert>

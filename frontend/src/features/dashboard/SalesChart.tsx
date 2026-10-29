@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { formatDate } from '../../lib/dates'
+import { formatDate, dateLocale } from '../../lib/dates'
 import { dec, div, max, mul, sum, toFixed, toPlain } from '../../lib/decimal'
 import { formatMoney } from '../../lib/format'
 
@@ -11,7 +11,7 @@ export function SalesChart({ days, today }: { days: { date: string; sales: strin
   const top = days.reduce((m, d) => max(m, dec(d.sales)), 0n)
   const total = sum(days.map((d) => dec(d.sales)))
   const height = (sales: string) => (top > 0n ? toFixed(div(mul(max(dec(sales), 0n), dec('100')), top), 1) : '0')
-  const dayLabel = (date: string) => new Intl.DateTimeFormat(lang === 'bn' ? 'bn-BD' : 'en-GB', { day: 'numeric' }).format(new Date(`${date}T00:00:00`))
+  const dayLabel = (date: string) => new Intl.DateTimeFormat(dateLocale(lang), { day: 'numeric' }).format(new Date(`${date}T00:00:00`))
   const isToday = (date: string) => date === (today ?? days[days.length - 1]?.date)
 
   return (

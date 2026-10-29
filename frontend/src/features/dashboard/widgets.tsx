@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 
 import { Icon, type IconName } from '../../app/layouts/Icon'
+import { dateLocale } from '../../lib/dates'
 
 // Dashboard-only outline icons (24×24, current colour), kept here so the
 // shared icon set stays untouched.
@@ -125,7 +126,7 @@ export interface StartStep {
 /** Shown to a shop that has not made a sale yet. */
 export function GettingStarted({ steps }: { steps: StartStep[] }) {
   const { t, i18n } = useTranslation()
-  const locale = i18n.language === 'bn' ? 'bn-BD' : 'en-GB'
+  const locale = dateLocale(i18n.language)
   if (steps.length === 0) return null
   return (
     <section aria-labelledby="dash-start" className="rounded-xl border border-brand-100 bg-brand-50 p-4 sm:p-5">

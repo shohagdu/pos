@@ -1,0 +1,242 @@
+{
+  "admin": {
+    "console": "Console piattaforma",
+    "navLabel": "Console",
+    "staffOnlyTitle": "Quest'area è riservata allo staff della piattaforma",
+    "staffOnlyBody": "Il tuo account non ha accesso alla console Super Admin. Se pensi sia un errore, chiedi al proprietario della piattaforma.",
+    "backToApp": "Torna all'app",
+    "pendingBadge_one": "{{count}} richiesta in attesa",
+    "pendingBadge_other": "{{count}} richieste in attesa",
+    "on": "Attivo",
+    "off": "Disattivo",
+    "blankUnlimited": "Lascia vuoto il limite per illimitato.",
+    "nav": {
+      "dashboard": "Dashboard",
+      "tenants": "Attività",
+      "claims": "Richieste di pagamento",
+      "plans": "Piani",
+      "settings": "Impostazioni"
+    },
+    "roles": {
+      "platform_owner": "Proprietario piattaforma",
+      "billing": "Fatturazione",
+      "support": "Assistenza"
+    },
+    "states": {
+      "none": "Nessun abbonamento",
+      "business_suspended": "Attività sospesa"
+    },
+    "businessStatus": {
+      "active": "Attiva",
+      "suspended": "Sospesa"
+    },
+    "memberStatus": {
+      "active": "Attivo",
+      "disabled": "Disabilitato",
+      "inactive": "Inattivo"
+    },
+    "claimStatus": {
+      "pending": "In attesa",
+      "approved": "Approvata",
+      "rejected": "Rifiutata"
+    },
+    "invoiceStatus": {
+      "open": "Aperta",
+      "paid": "Pagata",
+      "void": "Annullata"
+    },
+    "cycles": {
+      "monthly": "Mensile",
+      "quarterly": "Trimestrale",
+      "annual": "Annuale",
+      "lifetime": "Una tantum (a vita)"
+    },
+    "methods": {
+      "bkash": "bKash",
+      "nagad": "Nagad",
+      "rocket": "Rocket",
+      "bank_transfer": "Bonifico bancario",
+      "cash": "Contanti",
+      "other": "Altro"
+    },
+    "events": {
+      "status_changed": "Stato modificato",
+      "trial_started": "Prova avviata",
+      "payment_verified": "Pagamento verificato",
+      "reminder": "Promemoria ({{days}} giorni rimanenti)",
+      "licence_granted": "Licenza concessa"
+    },
+    "actors": {
+      "system": "Sistema",
+      "platform_staff": "Staff piattaforma",
+      "tenant_user": "Utente dell'attività"
+    },
+    "dashboard": {
+      "title": "Panoramica piattaforma",
+      "headline": "Numeri chiave",
+      "businesses": "Attività",
+      "mrr": "MRR",
+      "arr": "ARR",
+      "revenue30": "Ricavi, ultimi 30 giorni",
+      "signups7": "Iscrizioni, ultimi 7 giorni",
+      "signups30": "Iscrizioni, ultimi 30 giorni",
+      "pendingClaims": "Richieste di pagamento in attesa",
+      "reviewClaims": "Esamina richieste →",
+      "byStatus": "Attività per stato dell'abbonamento",
+      "byPlan": "Attività per piano"
+    },
+    "tenants": {
+      "title": "Attività",
+      "searchHint": "Nome, slug, telefono, email o telefono del titolare",
+      "subscriptionState": "Abbonamento",
+      "businessStatus": "Stato attività",
+      "plan": "Piano",
+      "name": "Nome",
+      "owner": "Titolare",
+      "ends": "Fine prova / periodo",
+      "created": "Creata",
+      "total_one": "{{count}} attività",
+      "total_other": "{{count}} attività"
+    },
+    "tenant": {
+      "cycle": "Ciclo di fatturazione",
+      "price": "Prezzo",
+      "daysLeft": "Giorni rimanenti",
+      "trialEnd": "Fine prova",
+      "periodEnd": "Fine periodo",
+      "lastActivity": "Ultima attività",
+      "suspendedReason": "Sospesa perché",
+      "suspend": "Sospendi attività",
+      "reactivate": "Riattiva attività",
+      "suspendTitle": "Sospendi {{name}}",
+      "reactivateTitle": "Riattiva {{name}}",
+      "suspendHint": "I membri non possono usare l'attività finché è sospesa. I loro dati vengono conservati.",
+      "reactivateHint": "I membri possono usare di nuovo l'attività da subito.",
+      "contact": "Contatto",
+      "phone": "Telefono",
+      "email": "Email",
+      "district": "Distretto",
+      "members": "Membri",
+      "owner": "Titolare",
+      "usage": "Utilizzo rispetto ai limiti",
+      "unlimited": "Illimitato",
+      "entitlements": "Diritti",
+      "overridden": "Personalizzato",
+      "overrides": "Personalizzazioni",
+      "noOverrides": "Nessuna personalizzazione. L'attività riceve esattamente ciò che include il suo piano.",
+      "addOverride": "Aggiungi personalizzazione",
+      "feature": "Funzione",
+      "value": "Valore",
+      "limit": "Limite",
+      "expires": "Scade",
+      "expiresHint": "Vuoto = non scade mai. Termina alla fine di quel giorno (UTC).",
+      "never": "Mai",
+      "createdBy": "Aggiunto da",
+      "history": "Cronologia abbonamento",
+      "event": "Evento",
+      "actor": "Da",
+      "invoices": "Fatture",
+      "paidAt": "Pagata il",
+      "claims": "Richieste di pagamento",
+      "reviewClaims": "Esamina richieste in attesa →"
+    },
+    "claims": {
+      "title": "Richieste di pagamento",
+      "pendingCount_one": "{{count}} richiesta da esaminare",
+      "pendingCount_other": "{{count}} richieste da esaminare",
+      "tabs": {
+        "pending": "In attesa",
+        "approved": "Approvate",
+        "rejected": "Rifiutate",
+        "all": "Tutte"
+      },
+      "submitted": "Inviata",
+      "business": "Attività",
+      "invoice": "N. fattura",
+      "invoiceTotal": "Totale fattura",
+      "method": "Metodo",
+      "differs": "Diverso dalla fattura",
+      "reference": "ID transazione",
+      "payer": "Pagato da",
+      "submittedBy": "Inviata da",
+      "reviewed": "Esaminata",
+      "rejectionReason": "Motivo del rifiuto",
+      "approve": "Approva",
+      "reject": "Rifiuta",
+      "rejectTitle": "Rifiuta richiesta per {{invoice}}",
+      "rejectHint": "Il titolare vede questo motivo e può inviare una richiesta corretta.",
+      "approved": "Richiesta approvata. L'abbonamento è ora attivo.",
+      "none": "Nessuna richiesta qui."
+    },
+    "plans": {
+      "title": "Piani e prezzi",
+      "new": "Nuovo piano",
+      "createTitle": "Nuovo piano",
+      "editTitle": "Modifica {{name}}",
+      "code": "Codice",
+      "codeHint": "2–40 lettere minuscole, cifre o _. Non può essere modificato in seguito.",
+      "name": "Nome",
+      "description": "Descrizione",
+      "sortOrder": "Ordinamento",
+      "trialDays": "Giorni di prova",
+      "publicLabel": "Pubblico",
+      "publicHint": "Mostrato ai titolari nella pagina dei piani. I piani privati vengono assegnati dallo staff.",
+      "public": "Pubblico",
+      "private": "Privato",
+      "statuses": {
+        "active": "Attivo",
+        "retired": "Dismesso"
+      },
+      "trialBadge_one": "Prova · {{count}} giorno",
+      "trialBadge_other": "Prova · {{count}} giorni",
+      "subscribers_one": "{{count}} abbonato",
+      "subscribers_other": "{{count}} abbonati",
+      "prices": "Prezzi (BDT)",
+      "pricesHint": "Lascia vuoto un ciclo se il piano non è venduto per quel ciclo.",
+      "features": "Funzioni",
+      "limit": "Limite",
+      "limitFor": "Limite {{name}}"
+    },
+    "settings": {
+      "title": "Impostazioni piattaforma",
+      "paymentInstructions": "Istruzioni di pagamento",
+      "intro": "I titolari vedono questi testi quando pagano manualmente una fattura. Lascia vuoto un metodo per nasconderlo.",
+      "readOnly": "Solo il proprietario della piattaforma può modificare queste impostazioni.",
+      "saved": "Istruzioni di pagamento salvate.",
+      "keys": {
+        "bkash": "bKash",
+        "nagad": "Nagad",
+        "rocket": "Rocket",
+        "bank_transfer": "Bonifico bancario",
+        "note": "Nota generale"
+      }
+    },
+    "licence": {
+      "open": "Imposta licenza",
+      "title": "Imposta licenza per {{name}}",
+      "kind": "Tipo di licenza",
+      "kinds": {
+        "annual": "Annuale",
+        "lifetime": "Una tantum",
+        "trial": "Estendi prova"
+      },
+      "hints": {
+        "annual": "Attiva per gli anni scelti. Un rinnovo anticipato aggiunge il tempo dopo la data di fine attuale.",
+        "lifetime": "Pagata una volta, non scade mai. Nessun promemoria di rinnovo.",
+        "trial": "Aggiunge giorni alla prova in corso, o avvia una nuova prova da oggi se è terminata."
+      },
+      "confirm": {
+        "annual": "Attiva licenza annuale",
+        "lifetime": "Attiva licenza una tantum",
+        "trial": "Estendi prova"
+      },
+      "days": "Giorni da aggiungere",
+      "years": "Anni",
+      "price": "Importo pagato (BDT)",
+      "priceHint": "Vuoto = prezzo del piano ({{amount}}).",
+      "reason": "Ricevuta o nota",
+      "reasonHint": "Es. il numero della ricevuta o come ha pagato il cliente. Conservato nella cronologia.",
+      "noEnd": "Mai (una tantum)"
+    }
+  }
+}

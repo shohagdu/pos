@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { formatDate, startOfMonth, today } from '../../lib/dates'
+import { formatDate, startOfMonth, today, dateLocale } from '../../lib/dates'
 import { dec, div, isZero, mul, sum, toFixed } from '../../lib/decimal'
 import { formatMoney } from '../../lib/format'
 
@@ -47,7 +47,7 @@ export function minus(a: string, b: string): string {
 /** "2026-10-01" or "2026-10" (month groups) for display. */
 export function formatPeriod(period: string, lang: string): string {
   if (period.length === 7) {
-    return new Intl.DateTimeFormat(lang === 'bn' ? 'bn-BD' : 'en-GB', { month: 'short', year: 'numeric' }).format(new Date(`${period}-01T00:00:00`))
+    return new Intl.DateTimeFormat(dateLocale(lang), { month: 'short', year: 'numeric' }).format(new Date(`${period}-01T00:00:00`))
   }
   return formatDate(period, lang)
 }

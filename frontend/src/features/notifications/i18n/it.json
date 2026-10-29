@@ -1,0 +1,42 @@
+{
+  "notifications": {
+    "title": "Notifiche",
+    "bellUnread": "Notifiche, {{count}} non lette",
+    "unreadCount": "{{count}} non lette",
+    "allRead": "Sei in pari.",
+    "markAllRead": "Segna tutte come lette",
+    "all": "Tutte",
+    "unread": "Non lette",
+    "none": "Ancora nessuna notifica.",
+    "noneUnread": "Nessuna notifica non letta.",
+    "settings": "Impostazioni notifiche",
+    "settingsHint": "Scegli come essere avvisato per ogni evento. Deseleziona tutto per disattivare un tipo.",
+    "noEmail": "Aggiungi un indirizzo email al tuo account per ricevere notifiche via email.",
+    "smsUnavailable": "Le notifiche SMS sono disponibili nei piani con la funzione SMS.",
+    "type": "Evento",
+    "channelFor": "{{channel}} per {{type}}",
+    "channels": {
+      "in_app": "Nell'app",
+      "email": "Email",
+      "sms": "SMS"
+    },
+    "types": {
+      "stock.low": "Scorte basse",
+      "customer.due": "Crediti verso clienti",
+      "supplier.due": "Debiti verso fornitori",
+      "subscription.expiring": "Rinnovo abbonamento",
+      "sales.daily_summary": "Riepilogo vendite giornaliero",
+      "security.alert": "Avvisi di sicurezza",
+      "approval.request": "Richieste di approvazione"
+    },
+    "typeHints": {
+      "stock.low": "Ogni giorno, quando i prodotti raggiungono il livello di riordino",
+      "customer.due": "Ogni settimana, saldi non pagati da oltre 30 giorni",
+      "supplier.due": "Ogni settimana, fatture non pagate da oltre 30 giorni",
+      "subscription.expiring": "7, 3 e 1 giorno prima della scadenza del piano",
+      "sales.daily_summary": "Ogni mattina, le vendite di ieri",
+      "security.alert": "Blocchi, reimpostazioni della password e accessi bloccati sul tuo account",
+      "approval.request": "Ordini di acquisto e spese in attesa della tua approvazione"
+    }
+  }
+}

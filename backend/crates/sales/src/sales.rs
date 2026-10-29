@@ -232,11 +232,18 @@ pub struct SaleReturnRef {
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
 pub struct ReceiptInfo {
     pub business_name: String,
+    /// `BD` or `IT`: which registration lines print, and their labels.
+    pub country_code: String,
+    pub legal_name: Option<String>,
     pub branch_name: String,
     pub address: Option<String>,
     pub phone: Option<String>,
-    /// Shown when VAT-registered.
+    /// BIN when VAT-registered; in Italy the Partita IVA, always.
     pub bin_number: Option<String>,
+    /// Italy only: codice fiscale, R.E.A. number and Registro Imprese office.
+    pub tax_code: Option<String>,
+    pub rea_number: Option<String>,
+    pub registry_office: Option<String>,
     pub receipt_header: Option<String>,
     pub receipt_footer: Option<String>,
     /// `80mm`, `58mm` or `a4`.
@@ -402,8 +409,11 @@ pub async fn list(tx: &mut TenantTx, filter: &SaleFilter, seller: Seller) -> App
 pub async fn receipt_info(tx: &mut TenantTx, branch_id: Uuid) -> AppResult<ReceiptInfo> {
     let tenant_id = tx.tenant_id();
     sqlx::query_as(
-        "SELECT t.name AS business_name, b.name AS branch_name, COALESCE(b.address, t.address) AS address, \
-         COALESCE(b.phone, t.phone) AS phone, IF(s.is_vat_registered, t.bin_number, NULL) AS bin_number, \
+        "SELECT t.name AS business_name, t.country_code, t.legal_name, b.name AS branch_name, \
+         COALESCE(b.address, t.address) AS address, COALESCE(b.phone, t.phone) AS phone, \
+         IF(s.is_vat_registered OR t.country_code = 'IT', t.bin_number, NULL) AS bin_number, \
+         IF(t.country_code = 'IT', t.tax_code, NULL) AS tax_code, IF(t.country_code = 'IT', t.rea_number, NULL) AS rea_number, \
+         IF(t.country_code = 'IT', t.registry_office, NULL) AS registry_office, \
          b.receipt_header, s.receipt_footer, s.receipt_paper, s.auto_print_receipt AS auto_print \
          FROM tenants t JOIN tenant_settings s ON s.tenant_id = t.id \
          JOIN branches b ON b.tenant_id = t.id AND b.id = ? WHERE t.id = ?",

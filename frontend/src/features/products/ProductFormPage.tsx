@@ -32,6 +32,7 @@ import { optional, useFields } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { categoryLabel, taxLabel, trimDecimal, unitLabel } from './labels'
+import { dateLocale } from '../../lib/dates'
 
 /** `/products/new` and `/products/:id`. */
 export function ProductFormPage() {
@@ -295,7 +296,7 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
 function PriceHistory({ product, tenantId, lang }: { product: Product; tenantId: string; lang: string }) {
   const { t } = useTranslation()
   const history = usePriceHistory(tenantId, product.id)
-  const date = (iso: string) => new Intl.DateTimeFormat(lang === 'bn' ? 'bn-BD' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+  const date = (iso: string) => new Intl.DateTimeFormat(dateLocale(lang), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
   const money = (v: string | null) => (v === null ? '—' : formatMoney(v, lang))
   return (
     <Card className="flex flex-col gap-3">

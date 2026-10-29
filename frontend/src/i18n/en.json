@@ -297,7 +297,7 @@
     "INVALID_NAME": "Enter a name with at least 2 characters.",
     "INVALID_PHONE": "Enter a valid mobile number, e.g. 01712345678.",
     "INVALID_EMAIL": "Enter a valid email address.",
-    "INVALID_LOCALE": "Choose English or Bengali.",
+    "INVALID_LOCALE": "Choose English, Bengali or Italian.",
     "PASSWORD_TOO_SHORT": "Use at least 8 characters.",
     "PASSWORD_TOO_LONG": "Use at most 128 characters.",
     "PASSWORD_TOO_COMMON": "This password is too easy to guess.",

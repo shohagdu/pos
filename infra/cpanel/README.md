@@ -22,7 +22,7 @@ to pos-api on `127.0.0.1:API_INTERNAL_PORT`. Logs go to `logs/`.
 ## 1. Build the package (on a dev machine)
 
 ```bash
-infra/cpanel/build.sh        # -> dist/pos-cpanel.zip
+infra/cpanel/build.sh        # -> deploy/pos-cpanel.zip (Bangla guide: deploy/README-bn.md)
 ```
 
 ## 2. Database

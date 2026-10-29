@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/Button'
 import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { roleName } from './labels'
+import { dateLocale } from '../../lib/dates'
 
 const TABS = ['members', 'invitations', 'roles'] as const
 type Tab = (typeof TABS)[number]
@@ -112,7 +113,7 @@ function InvitationsList({ tenantId }: { tenantId: string }) {
   const refresh = () => queryClient.invalidateQueries({ queryKey: usersKeys.invitations(tenantId) })
   const resend = useMutation({ mutationFn: usersApi.resendInvitation, onSuccess: refresh })
   const revoke = useMutation({ mutationFn: usersApi.revokeInvitation, onSuccess: refresh })
-  const date = (iso: string) => new Intl.DateTimeFormat(i18n.language === 'bn' ? 'bn-BD' : 'en-GB', { dateStyle: 'medium' }).format(new Date(iso))
+  const date = (iso: string) => new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium' }).format(new Date(iso))
 
   if (invitations.isPending) return <Spinner />
   if (invitations.isError) return <Alert tone="danger">{problemMessage(invitations.error, t)}</Alert>

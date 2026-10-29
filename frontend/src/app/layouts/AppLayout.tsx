@@ -52,8 +52,6 @@ export function AppLayout() {
   const suspended = me?.tenant?.subscription?.status === 'suspended' && pathname !== '/plan'
   const titleKey = navKeyFor(pathname) ?? EXTRA_TITLES[pathname.split('/')[1] ?? '']
   const title = titleKey ? t(titleKey) : ''
-  // One tap switches to the other language; the label is written in that language.
-  const otherLanguage = LANGUAGES.find((l) => l.code !== i18n.language) ?? LANGUAGES[0]
 
   return (
     <div className="flex min-h-svh flex-col md:flex-row">
@@ -83,16 +81,23 @@ export function AppLayout() {
               <span className="hidden sm:inline">{t('nav.newSale')}</span>
             </Link>
           )}
-          <button
-            type="button"
-            onClick={() => void i18n.changeLanguage(otherLanguage.code)}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-ink-muted hover:bg-canvas hover:text-ink"
-            title={t('common.language')}
-            lang={otherLanguage.code}
-          >
+          <label className="relative inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-ink-muted hover:bg-canvas hover:text-ink">
             <Icon name="language" className="size-5" />
-            <span className="hidden sm:inline">{otherLanguage.label}</span>
-          </button>
+            <span className="sr-only">{t('common.language')}</span>
+            {/* Each option is written in its own language. */}
+            <select
+              value={i18n.language}
+              onChange={(e) => void i18n.changeLanguage(e.target.value)}
+              title={t('common.language')}
+              className="cursor-pointer appearance-none bg-transparent text-sm font-medium outline-none max-sm:absolute max-sm:inset-0 max-sm:opacity-0"
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code} lang={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <NotificationBell />
           <UserMenu />
         </header>

@@ -7,8 +7,10 @@ use sqlx::{
 };
 
 /// Session settings applied to every new connection (DB design §2.2, §11.3).
-const SESSION_SETUP: &str = "SET SESSION transaction_isolation = 'READ-COMMITTED', \
-     SESSION innodb_lock_wait_timeout = 5, \
+/// The isolation level uses the statement form: the `transaction_isolation`
+/// variable does not exist on MariaDB before 11.1.
+const SESSION_ISOLATION: &str = "SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED";
+const SESSION_SETUP: &str = "SET SESSION innodb_lock_wait_timeout = 5, \
      SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,ONLY_FULL_GROUP_BY,NO_ENGINE_SUBSTITUTION'";
 
 /// Clears the tenant context before a connection goes back to the pool, so a
@@ -23,6 +25,7 @@ pub fn pool_options() -> MySqlPoolOptions {
         .idle_timeout(Duration::from_secs(300))
         .after_connect(|conn, _meta| {
             Box::pin(async move {
+                conn.execute(SESSION_ISOLATION).await?;
                 conn.execute(SESSION_SETUP).await?;
                 Ok(())
             })

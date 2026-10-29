@@ -1,7 +1,7 @@
 // Money is exchanged with the API as decimal strings (Requirement Analysis
 // API-08) and formatted without converting to floating point.
 
-const LOCALE: Record<string, string> = { en: 'en-IN', bn: 'bn-BD' }
+const LOCALE: Record<string, string> = { en: 'en-IN', bn: 'bn-BD', it: 'it-IT' }
 
 /** Currencies grouped in lakhs and crores (12,34,567); others in thousands. */
 const SOUTH_ASIAN = new Set(['BDT', 'INR', 'PKR', 'NPR', 'LKR'])
@@ -19,6 +19,7 @@ export function getBusinessCurrency(): string {
 
 function numberLocale(lang: string, currency: string): string {
   if (lang === 'bn') return 'bn-BD'
+  if (lang === 'it') return 'it-IT'
   return SOUTH_ASIAN.has(currency) ? 'en-IN' : 'en-US'
 }
 

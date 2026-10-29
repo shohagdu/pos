@@ -1,0 +1,84 @@
+{
+  "dashboard": {
+    "quickActions": "Azioni rapide",
+    "actions": {
+      "newSale": "Nuova vendita",
+      "newPurchase": "Nuovo acquisto",
+      "addExpense": "Registra spesa",
+      "reports": "Report",
+      "addProduct": "Aggiungi prodotto",
+      "addCustomer": "Aggiungi cliente"
+    },
+    "today": "Oggi",
+    "thisMonth": "Questo mese",
+    "sales": "Vendite",
+    "netSales": "Vendite nette",
+    "cashReceived": "Incassi",
+    "expenses": "Spese",
+    "grossProfit": "Utile lordo",
+    "netProfit": "Utile netto",
+    "invoices_one": "{{formatted}} fattura",
+    "invoices_other": "{{formatted}} fatture",
+    "balances": "Saldi",
+    "receivables": "Crediti verso clienti",
+    "payables": "Debiti verso fornitori",
+    "moneyBalance": "Disponibilità",
+    "lowStock": "Scorta bassa",
+    "outOfStock": "Esauriti",
+    "chart": {
+      "title": "Vendite, ultimi 14 giorni",
+      "total": "Totale:",
+      "empty": "Ancora nessuna vendita negli ultimi 14 giorni."
+    },
+    "topProducts": "Prodotti più venduti del mese",
+    "recentSales": "Vendite recenti",
+    "noSales": "Ancora nessuna vendita. Le ultime vendite appariranno qui.",
+    "product": "Prodotto",
+    "invoice": "Fattura",
+    "customer": "Cliente",
+    "due": "Da incassare",
+    "saleStatuses": {
+      "completed": "Completata",
+      "partially_returned": "Reso parziale",
+      "returned": "Resa",
+      "cancelled": "Annullata"
+    },
+    "greeting": {
+      "morning": "Buongiorno, {{name}}",
+      "afternoon": "Buon pomeriggio, {{name}}",
+      "evening": "Buonasera, {{name}}"
+    },
+    "yesterday": "Ieri: {{amount}}",
+    "netSalesHint": "Al netto dei resi",
+    "attention": "Da controllare",
+    "allGood": "Tutto a posto",
+    "lowStockHint": "Articoli in esaurimento: riordina presto",
+    "outOfStockHint": "Articoli che ora non puoi vendere",
+    "receivablesHint": "Importi da incassare",
+    "payablesHint": "Importi da pagare",
+    "moneyBalanceHint": "Contanti, banca e portafogli mobili",
+    "noTopProducts": "I più venduti appariranno qui dopo le prime vendite.",
+    "viewAllSales": "Vedi tutte le vendite",
+    "start": {
+      "title": "Prepariamo il tuo negozio a vendere",
+      "subtitle": "Ancora nessuna vendita: questi passaggi ti preparano per il primo cliente.",
+      "steps": {
+        "products": {
+          "title": "Aggiungi i tuoi prodotti",
+          "body": "Nome, prezzo e unità di ciò che vendi.",
+          "cta": "Aggiungi prodotti"
+        },
+        "stock": {
+          "title": "Inserisci la giacenza iniziale",
+          "body": "Registra quanto hai ora di ogni prodotto.",
+          "cta": "Aggiungi giacenza iniziale"
+        },
+        "sale": {
+          "title": "Fai la tua prima vendita",
+          "body": "Apri la schermata di vendita e stampa o condividi lo scontrino.",
+          "cta": "Inizia a vendere"
+        }
+      }
+    }
+  }
+}

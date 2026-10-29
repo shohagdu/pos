@@ -1,0 +1,133 @@
+{
+  "accounting": {
+    "title": "Contabilità",
+    "subtitle": "Registrazioni contabili generate da vendite, acquisti, pagamenti e scritture manuali.",
+    "journals": "Prima nota",
+    "trialBalance": "Bilancio di verifica",
+    "generalLedger": "Libro mastro",
+    "noJournals": "Nessuna registrazione in questo periodo.",
+    "entryNo": "N. registrazione",
+    "sourceType": "Origine",
+    "sourceNo": "N. origine",
+    "debit": "Dare",
+    "credit": "Avere",
+    "statuses": {
+      "posted": "Registrata",
+      "reversed": "Stornata"
+    },
+    "sources": {
+      "sale": "Vendita",
+      "sale_return": "Reso da cliente",
+      "purchase": "Acquisto",
+      "purchase_return": "Reso a fornitore",
+      "payment": "Pagamento",
+      "expense": "Spesa",
+      "transfer": "Trasferimento",
+      "stock_adjustment": "Rettifica di magazzino",
+      "opening_balance": "Saldo iniziale",
+      "manual": "Manuale"
+    },
+    "types": {
+      "asset": "Attività",
+      "liability": "Passività",
+      "equity": "Patrimonio netto",
+      "income": "Ricavi",
+      "expense": "Costi"
+    },
+    "chart": {
+      "title": "Piano dei conti",
+      "code": "Codice",
+      "name": "Nome",
+      "type": "Tipo",
+      "normalSide": "Sezione normale",
+      "system": "Di sistema",
+      "group": "Gruppo",
+      "inactive": "Inattivo",
+      "ledger": "Mastrino",
+      "ledgerOf": "Mastrino di {{name}}",
+      "add": "Aggiungi conto",
+      "addTitle": "Aggiungi conto",
+      "editTitle": "Modifica conto",
+      "addSub": "Sottoconto",
+      "addSubTo": "Aggiungi un sottoconto a {{name}}",
+      "editOf": "Modifica {{name}}",
+      "search": "Cerca",
+      "searchHint": "Codice o nome",
+      "allTypes": "Tutti i tipi",
+      "parent": "Gruppo",
+      "topLevel": "— Livello principale —",
+      "codeHint": "Suggerito in base al gruppo; puoi modificarlo.",
+      "isGroup": "Conto di gruppo",
+      "isGroupHint": "I gruppi contengono solo sottoconti; le registrazioni vanno sui conti sottostanti.",
+      "active": "Attivo",
+      "activeHint": "I conti inattivi non accettano nuove registrazioni. Solo un conto vuoto e mai usato può essere disattivato.",
+      "contraHint": "Sezione opposta a quella abituale per questo tipo: un conto rettificativo (come Resi su vendite).",
+      "systemNote": "Questo è un conto di sistema usato dall'app per le registrazioni. Puoi cambiarne solo il nome.",
+      "inUseNote": "Questo conto ha già registrazioni, quindi tipo, sezione normale e impostazione di gruppo sono bloccati.",
+      "errors": {
+        "DUPLICATE_CODE": "Un altro conto usa già questo codice.",
+        "INVALID_CODE": "Usa fino a 20 lettere, cifre, '-' o '.'.",
+        "PARENT_NOT_GROUP": "Scegli un conto di gruppo.",
+        "PARENT_INACTIVE": "Quel gruppo è inattivo.",
+        "PARENT_CYCLE": "Un conto non può stare sotto se stesso.",
+        "TYPE_MISMATCH": "Un conto deve avere lo stesso tipo del suo gruppo.",
+        "INVALID_TYPE": "Scegli un tipo.",
+        "INVALID_SIDE": "Scegli Dare o Avere.",
+        "IN_USE": "Non è possibile se il conto ha registrazioni o sottoconti.",
+        "HAS_CHILDREN": "Sposta prima i suoi sottoconti.",
+        "READ_ONLY": "I conti di sistema mantengono codice, tipo e posizione; si può cambiare solo il nome.",
+        "NOT_FOUND": "Gruppo non trovato."
+      }
+    },
+    "journal": {
+      "new": "Nuova scrittura",
+      "post": "Registra scrittura",
+      "memo": "Descrizione",
+      "lines": "Righe della scrittura",
+      "account": "Conto",
+      "lineMemo": "Descrizione riga",
+      "chooseAccount": "Scegli conto…",
+      "accountN": "Conto, riga {{n}}",
+      "debitN": "Dare, riga {{n}}",
+      "creditN": "Avere, riga {{n}}",
+      "memoN": "Descrizione, riga {{n}}",
+      "removeN": "Rimuovi riga {{n}}",
+      "addLine": "Aggiungi riga",
+      "balanced": "Quadrata",
+      "difference": "Differenza: {{amount}}",
+      "help": "Ogni riga ha un importo in Dare oppure in Avere. Il totale Dare deve essere uguale al totale Avere. Si possono usare solo conti movimentabili."
+    },
+    "detail": {
+      "title": "Scrittura {{no}}",
+      "loading": "Scrittura",
+      "reverse": "Storna scrittura",
+      "reverses": "Storna",
+      "original": "Scrittura originale",
+      "createdAt": "Registrata il"
+    },
+    "periods": {
+      "title": "Periodi contabili",
+      "subtitle": "I mesi chiusi non accettano registrazioni nuove o modificate.",
+      "lockTitle": "Chiudi o riapri un mese",
+      "month": "Mese",
+      "lock": "Chiudi mese",
+      "reopen": "Riapri mese",
+      "help": "Un mese può essere chiuso solo dopo la sua fine. Riaprilo per correggere le registrazioni.",
+      "locked": "{{month}} è chiuso.",
+      "reopened": "{{month}} è di nuovo aperto.",
+      "start": "Inizio",
+      "end": "Fine",
+      "lockedAt": "Chiuso il",
+      "none": "Nessun periodo.",
+      "statuses": {
+        "open": "Aperto",
+        "locked": "Chiuso"
+      }
+    }
+  },
+  "problems": {
+    "ACCOUNT_LINKED": "Un conto di cassa/banca o una categoria di spesa/entrata usa ancora questo conto, quindi resta attivo.",
+    "ACCOUNT_HAS_BALANCE": "Solo un conto con saldo zero può essere disattivato.",
+    "ACCOUNT_HAS_CHILDREN": "Disattiva prima i suoi sottoconti."
+  }
+}

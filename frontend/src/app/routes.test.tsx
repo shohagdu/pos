@@ -33,7 +33,7 @@ describe('routes', () => {
     expect(await screen.findByRole('heading', { name: /^Good (morning|afternoon|evening), Rahim$/ })).toBeInTheDocument()
     expect(await screen.findByText('0.1.0')).toBeInTheDocument()
     expect(screen.getAllByText('Rahim Store').length).toBeGreaterThan(0)
-    expect(screen.getByText('Free trial: 10 days left')).toBeInTheDocument()
+    expect(screen.queryByText('Free trial: 10 days left')).not.toBeInTheDocument()
     expect(await screen.findByText('Finish setting up')).toBeInTheDocument()
   })
 

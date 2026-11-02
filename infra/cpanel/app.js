@@ -67,18 +67,60 @@ function launcherLog(msg) {
   fs.appendFileSync(path.join(LOG_DIR, 'launcher.log'), `${new Date().toISOString()} ${msg}\n`)
 }
 
-// Stops a pos-api/pos-worker left behind by a previous launcher that was
-// killed without cleaning up (it would still hold the port).
-function stopStale(name) {
-  const pidFile = path.join(LOG_DIR, `${name}.pid`)
+// Processes of this account, read from /proc (CloudLinux hides other users').
+// Every thread counts against the account's process limit (NPROC).
+function ownProcesses() {
+  const uid = process.getuid()
+  const out = []
+  for (const entry of fs.readdirSync('/proc')) {
+    if (!/^\d+$/.test(entry)) continue
+    try {
+      const st = fs.readFileSync(`/proc/${entry}/status`, 'utf8')
+      if (Number((/^Uid:\s+(\d+)/m.exec(st) || [])[1]) !== uid) continue
+      const cmd = fs.readFileSync(`/proc/${entry}/cmdline`, 'utf8').split('\0').join(' ').trim()
+      let exe = ''
+      try {
+        exe = fs.readlinkSync(`/proc/${entry}/exe`)
+      } catch {}
+      out.push({ pid: Number(entry), threads: Number((/^Threads:\s+(\d+)/m.exec(st) || [])[1] || 1), cmd, exe })
+    } catch {}
+  }
+  return out
+}
+
+// Stops every pos-api/pos-worker of this app that is not our child: ones left
+// behind by a launcher that was stopped or crashed. They keep holding threads,
+// and with them the account's process limit, so nothing new can start.
+// Returns how many were found.
+function stopOrphans() {
+  const bins = [path.join(ROOT, 'bin', 'pos-api'), path.join(ROOT, 'bin', 'pos-worker')]
+  const ours = new Set([...children.values()].map((c) => c.pid))
+  const orphans = ownProcesses().filter((p) => !ours.has(p.pid) && bins.some((b) => p.exe === b || p.cmd.startsWith(b)))
+  for (const p of orphans) {
+    try {
+      process.kill(p.pid, 'SIGTERM')
+      launcherLog(`stopped leftover pid ${p.pid} (${p.threads} threads): ${p.cmd}`)
+    } catch {}
+  }
+  if (orphans.length) {
+    setTimeout(() => {
+      for (const p of orphans) {
+        try {
+          process.kill(p.pid, 'SIGKILL')
+        } catch {}
+      }
+    }, 2000).unref()
+  }
+  return orphans.length
+}
+
+function maxProcesses() {
   try {
-    const pid = Number(fs.readFileSync(pidFile, 'utf8'))
-    const cmd = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8')
-    if (cmd.includes(path.join(ROOT, 'bin', name))) {
-      process.kill(pid, 'SIGTERM')
-      launcherLog(`stopped stale ${name} pid ${pid}`)
-    }
-  } catch {}
+    const m = /^Max processes\s+(\S+)\s+(\S+)/m.exec(fs.readFileSync('/proc/self/limits', 'utf8'))
+    return m ? `${m[1]} (soft) / ${m[2]} (hard)` : 'unknown'
+  } catch {
+    return 'unknown'
+  }
 }
 
 function start(name, args) {
@@ -315,6 +357,18 @@ function errorLines(log) {
     .slice(-15)
 }
 
+function processReport() {
+  const procs = ownProcesses()
+  const total = procs.reduce((n, p) => n + p.threads, 0)
+  return [
+    `--- processes of this account (${procs.length} processes, ${total} threads; limit ${maxProcesses()}) ---`,
+    ...procs
+      .sort((a, b) => b.threads - a.threads)
+      .slice(0, 30)
+      .map((p) => `${String(p.pid).padStart(8)} ${String(p.threads).padStart(4)} thr  ${p.cmd.slice(0, 120)}`),
+  ].join('\n')
+}
+
 function status(req, res) {
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
   if (apiUp) return res.end('OK: the API is running.\n')
@@ -333,6 +387,8 @@ function status(req, res) {
         '',
         `Database: ${db}`,
         `API port: ${apiPort}   API process: ${children.has('pos-api') ? 'running' : 'not running'}`,
+        '',
+        processReport(),
         '',
         '--- recent errors (logs/pos-api.log) ---',
         joined || '(none)',
@@ -357,10 +413,14 @@ function notConfigured(req, res) {
 if (unconfigured) {
   launcherLog('DATABASE_URL in .env is not set; API not started')
 } else {
-  stopStale('pos-api')
-  stopStale('pos-worker')
-  start('pos-api', ['serve'])
-  if (env.RUN_WORKER !== 'false') start('pos-worker', [])
+  // Give leftovers time to exit (and free their threads) before starting ours.
+  setTimeout(
+    () => {
+      start('pos-api', ['serve'])
+      if (env.RUN_WORKER !== 'false') start('pos-worker', [])
+    },
+    stopOrphans() ? 3000 : 0,
+  )
   setInterval(checkHealth, 5000).unref()
 }
 

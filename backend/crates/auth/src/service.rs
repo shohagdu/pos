@@ -36,13 +36,17 @@ pub struct Tokens {
     pub tenant_id: Option<Uuid>,
 }
 
-/// Where a code was sent. `dev_code` is only filled when `AUTH_EXPOSE_OTP` is on.
+/// Where a code was sent. `dev_code` is only filled when `AUTH_EXPOSE_OTP` is
+/// on, or for sign-up when `AUTH_PHONE_VERIFICATION` is off (`auto_verify`).
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct OtpChallenge {
     pub destination: String,
     pub expires_in: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub dev_code: Option<String>,
+    /// Phone verification is off: the client submits `dev_code` itself.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub auto_verify: bool,
 }
 
 pub struct RegisterInput {
@@ -84,6 +88,7 @@ pub struct Auth {
     otp_pepper: [u8; 32],
     refresh_ttl_days: u64,
     expose_otp: bool,
+    phone_verification: bool,
     notifier: Arc<dyn Notifier>,
 }
 
@@ -95,6 +100,7 @@ impl Auth {
             otp_pepper: sha256(&[b"pos-otp-pepper:", cfg.jwt_secret.expose().as_bytes()]),
             refresh_ttl_days: cfg.refresh_token_ttl_days,
             expose_otp: cfg.expose_otp,
+            phone_verification: cfg.phone_verification,
             notifier,
         }
     }
@@ -117,7 +123,21 @@ impl Auth {
             destination: crate::identifier::mask(destination),
             expires_in: issued.as_ref().map_or(otp::CODE_TTL_SECS, |i| i.expires_in),
             dev_code: issued.filter(|_| self.expose_otp).map(|i| i.code),
+            auto_verify: false,
         }
+    }
+
+    /// Challenge for the sign-up code. With phone verification off, the code
+    /// is handed back so the client can confirm the number without an SMS.
+    /// Only this purpose: a password-reset code must never be returned.
+    fn verify_phone_challenge(&self, destination: &str, issued: Option<otp::IssuedOtp>) -> OtpChallenge {
+        if self.phone_verification {
+            return self.challenge(destination, issued);
+        }
+        let mut challenge = self.challenge(destination, None);
+        challenge.auto_verify = issued.is_some();
+        challenge.dev_code = issued.map(|i| i.code);
+        challenge
     }
 
     fn deliver(&self, destination: &str, purpose: OtpPurpose, issued: &otp::IssuedOtp) {
@@ -218,7 +238,7 @@ impl Auth {
         tx.commit().await.map_err(map_db_error)?;
 
         self.deliver(&phone, OtpPurpose::VerifyPhone, &issued);
-        Ok(self.challenge(&phone, Some(issued)))
+        Ok(self.verify_phone_challenge(&phone, Some(issued)))
     }
 
     /// Sends a new verification code. Answers the same way for unknown or
@@ -239,7 +259,7 @@ impl Auth {
         let issued = otp::issue(&mut tx, &self.otp_pepper, Some(user_id), &phone, OtpPurpose::VerifyPhone).await?;
         tx.commit().await.map_err(map_db_error)?;
         self.deliver(&phone, OtpPurpose::VerifyPhone, &issued);
-        Ok(self.challenge(&phone, Some(issued)))
+        Ok(self.verify_phone_challenge(&phone, Some(issued)))
     }
 
     /// Confirms the phone with the code from `register` and signs the user in.

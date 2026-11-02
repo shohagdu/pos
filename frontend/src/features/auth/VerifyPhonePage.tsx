@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useLocation } from 'react-router'
 
@@ -31,7 +31,7 @@ export function VerifyPhonePage() {
   const [verified, setVerified] = useState(false)
 
   const verify = useMutation({
-    mutationFn: () => authApi.verifyPhone(values.phone, values.code),
+    mutationFn: (code: string) => authApi.verifyPhone(values.phone, code),
     onSuccess: async (tokens) => {
       signIn(tokens)
       await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
@@ -41,11 +41,21 @@ export function VerifyPhonePage() {
   const resend = useMutation({ mutationFn: () => authApi.resendVerification(values.phone), onSuccess: setChallenge })
   const errors = fieldErrors(verify.error ?? resend.error, t)
 
+  // Phone verification is off on the server: confirm with the returned code
+  // straight away. Once per code (StrictMode runs effects twice).
+  const autoSubmitted = useRef<string | undefined>(undefined)
+  const autoCode = challenge?.auto_verify ? challenge.dev_code : undefined
+  useEffect(() => {
+    if (!autoCode || !values.phone || autoSubmitted.current === autoCode) return
+    autoSubmitted.current = autoCode
+    verify.mutate(autoCode)
+  }, [autoCode, values.phone, verify])
+
   if (me?.user.phone_verified && (verified || !state.phone)) return <Navigate to={state.next ?? landingPath(me)} replace />
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    verify.mutate()
+    verify.mutate(values.code)
   }
 
   return (
@@ -55,7 +65,7 @@ export function VerifyPhonePage() {
       <p className="mb-6 text-sm text-ink-muted">
         {challenge ? t('auth.codeSentTo', { destination: challenge.destination }) : t('auth.verifyIntro')}
       </p>
-      {challenge?.dev_code && (
+      {challenge?.dev_code && !challenge.auto_verify && (
         <Alert tone="warning" className="mb-4">
           {t('auth.devCode', { code: challenge.dev_code })}
         </Alert>

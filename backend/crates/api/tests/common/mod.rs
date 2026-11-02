@@ -38,6 +38,7 @@ pub fn config() -> AppConfig {
             refresh_token_ttl_days: 30,
             cookie_secure: false,
             expose_otp: true,
+            phone_verification: true,
         },
         run_migrations_on_start: false,
         storage_dir: std::env::temp_dir().join("pos-test-storage").to_string_lossy().into_owned(),

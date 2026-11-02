@@ -56,6 +56,32 @@ describe('sign-in', () => {
 })
 
 describe('sign-up and onboarding', () => {
+  it('skips the code screen when phone verification is off on the server', async () => {
+    let session: 'none' | 'user' = 'none'
+    const calls = mockApi({
+      ...anonymous,
+      'POST /api/v1/auth/register': () =>
+        Response.json({ destination: '+880*******001', expires_in: 300, dev_code: '654321', auto_verify: true }, { status: 201 }),
+      'POST /api/v1/auth/verify-phone': () => {
+        session = 'user'
+        return Response.json(token())
+      },
+      'GET /api/v1/auth/me': () => Response.json(session === 'user' ? { user, memberships: [], tenant: null } : null),
+    })
+    renderRoute('/register')
+
+    await userEvent.type(await screen.findByLabelText('Full name'), 'Rahim Uddin')
+    await userEvent.type(screen.getByLabelText('Mobile number'), '01711000001')
+    await userEvent.type(screen.getByLabelText('Password'), 'correct horse battery')
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+
+    expect(await screen.findByRole('heading', { name: 'Tell us about your business' })).toBeInTheDocument()
+    const verifies = calls.filter((c) => c.path === '/api/v1/auth/verify-phone')
+    expect(verifies).toHaveLength(1)
+    expect(verifies[0]?.body).toEqual({ phone: '01711000001', code: '654321' })
+    expect(screen.queryByText(/your code is/)).not.toBeInTheDocument()
+  })
+
   it('registers, verifies the phone, creates the business and saves the regional step', async () => {
     let session: 'none' | 'user' | 'tenant' = 'none'
     const calls = mockApi({

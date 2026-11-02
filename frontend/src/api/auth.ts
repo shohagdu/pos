@@ -6,8 +6,10 @@ import type { TokenResponse } from './session'
 export interface OtpChallenge {
   destination: string
   expires_in: number
-  /** Only in development (AUTH_EXPOSE_OTP). */
+  /** Only in development (AUTH_EXPOSE_OTP), or with `auto_verify`. */
   dev_code?: string
+  /** Phone verification is off on the server: submit `dev_code` without asking. */
+  auto_verify?: boolean
 }
 
 export interface UserProfile {

@@ -105,6 +105,10 @@ pub struct AuthConfig {
     pub cookie_secure: bool,
     /// Return OTP codes in API responses. Development and test only.
     pub expose_otp: bool,
+    /// Require the SMS code at sign-up. When off, sign-up confirms the phone
+    /// on its own (until an SMS gateway exists); password reset still needs
+    /// the code. Not allowed in production.
+    pub phone_verification: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -143,6 +147,14 @@ impl AppConfig {
             });
         }
 
+        let phone_verification: bool = parse_or("AUTH_PHONE_VERIFICATION", true)?;
+        if !phone_verification && env == AppEnv::Production {
+            return Err(ConfigError::Invalid {
+                key: "AUTH_PHONE_VERIFICATION",
+                message: "cannot be turned off in production".into(),
+            });
+        }
+
         Ok(Self {
             env,
             http: HttpConfig {
@@ -170,6 +182,7 @@ impl AppConfig {
                 refresh_token_ttl_days: parse_or("REFRESH_TOKEN_TTL_DAYS", 30)?,
                 cookie_secure: parse_or("AUTH_COOKIE_SECURE", true)?,
                 expose_otp,
+                phone_verification,
             },
             run_migrations_on_start: parse_or("RUN_MIGRATIONS_ON_START", false)?,
             storage_dir: string_or("STORAGE_DIR", "storage"),

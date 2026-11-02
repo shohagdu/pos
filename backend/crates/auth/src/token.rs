@@ -153,6 +153,7 @@ mod tests {
             refresh_token_ttl_days: 30,
             cookie_secure: true,
             expose_otp: false,
+            phone_verification: true,
         }
     }
 

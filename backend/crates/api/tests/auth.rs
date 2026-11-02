@@ -380,3 +380,58 @@ async fn protected_routes_need_a_valid_token(pool: MySqlPool) {
     let ok = call(&srv, Req::get("/api/v1/settings").bearer(&session.token).build()).await;
     assert_eq!(ok.status, StatusCode::OK);
 }
+
+/// AUTH_PHONE_VERIFICATION=false (no SMS gateway): sign-up hands back the
+/// code to submit, signing in marks the phone verified, and password-reset
+/// codes are still never returned.
+#[sqlx::test(migrator = "pos_db::MIGRATOR")]
+async fn phone_verification_off(pool: MySqlPool) {
+    let mut config = common::config();
+    config.auth.expose_otp = false;
+    config.auth.phone_verification = false;
+    let srv = test::init_service(app(AppState::new(pool.clone(), config))).await;
+
+    let reg = call(
+        &srv,
+        Req::post(
+            "/api/v1/auth/register",
+            json!({ "full_name": "Karim Ali", "phone": "01711000021", "password": PASSWORD }),
+        )
+        .build(),
+    )
+    .await;
+    assert_eq!(reg.status, StatusCode::CREATED);
+    assert_eq!(reg.body["auto_verify"], true);
+    let code = reg.body["dev_code"].as_str().expect("code");
+    let ok =
+        call(&srv, Req::post("/api/v1/auth/verify-phone", json!({ "phone": "01711000021", "code": code })).build())
+            .await;
+    assert_eq!(ok.status, StatusCode::OK, "{}", ok.body);
+
+    // Registered but never verified (as before the setting was turned off):
+    // signing in is enough.
+    let reg = call(
+        &srv,
+        Req::post(
+            "/api/v1/auth/register",
+            json!({ "full_name": "Salma Akter", "phone": "01711000022", "password": PASSWORD }),
+        )
+        .build(),
+    )
+    .await;
+    assert_eq!(reg.status, StatusCode::CREATED);
+    let login = call(
+        &srv,
+        Req::post("/api/v1/auth/login", json!({ "identifier": "01711000022", "password": PASSWORD })).build(),
+    )
+    .await;
+    assert_eq!(login.status, StatusCode::OK, "{}", login.body);
+    let me = call(&srv, Req::get("/api/v1/auth/me").bearer(&login.token()).build()).await;
+    assert_eq!(me.body["user"]["phone_verified"], true);
+
+    let forgot =
+        call(&srv, Req::post("/api/v1/auth/password/forgot", json!({ "identifier": "01711000022" })).build()).await;
+    assert_eq!(forgot.status, StatusCode::ACCEPTED);
+    assert!(forgot.body.get("dev_code").is_none(), "{}", forgot.body);
+    assert!(forgot.body.get("auto_verify").is_none(), "{}", forgot.body);
+}

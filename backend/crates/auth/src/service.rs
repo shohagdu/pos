@@ -345,7 +345,15 @@ impl Auth {
             return Err(AppError::Denied { code: "ACCOUNT_DISABLED", message: "this account is disabled".into() });
         }
 
-        sqlx::query("UPDATE users SET last_login_at = NOW(6) WHERE id = ?")
+        // With phone verification off, signing in with the password is enough;
+        // otherwise accounts made before it was turned off stay stuck on /verify.
+        let update = if self.phone_verification {
+            "UPDATE users SET last_login_at = NOW(6) WHERE id = ?"
+        } else {
+            "UPDATE users SET last_login_at = NOW(6), \
+             phone_verified_at = IF(phone IS NULL, NULL, COALESCE(phone_verified_at, NOW(6))) WHERE id = ?"
+        };
+        sqlx::query(update)
             .bind(user.id)
             .execute(&mut *tx)
             .await

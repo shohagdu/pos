@@ -88,6 +88,9 @@ pub struct HttpConfig {
     pub trust_proxy_headers: bool,
     /// Public URL of the web app, used in links sent to users (invitations).
     pub app_url: String,
+    /// HTTP worker threads; 0 = one per CPU core. Shared hosts count threads
+    /// against the account's process limit, so keep this small there.
+    pub workers: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -148,6 +151,7 @@ impl AppConfig {
                 cors_allowed_origins: list("CORS_ALLOWED_ORIGINS"),
                 trust_proxy_headers: parse_or("HTTP_TRUST_PROXY_HEADERS", false)?,
                 app_url: string_or("APP_URL", "http://localhost:5173").trim_end_matches('/').to_owned(),
+                workers: parse_or("HTTP_WORKERS", 0)?,
             },
             database: DatabaseConfig {
                 url: Secret::new(required("DATABASE_URL")?),

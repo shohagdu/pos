@@ -72,9 +72,14 @@ async fn serve(config: AppConfig) -> anyhow::Result<()> {
     // Lazy pool: the server starts even if MySQL is still booting; /readyz reports it.
     let pool = pos_db::connect_lazy(&config.database).context("invalid database configuration")?;
     let bind = (config.http.host.clone(), config.http.port);
+    let workers = config.http.workers;
     let state = AppState::new(pool, config);
 
-    tracing::info!(host = %bind.0, port = bind.1, env = ?state.config.env, "starting pos-api");
-    HttpServer::new(move || app(state.clone())).bind(bind)?.shutdown_timeout(30).run().await?;
+    tracing::info!(host = %bind.0, port = bind.1, workers, env = ?state.config.env, "starting pos-api");
+    let mut server = HttpServer::new(move || app(state.clone()));
+    if workers > 0 {
+        server = server.workers(workers);
+    }
+    server.bind(bind)?.shutdown_timeout(30).run().await?;
     Ok(())
 }

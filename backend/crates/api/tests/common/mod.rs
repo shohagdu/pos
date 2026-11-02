@@ -22,6 +22,7 @@ pub fn config() -> AppConfig {
             cors_allowed_origins: vec!["http://localhost:5173".into()],
             trust_proxy_headers: false,
             app_url: "http://localhost:5173".into(),
+            workers: 1,
         },
         database: DatabaseConfig {
             url: Secret::new("mysql://nobody@127.0.0.1:1/none"),

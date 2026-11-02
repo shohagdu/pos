@@ -9,7 +9,9 @@ use pos_core::config::{AppConfig, LogFormat, load_dotenv};
 use pos_worker::{cleanup, partitions, reconcile};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
-#[tokio::main]
+// One thread: the jobs run one after another, and shared hosts count every
+// thread against the account's process limit.
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     load_dotenv();
     let config = AppConfig::from_env().context("invalid configuration")?;

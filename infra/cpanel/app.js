@@ -290,6 +290,7 @@ const HINTS = [
   [/SUPER privilege|log_bin_trust_function_creators/, 'The host blocks database triggers. Ask the hosting company to set log_bin_trust_function_creators=1 for your database.'],
   [/failed to lookup address|Name does not resolve|Name or service not known/, 'The database host in DATABASE_URL is unreadable, usually because the password contains @ # $ : / ? unencoded. Use a password of letters and digits only, or encode them (@ -> %40, # -> %23, $ -> %24, : -> %3A, / -> %2F, ? -> %3F).'],
   [/Unknown system variable 'transaction_isolation'/, 'The host runs MariaDB or MySQL older than 5.7.20; this app needs MySQL 8. Check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for MySQL 8.'],
+  [/Failed to create new Arbiter|Resource temporarily unavailable/, 'The API needs more threads than the host allows (CloudLinux process limit). Set HTTP_WORKERS=2 in pos-app/.env (or 1), then Restart the app.'],
   [/EAGAIN/, 'The host refused to start another process (CloudLinux process limit). Stop and Start the app once; if it repeats, ask the hosting company to raise the process (NPROC) limit.'],
   [/Connection refused|Can't connect|Connection timed out/i, 'Cannot reach MySQL. Keep "localhost" as the host in DATABASE_URL.'],
   [/invalid configuration|missing required environment variable/, 'A setting in pos-app/.env is missing or invalid; the line above names it.'],

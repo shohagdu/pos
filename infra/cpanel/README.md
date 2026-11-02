@@ -39,8 +39,9 @@ Tables are created automatically on first start (`RUN_MIGRATIONS_ON_START=true`)
 
 cPanel > **File Manager**:
 
-1. In your home directory (not `public_html`), create the folder `pos-app`.
-2. Upload `pos-cpanel.zip` there and **Extract** it.
+1. Go to your home directory (not `public_html`).
+2. Upload `pos-cpanel.zip` there and **Extract** it. The zip holds a
+   `pos-app/` folder, so this creates `~/pos-app` (do not create it first).
 3. Rename `env.example` to `.env` (enable *Show Hidden Files* in Settings),
    then **Edit** it: `DATABASE_URL`, `JWT_SECRET` (`openssl rand -base64 48`).
 4. Select `bin/pos-api` and `bin/pos-worker` > **Permissions** > `755`.
@@ -71,7 +72,8 @@ cPanel > **Setup Node.js App** > **Create Application**:
 
 ## Updating
 
-Build again, upload and extract over `pos-app` (keep `.env` and `storage/`),
+Build again, upload the zip to the home directory and extract it over
+`pos-app` (the zip has no `.env`, and existing `storage/` files are kept),
 re-apply `755` on the binaries, then **Restart** in Setup Node.js App.
 
 ## Known limits

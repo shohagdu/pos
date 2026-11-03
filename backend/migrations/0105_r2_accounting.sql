@@ -150,7 +150,7 @@ INSERT INTO tmp_coa VALUES
     ('6080', 'Miscellaneous',           'expense',   'debit',  '6000', 'misc_expense',         TRUE);
 
 INSERT INTO ledger_accounts (tenant_id, id, code, name, account_type, normal_side, system_key, is_postable)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), c.code, c.name, c.account_type, c.normal_side, c.system_key, c.is_postable
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), c.code, c.name, c.account_type, c.normal_side, c.system_key, c.is_postable
 FROM tenants t CROSS JOIN tmp_coa c WHERE t.slug <> 'platform';
 
 UPDATE ledger_accounts child
@@ -170,7 +170,7 @@ JOIN ledger_accounts la ON la.tenant_id = ec.tenant_id AND la.name = ec.name AND
 SET ec.ledger_account_id = la.id;
 
 INSERT INTO document_sequences (tenant_id, id, branch_id, doc_type, prefix, include_period, padding)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), NULL, 'journal', 'JV', TRUE, 5
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), NULL, 'journal', 'JV', TRUE, 5
 FROM tenants t
 WHERE t.slug <> 'platform' AND NOT EXISTS (SELECT 1 FROM document_sequences s
                   WHERE s.tenant_id = t.id AND s.branch_id IS NULL AND s.doc_type = 'journal');

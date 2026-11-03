@@ -101,7 +101,7 @@ CREATE TABLE stock_count_items (
 SET @app_platform = 1;
 
 INSERT INTO document_sequences (tenant_id, id, branch_id, doc_type, prefix, include_period, padding)
-SELECT b.tenant_id, UUID_TO_BIN(UUID(), 1), b.id, d.doc_type, d.prefix, TRUE, 5
+SELECT b.tenant_id, UNHEX(REPLACE(UUID(), '-', '')), b.id, d.doc_type, d.prefix, TRUE, 5
 FROM branches b
 CROSS JOIN (SELECT 'count' AS doc_type, 'CNT' AS prefix UNION ALL SELECT 'income', 'INC') d
 WHERE NOT EXISTS (SELECT 1 FROM document_sequences s

@@ -7,14 +7,13 @@
 
 mod error;
 pub mod guards;
+mod migrations;
 mod pool;
 mod tx;
 
 pub use error::map_db_error;
+pub use migrations::MIGRATOR;
 pub use pool::{connect, connect_lazy, connect_options, pool_options};
 pub use tx::{IsolationLevel, PlatformTx, TenantTx, begin_platform, begin_tenant, begin_tenant_with};
 
 pub use sqlx::{MySql, MySqlPool};
-
-/// Embedded migrations from `backend/migrations` (compiled into the binary).
-pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../../migrations");

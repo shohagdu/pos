@@ -159,7 +159,7 @@ CREATE TABLE account_transfers (
 SET @app_platform = 1;
 
 INSERT INTO payment_accounts (tenant_id, id, account_type, name, is_default)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), a.account_type, a.name, a.is_default
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), a.account_type, a.name, a.is_default
 FROM tenants t
 CROSS JOIN (SELECT 'cash' AS account_type, 'Cash' AS name, TRUE AS is_default
             UNION ALL SELECT 'bank', 'Bank Account', FALSE
@@ -167,7 +167,7 @@ CROSS JOIN (SELECT 'cash' AS account_type, 'Cash' AS name, TRUE AS is_default
 WHERE t.slug <> 'platform';
 
 INSERT INTO payment_methods (tenant_id, id, name, method_type, default_account_id, requires_reference, sort_order)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), m.name, m.method_type,
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), m.name, m.method_type,
        (SELECT pa.id FROM payment_accounts pa WHERE pa.tenant_id = t.id AND pa.name = m.account_name),
        m.requires_reference, m.sort_order
 FROM tenants t

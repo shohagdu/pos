@@ -57,7 +57,7 @@ CREATE TABLE expenses (
 SET @app_platform = 1;
 
 INSERT INTO expense_categories (tenant_id, id, name, is_system)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), c.name, TRUE
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), c.name, TRUE
 FROM tenants t
 CROSS JOIN (SELECT 'Rent' AS name UNION ALL SELECT 'Utilities' UNION ALL SELECT 'Salaries'
             UNION ALL SELECT 'Transport' UNION ALL SELECT 'Marketing' UNION ALL SELECT 'Maintenance'

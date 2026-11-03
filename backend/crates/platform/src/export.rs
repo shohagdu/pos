@@ -90,7 +90,7 @@ async fn columns(tx: &mut TenantTx, table: &str) -> AppResult<Vec<(String, Strin
         .into_iter()
         .map(|(name, data_type, octets)| {
             let expr = match data_type.as_str() {
-                "binary" if octets == 16 => format!("BIN_TO_UUID(`{name}`)"),
+                "binary" if octets == 16 => format!("LOWER(INSERT(INSERT(INSERT(INSERT(HEX(`{name}`), 21, 0, '-'), 17, 0, '-'), 13, 0, '-'), 9, 0, '-'))"),
                 "binary" | "varbinary" | "blob" => format!("HEX(`{name}`)"),
                 _ => format!("CAST(`{name}` AS CHAR)"),
             };

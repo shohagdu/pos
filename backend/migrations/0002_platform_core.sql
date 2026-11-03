@@ -25,7 +25,7 @@ CREATE TABLE tenants (
     updated_at        DATETIME(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
     PRIMARY KEY (id),
     UNIQUE KEY uq_tenants_slug (slug),
-    CONSTRAINT ck_tenants_slug   CHECK (REGEXP_LIKE(slug, '^[a-z0-9][a-z0-9-]{2,62}$', 'c')),
+    CONSTRAINT ck_tenants_slug   CHECK (slug REGEXP '(?-i)^[a-z0-9][a-z0-9-]{2,62}$'),
     CONSTRAINT ck_tenants_name   CHECK (CHAR_LENGTH(name) >= 2),
     CONSTRAINT ck_tenants_type   CHECK (business_type IN ('retail','grocery','fashion','electronics',
                                                           'wholesale','pharmacy','restaurant','other')),
@@ -122,10 +122,10 @@ INSERT INTO features (code, name, kind, description) VALUES
  ('api.access',              'Public API',              'flag',  'API keys and webhooks (R3)'),
  ('whitelabel',              'White label',             'flag',  'Custom branding and domain (R4)');
 
-SET @plan_trial      = UUID_TO_BIN('019a0000-0000-7000-8000-000000000001'),
-    @plan_starter    = UUID_TO_BIN('019a0000-0000-7000-8000-000000000002'),
-    @plan_business   = UUID_TO_BIN('019a0000-0000-7000-8000-000000000003'),
-    @plan_enterprise = UUID_TO_BIN('019a0000-0000-7000-8000-000000000004');
+SET @plan_trial      = X'019a0000000070008000000000000001',
+    @plan_starter    = X'019a0000000070008000000000000002',
+    @plan_business   = X'019a0000000070008000000000000003',
+    @plan_enterprise = X'019a0000000070008000000000000004';
 
 INSERT INTO plans (id, code, name, is_public, is_trial, trial_days, sort_order) VALUES
  (@plan_trial,      'trial',      'Free Trial', FALSE, TRUE, 14,   0),
@@ -134,12 +134,12 @@ INSERT INTO plans (id, code, name, is_public, is_trial, trial_days, sort_order) 
  (@plan_enterprise, 'enterprise', 'Enterprise', FALSE, FALSE, NULL, 3);
 
 INSERT INTO plan_prices (id, plan_id, billing_cycle, amount) VALUES
- (UUID_TO_BIN('019a0000-0000-7000-8001-000000000001'), @plan_starter,  'monthly',     990.00),
- (UUID_TO_BIN('019a0000-0000-7000-8001-000000000002'), @plan_starter,  'quarterly',  2821.50),
- (UUID_TO_BIN('019a0000-0000-7000-8001-000000000003'), @plan_starter,  'annual',    10098.00),
- (UUID_TO_BIN('019a0000-0000-7000-8001-000000000004'), @plan_business, 'monthly',    2490.00),
- (UUID_TO_BIN('019a0000-0000-7000-8001-000000000005'), @plan_business, 'quarterly',  7096.50),
- (UUID_TO_BIN('019a0000-0000-7000-8001-000000000006'), @plan_business, 'annual',    25398.00);
+ (X'019a0000000070008001000000000001', @plan_starter,  'monthly',     990.00),
+ (X'019a0000000070008001000000000002', @plan_starter,  'quarterly',  2821.50),
+ (X'019a0000000070008001000000000003', @plan_starter,  'annual',    10098.00),
+ (X'019a0000000070008001000000000004', @plan_business, 'monthly',    2490.00),
+ (X'019a0000000070008001000000000005', @plan_business, 'quarterly',  7096.50),
+ (X'019a0000000070008001000000000006', @plan_business, 'annual',    25398.00);
 
 -- limits: NULL = unlimited
 INSERT INTO plan_features (plan_id, feature_code, enabled, limit_value) VALUES
@@ -173,6 +173,6 @@ INSERT INTO plan_features (plan_id, feature_code, enabled, limit_value) VALUES
 
 -- Reserved platform tenant: owns platform-level files (DB design §13.1)
 INSERT INTO tenants (id, slug, name, business_type, status)
-VALUES (UUID_TO_BIN('00000000-0000-7000-8000-000000000000'), 'platform', 'Platform', 'other', 'active');
+VALUES (X'00000000000070008000000000000000', 'platform', 'Platform', 'other', 'active');
 
 INSERT INTO platform_sequences (name, next_value) VALUES ('subscription_invoice', 1);

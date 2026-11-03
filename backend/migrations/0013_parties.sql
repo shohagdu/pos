@@ -95,7 +95,7 @@ CREATE TABLE party_ledger_entries (
 SET @app_platform = 1;
 
 INSERT INTO customers (tenant_id, id, code, name, is_walk_in)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), 'WALKIN', 'Walk-in Customer', TRUE FROM tenants t WHERE t.slug <> 'platform';
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), 'WALKIN', 'Walk-in Customer', TRUE FROM tenants t WHERE t.slug <> 'platform';
 
 SET @app_platform = NULL;
 

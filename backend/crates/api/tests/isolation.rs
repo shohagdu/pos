@@ -905,7 +905,7 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
         failures.push(format!("POST /roles with tenant_id: {} {}", smuggled.status, smuggled.body));
     }
     let in_a: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM roles WHERE tenant_id = UUID_TO_BIN(?) AND name = 'Smuggled'")
+        sqlx::query_scalar("SELECT COUNT(*) FROM roles WHERE tenant_id = UNHEX(REPLACE(?, '-', '')) AND name = 'Smuggled'")
             .bind(&victim.tenant_id)
             .fetch_one(&pool)
             .await

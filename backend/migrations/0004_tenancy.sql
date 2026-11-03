@@ -51,7 +51,7 @@ CREATE TABLE branches (
     UNIQUE KEY uq_branches_code (tenant_id, code),
     UNIQUE KEY uq_branches_default (tenant_id, default_key),
     CONSTRAINT fk_branches_tenant FOREIGN KEY (tenant_id) REFERENCES tenants (id),
-    CONSTRAINT ck_branches_code   CHECK (REGEXP_LIKE(code, '^[A-Z0-9]{1,10}$', 'c')),
+    CONSTRAINT ck_branches_code   CHECK (code REGEXP '(?-i)^[A-Z0-9]{1,10}$'),
     CONSTRAINT ck_branches_status CHECK (status IN ('active','inactive'))
 );
 

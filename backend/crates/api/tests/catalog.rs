@@ -48,7 +48,7 @@ async fn new_business_has_tax_rates_and_units(pool: MySqlPool) {
     assert_eq!(no_vat["is_default"], true);
     assert_eq!(find(&taxes.body, "name", "VAT 15%")["rate_pct"], "15.0000");
     let setting: Option<Uuid> =
-        sqlx::query_scalar("SELECT default_tax_rate_id FROM tenant_settings WHERE tenant_id = UUID_TO_BIN(?)")
+        sqlx::query_scalar("SELECT default_tax_rate_id FROM tenant_settings WHERE tenant_id = UNHEX(REPLACE(?, '-', ''))")
             .bind(&tenant)
             .fetch_one(&pool)
             .await

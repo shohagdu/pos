@@ -29,7 +29,7 @@ pub async fn roles(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<Vec<RoleRef>> {
     let tenant_id = tx.tenant_id();
     let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
         "SELECT r.id, r.code, r.name FROM roles r \
-         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON r.id = UUID_TO_BIN(j.id) \
+         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON r.id = UNHEX(REPLACE(j.id, '-', '')) \
          WHERE r.tenant_id = ?",
     )
     .bind(ids_json(&unique.iter().copied().collect::<Vec<_>>())?)
@@ -52,7 +52,7 @@ pub async fn ensure_branches(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<()> {
     let tenant_id = tx.tenant_id();
     let found: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM branches b \
-         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON b.id = UUID_TO_BIN(j.id) \
+         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON b.id = UNHEX(REPLACE(j.id, '-', '')) \
          WHERE b.tenant_id = ? AND b.status = 'active'",
     )
     .bind(ids_json(&unique.iter().copied().collect::<Vec<_>>())?)
@@ -71,7 +71,7 @@ pub async fn role_permissions(tx: &mut TenantTx, role_ids: &[Uuid]) -> AppResult
     let tenant_id = tx.tenant_id();
     sqlx::query_scalar(
         "SELECT DISTINCT rp.permission_code FROM role_permissions rp \
-         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON rp.role_id = UUID_TO_BIN(j.id) \
+         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON rp.role_id = UNHEX(REPLACE(j.id, '-', '')) \
          WHERE rp.tenant_id = ?",
     )
     .bind(ids_json(role_ids)?)

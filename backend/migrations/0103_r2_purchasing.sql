@@ -57,7 +57,7 @@ CREATE TABLE purchase_return_items (
 SET @app_platform = 1;
 
 INSERT INTO document_sequences (tenant_id, id, branch_id, doc_type, prefix, include_period, padding)
-SELECT b.tenant_id, UUID_TO_BIN(UUID(), 1), b.id, 'purchase_return', 'PRT', TRUE, 5
+SELECT b.tenant_id, UNHEX(REPLACE(UUID(), '-', '')), b.id, 'purchase_return', 'PRT', TRUE, 5
 FROM branches b
 WHERE NOT EXISTS (SELECT 1 FROM document_sequences s
                   WHERE s.tenant_id = b.tenant_id AND s.branch_id = b.id AND s.doc_type = 'purchase_return');

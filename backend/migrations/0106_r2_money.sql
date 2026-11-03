@@ -52,7 +52,7 @@ CREATE TABLE other_incomes (
 SET @app_platform = 1;
 
 INSERT INTO income_categories (tenant_id, id, name, ledger_account_id, is_system)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), c.name,
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), c.name,
        (SELECT la.id FROM ledger_accounts la WHERE la.tenant_id = t.id AND la.system_key = 'other_income'), TRUE
 FROM tenants t
 CROSS JOIN (SELECT 'Interest' AS name UNION ALL SELECT 'Rent Received' UNION ALL SELECT 'Commission'

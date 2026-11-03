@@ -142,7 +142,7 @@ CREATE TABLE product_variants (
     FULLTEXT KEY ft_variants_search (search_text) WITH PARSER ngram,
     CONSTRAINT fk_variants_tenant  FOREIGN KEY (tenant_id) REFERENCES tenants (id),
     CONSTRAINT fk_variants_product FOREIGN KEY (tenant_id, product_id) REFERENCES products (tenant_id, id),
-    CONSTRAINT ck_variants_sku     CHECK (REGEXP_LIKE(sku, '^[A-Za-z0-9._-]{1,64}$')),
+    CONSTRAINT ck_variants_sku     CHECK (sku REGEXP '^[A-Za-z0-9._-]{1,64}$'),
     CONSTRAINT ck_variants_prices  CHECK (purchase_price >= 0 AND selling_price >= 0
                                           AND (wholesale_price IS NULL OR wholesale_price >= 0)
                                           AND (min_selling_price IS NULL OR min_selling_price >= 0)
@@ -190,7 +190,7 @@ ALTER TABLE tenant_settings ADD CONSTRAINT fk_settings_default_tax
 -- are created below; tenant_settings already has one, hence platform mode.
 SET @app_platform = 1;
 INSERT INTO tax_rates (tenant_id, id, name, rate_pct, is_default)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), r.name, r.rate_pct, r.is_default
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), r.name, r.rate_pct, r.is_default
 FROM tenants t
 CROSS JOIN (SELECT 'No VAT' AS name, 0 AS rate_pct, TRUE AS is_default
             UNION ALL SELECT 'VAT 5%', 5, FALSE UNION ALL SELECT 'VAT 7.5%', 7.5, FALSE
@@ -198,7 +198,7 @@ CROSS JOIN (SELECT 'No VAT' AS name, 0 AS rate_pct, TRUE AS is_default
 WHERE t.slug <> 'platform';
 
 INSERT INTO units (tenant_id, id, name, short_name, allow_fraction)
-SELECT t.id, UUID_TO_BIN(UUID(), 1), u.name, u.short_name, u.allow_fraction
+SELECT t.id, UNHEX(REPLACE(UUID(), '-', '')), u.name, u.short_name, u.allow_fraction
 FROM tenants t
 CROSS JOIN (SELECT 'Piece' AS name, 'pcs' AS short_name, FALSE AS allow_fraction
             UNION ALL SELECT 'Kilogram', 'kg', TRUE UNION ALL SELECT 'Gram', 'g', TRUE

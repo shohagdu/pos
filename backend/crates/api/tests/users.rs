@@ -111,7 +111,7 @@ async fn invitations_expire_and_can_be_resent_or_revoked(pool: MySqlPool) {
     let old_token = token_of(&created.body);
     let ctx = pos_core::PlatformCtx { actor_id: None, reason: "test".into(), meta: Default::default() };
     let mut ptx = pos_db::begin_platform(&pool, &ctx).await.expect("tx");
-    sqlx::query("UPDATE invitations SET expires_at = NOW(6) - INTERVAL 1 SECOND WHERE id = UUID_TO_BIN(?)")
+    sqlx::query("UPDATE invitations SET expires_at = NOW(6) - INTERVAL 1 SECOND WHERE id = UNHEX(REPLACE(?, '-', ''))")
         .bind(&id)
         .execute(&mut *ptx)
         .await

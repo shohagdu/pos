@@ -210,7 +210,7 @@ async fn billing_claims_admin_and_export(pool: MySqlPool) {
     sqlx::query("SET @app_platform = 1").execute(&mut *conn).await.expect("platform session");
     sqlx::query(
         "UPDATE subscriptions SET trial_ends_at = UTC_TIMESTAMP(6) - INTERVAL 1 DAY, current_period_end = UTC_TIMESTAMP(6) - INTERVAL 1 DAY \
-         WHERE tenant_id = UUID_TO_BIN(?)",
+         WHERE tenant_id = UNHEX(REPLACE(?, '-', ''))",
     )
     .bind(&late_id)
     .execute(&mut *conn)
@@ -220,7 +220,7 @@ async fn billing_claims_admin_and_export(pool: MySqlPool) {
     drop(conn);
     let outcome = pos_platform::lifecycle::run(&pool, Utc::now()).await.expect("lifecycle");
     assert!(outcome.transitions >= 1, "{outcome:?}");
-    let stored: String = sqlx::query_scalar("SELECT status FROM subscriptions WHERE tenant_id = UUID_TO_BIN(?)")
+    let stored: String = sqlx::query_scalar("SELECT status FROM subscriptions WHERE tenant_id = UNHEX(REPLACE(?, '-', ''))")
         .bind(&late_id)
         .fetch_one(&pool)
         .await
@@ -254,7 +254,7 @@ async fn billing_claims_admin_and_export(pool: MySqlPool) {
             == 2)
     );
     pos_platform::lifecycle::run(&pool, Utc::now() + chrono::Duration::days(3650)).await.expect("lifecycle");
-    let stored: String = sqlx::query_scalar("SELECT status FROM subscriptions WHERE tenant_id = UUID_TO_BIN(?)")
+    let stored: String = sqlx::query_scalar("SELECT status FROM subscriptions WHERE tenant_id = UNHEX(REPLACE(?, '-', ''))")
         .bind(&late_id)
         .fetch_one(&pool)
         .await

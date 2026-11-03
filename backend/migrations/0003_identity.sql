@@ -20,7 +20,7 @@ CREATE TABLE users (
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_phone (phone),
     UNIQUE KEY uq_users_email (email),
-    CONSTRAINT ck_users_phone   CHECK (phone IS NULL OR REGEXP_LIKE(phone, '^\\+?[0-9]{8,15}$')),
+    CONSTRAINT ck_users_phone   CHECK (phone IS NULL OR phone REGEXP '^\\+?[0-9]{8,15}$'),
     CONSTRAINT ck_users_contact CHECK (phone IS NOT NULL OR email IS NOT NULL),
     CONSTRAINT ck_users_status  CHECK (status IN ('active','disabled'))
 );

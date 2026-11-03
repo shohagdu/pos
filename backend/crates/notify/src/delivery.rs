@@ -212,13 +212,12 @@ pub async fn dispatch(pool: &MySqlPool, gateways: &Gateways, now: DateTime<Utc>)
     }
 
     let mut tx = pos_db::begin_platform(pool, &ctx()).await?;
-    let due: Vec<Due> = sqlx::query_as(
-        "SELECT d.tenant_id, d.id, d.channel, d.destination, d.attempts, n.title, n.body, t.name AS business_name \
-         FROM notification_deliveries d \
-         JOIN notifications n ON n.tenant_id = d.tenant_id AND n.id = d.notification_id \
-         JOIN tenants t ON t.id = d.tenant_id \
-         WHERE d.status IN ('queued', 'failed') AND d.next_attempt_at <= ? \
-         ORDER BY d.next_attempt_at LIMIT ? FOR UPDATE OF d SKIP LOCKED \
+    // Locks only the delivery rows (MariaDB has no `FOR UPDATE OF`), then
+    // reads what each needs to be sent.
+    let locked: Vec<(Uuid, Uuid)> = sqlx::query_as(
+        "SELECT tenant_id, id FROM notification_deliveries \
+         WHERE status IN ('queued', 'failed') AND next_attempt_at <= ? \
+         ORDER BY next_attempt_at LIMIT ? FOR UPDATE SKIP LOCKED \
          /* tenant-lint: allow the dispatcher serves every business */",
     )
     .bind(now)
@@ -226,6 +225,22 @@ pub async fn dispatch(pool: &MySqlPool, gateways: &Gateways, now: DateTime<Utc>)
     .fetch_all(&mut *tx)
     .await
     .map_err(map_db_error)?;
+    let mut due: Vec<Due> = Vec::with_capacity(locked.len());
+    for (tenant_id, id) in locked {
+        let row: Due = sqlx::query_as(
+            "SELECT d.tenant_id, d.id, d.channel, d.destination, d.attempts, n.title, n.body, t.name AS business_name \
+             FROM notification_deliveries d \
+             JOIN notifications n ON n.tenant_id = d.tenant_id AND n.id = d.notification_id \
+             JOIN tenants t ON t.id = d.tenant_id \
+             WHERE d.tenant_id = ? AND d.id = ?",
+        )
+        .bind(tenant_id)
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(map_db_error)?;
+        due.push(row);
+    }
     for d in &due {
         sqlx::query("UPDATE notification_deliveries SET next_attempt_at = ? WHERE tenant_id = ? AND id = ?")
             .bind(now + Duration::minutes(LEASE_MINUTES))

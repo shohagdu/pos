@@ -278,7 +278,7 @@ pub async fn create(
     // Every active stocked product of the scope, with its balance (0 if none).
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
         "INSERT INTO stock_count_items (tenant_id, id, count_id, variant_id, system_qty, unit_cost) \
-         SELECT v.tenant_id, UUID_TO_BIN(UUID(), 1), ",
+         SELECT v.tenant_id, UNHEX(REPLACE(UUID(), '-', '')), ",
     );
     q.push_bind(id)
         .push(

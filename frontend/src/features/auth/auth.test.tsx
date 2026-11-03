@@ -145,6 +145,34 @@ describe('sign-up and onboarding', () => {
     expect(patch?.body).toMatchObject({ currency_code: 'EUR', fiscal_year_start_month: 1, timezone: 'Asia/Dhaka' })
   })
 
+  it('skips the business form with a placeholder business and opens the dashboard', async () => {
+    let tenant: string | null = null
+    const calls = mockApi({
+      'POST /api/v1/auth/refresh': token(),
+      'POST /api/v1/tenants': () =>
+        Response.json({ tenant_id: 't1', slug: 'rahim-uddin-s-shop', name: "Rahim Uddin's Shop", branch_id: 'b1', membership_id: 'm-t1' }, { status: 201 }),
+      'POST /api/v1/auth/switch-tenant': () => {
+        tenant = 't1'
+        return Response.json(token('t1'))
+      },
+      'GET /api/v1/auth/me': () =>
+        Response.json(
+          tenant
+            ? { user, memberships: [membership('t1', "Rahim Uddin's Shop")], tenant: currentTenant('t1', "Rahim Uddin's Shop") }
+            : { user, memberships: [], tenant: null },
+        ),
+      'GET /api/v1/onboarding': { steps: [], dismissed: false, complete: false },
+      'GET /readyz': { status: 'ready' },
+      'GET /api/v1/meta': { name: 'pos-api', version: '0.1.0', environment: 'test' },
+    })
+    const { router } = renderRoute('/onboarding/business')
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Skip for now' }))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toEqual({ name: `${user.full_name}'s Shop`, business_type: 'retail', locale: 'en' })
+  })
+
   it('shows field errors from the API next to the field', async () => {
     mockApi({
       ...anonymous,

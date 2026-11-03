@@ -108,7 +108,10 @@
       "tradeLicense": "Trade licence no. (optional)",
       "moreDetails": "+ Add phone, email, BIN and trade licence",
       "create": "Create business",
-      "creating": "Setting up your business…"
+      "creating": "Setting up your business…",
+      "skip": "Skip for now",
+      "skipHint": "We create your business with a placeholder name. Change it any time in Settings.",
+      "defaultName": "{{name}}'s Shop"
     },
     "regional": {
       "title": "Regional settings",

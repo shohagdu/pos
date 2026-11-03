@@ -108,7 +108,10 @@
       "tradeLicense": "N. licenza commerciale (facoltativo)",
       "moreDetails": "+ Aggiungi telefono, email, BIN e licenza commerciale",
       "create": "Crea attività",
-      "creating": "Configurazione della tua attività in corso…"
+      "creating": "Configurazione della tua attività in corso…",
+      "skip": "Salta per ora",
+      "skipHint": "Creiamo la tua attività con un nome provvisorio. Puoi cambiarlo quando vuoi in Impostazioni.",
+      "defaultName": "Negozio di {{name}}"
     },
     "regional": {
       "title": "Impostazioni locali",

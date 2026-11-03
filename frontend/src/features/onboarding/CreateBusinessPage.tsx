@@ -3,7 +3,7 @@ import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
-import { BUSINESS_TYPES, type BusinessType, tenancyApi } from '../../api/tenancy'
+import { BUSINESS_TYPES, type BusinessType, type NewBusiness, tenancyApi } from '../../api/tenancy'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -18,7 +18,7 @@ export function CreateBusinessPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const { switchTenant } = useSession()
+  const { me, switchTenant } = useSession()
   const [more, setMore] = useState(false)
   const { values, bind } = useFields({
     name: '',
@@ -31,9 +31,16 @@ export function CreateBusinessPage() {
     trade_license_no: '',
   })
 
+  async function createAndEnter(input: NewBusiness) {
+    const tenant = await tenancyApi.createTenant(input)
+    await switchTenant(tenant.tenant_id)
+    await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    return tenant
+  }
+
   const create = useMutation({
-    mutationFn: async () => {
-      const tenant = await tenancyApi.createTenant({
+    mutationFn: () =>
+      createAndEnter({
         name: values.name,
         business_type: values.business_type as BusinessType,
         address: optional(values.address),
@@ -43,13 +50,21 @@ export function CreateBusinessPage() {
         bin_number: optional(values.bin_number),
         trade_license_no: optional(values.trade_license_no),
         locale: i18n.language,
-      })
-      await switchTenant(tenant.tenant_id)
-      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
-      return tenant
-    },
+      }),
     onSuccess: () => navigate('/onboarding/regional', { replace: true }),
   })
+  // Skip: a placeholder business with all defaults; the owner renames it and
+  // fills in the rest later in Settings.
+  const skip = useMutation({
+    mutationFn: () =>
+      createAndEnter({
+        name: t('onboarding.business.defaultName', { name: me?.user.full_name ?? '' }).trim(),
+        business_type: 'retail',
+        locale: i18n.language,
+      }),
+    onSuccess: () => navigate('/', { replace: true }),
+  })
+  const pending = create.isPending || skip.isPending
   const errors = fieldErrors(create.error, t)
 
   function onSubmit(e: FormEvent) {
@@ -84,9 +99,14 @@ export function CreateBusinessPage() {
           </Button>
         )}
         {create.isError && hasFormError(create.error) && <Alert tone="danger">{problemMessage(create.error, t)}</Alert>}
-        <Button type="submit" disabled={create.isPending}>
+        {skip.isError && <Alert tone="danger">{problemMessage(skip.error, t)}</Alert>}
+        <Button type="submit" disabled={pending}>
           {create.isPending ? t('onboarding.business.creating') : t('onboarding.business.create')}
         </Button>
+        <Button variant="ghost" disabled={pending} onClick={() => skip.mutate()}>
+          {skip.isPending ? t('onboarding.business.creating') : t('onboarding.business.skip')}
+        </Button>
+        <p className="text-center text-xs text-ink-muted">{t('onboarding.business.skipHint')}</p>
       </form>
     </Card>
   )

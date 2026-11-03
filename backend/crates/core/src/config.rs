@@ -107,7 +107,7 @@ pub struct AuthConfig {
     pub expose_otp: bool,
     /// Require the SMS code at sign-up. When off, sign-up confirms the phone
     /// on its own (until an SMS gateway exists); password reset still needs
-    /// the code. Not allowed in production.
+    /// the code. Off by default outside production; not allowed off in production.
     pub phone_verification: bool,
 }
 
@@ -147,7 +147,7 @@ impl AppConfig {
             });
         }
 
-        let phone_verification: bool = parse_or("AUTH_PHONE_VERIFICATION", true)?;
+        let phone_verification: bool = parse_or("AUTH_PHONE_VERIFICATION", env == AppEnv::Production)?;
         if !phone_verification && env == AppEnv::Production {
             return Err(ConfigError::Invalid {
                 key: "AUTH_PHONE_VERIFICATION",

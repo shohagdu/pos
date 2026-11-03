@@ -79,9 +79,10 @@ re-apply `755` on the binaries, then **Restart** in Setup Node.js App.
 ## Known limits
 
 - `APP_ENV=staging`: pos-api refuses `production` until an SMS gateway is
-  integrated. OTP codes and invitation links are only written to
-  `logs/pos-api.log`, so phone sign-up / password reset need someone with
-  File Manager access to read the code from the log.
+  integrated. Sign-up does not ask for an SMS code (`AUTH_PHONE_VERIFICATION`
+  is off). Password-reset codes and invitation links are only written to
+  `logs/pos-api.log`, so someone with File Manager access has to read them
+  from the log.
 - When the host idles the Node app out, the API stops with it; the first
   request after that waits a few seconds (`503 API_STARTING`) while it boots.
 - Uploaded product images live in `pos-app/storage/`; include it in backups

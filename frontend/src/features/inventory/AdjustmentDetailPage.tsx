@@ -12,6 +12,7 @@ import { formatDate, formatDateTime } from '../../lib/dates'
 import { formatMoney, formatQuantity } from '../../lib/format'
 import { QueryStatus } from '../money/shared'
 import { useTenant } from '../money/utils'
+import { batchLabel } from './batchLabel'
 
 /** One posted adjustment or opening stock entry (`/inventory/adjustments/:id`). */
 export function AdjustmentDetailPage() {
@@ -25,6 +26,7 @@ export function AdjustmentDetailPage() {
 
   const reason = t(`inventory.reasons.${a.reason}`, { defaultValue: a.reason })
   const hasCost = a.items.some((i) => i.unit_cost !== null)
+  const hasBatches = a.items.some((i) => i.batches.length > 0)
   const columns: Column<AdjustmentItem>[] = [
     {
       key: 'product',
@@ -47,6 +49,27 @@ export function AdjustmentDetailPage() {
         </span>
       ),
     },
+    ...(hasBatches
+      ? ([
+          {
+            key: 'batch',
+            header: t('inventory.batch'),
+            render: (i) =>
+              i.batches.length === 0 ? (
+                <span className="text-ink-muted">—</span>
+              ) : (
+                <ul className="flex flex-col text-xs">
+                  {i.batches.map((b) => (
+                    <li key={b.batch_id}>
+                      {batchLabel(b, t, lang)}
+                      {i.batches.length > 1 && <span className="text-ink-muted"> ({formatQuantity(b.quantity.replace('-', ''), lang, true)})</span>}
+                    </li>
+                  ))}
+                </ul>
+              ),
+          },
+        ] satisfies Column<AdjustmentItem>[])
+      : []),
     ...(hasCost
       ? ([
           { key: 'cost', header: t('inventory.unitCost'), align: 'right', render: (i) => (i.unit_cost === null ? '—' : formatMoney(i.unit_cost, lang)) },
@@ -120,7 +143,11 @@ export function AdjustmentDetailPage() {
         columns={columns}
         rows={a.items}
         rowKey={(i) => i.id}
-        footer={hasCost && a.total_value !== null ? [t('common.total'), '', '', formatMoney(a.total_value, lang), ''] : undefined}
+        footer={
+          hasCost && a.total_value !== null
+            ? [t('common.total'), '', ...(hasBatches ? [''] : []), '', formatMoney(a.total_value, lang), '']
+            : undefined
+        }
       />
     </div>
   )

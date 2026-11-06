@@ -97,6 +97,9 @@ export const authApi = {
   logout: () => post<void>('/logout'),
   switchTenant: (tenantId: string | null) => post<TokenResponse>('/switch-tenant', { tenant_id: tenantId }, true),
   forgotPassword: (identifier: string) => post<OtpChallenge>('/password/forgot', { identifier }),
+  /** The signed-in user's own password; other devices are signed out. */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    post<{ signed_out_sessions: number }>('/password/change', { current_password: currentPassword, new_password: newPassword }, true),
   resetPassword: (identifier: string, code: string, newPassword: string) =>
     post<void>('/password/reset', { identifier, code, new_password: newPassword }),
   me: () => apiFetch<Me>('/api/v1/auth/me'),

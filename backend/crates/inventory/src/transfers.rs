@@ -27,7 +27,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::{MySql, QueryBuilder};
 use uuid::Uuid;
 
-use crate::posting::{MovementLine, MovementRef, post_movements};
+use crate::{
+    batches::Batch,
+    posting::{MovementLine, MovementRef, post_movements},
+};
 
 pub const MAX_LINES: usize = 500;
 
@@ -434,6 +437,7 @@ pub async fn dispatch(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid, can_view_
             unit_cost: None,
             reference_line_id: Some(*item_id),
             reason: None,
+            batch: Batch::Auto,
         })
         .collect();
     let posted = post_movements(tx, &reference, &movement_lines, ctx.allow_negative_stock).await?;
@@ -535,6 +539,8 @@ pub async fn receive(
             unit_cost: Some(cost.unwrap_or_default()),
             reference_line_id: Some(*item_id),
             reason: None,
+            // The batches that left the other location arrive here.
+            batch: Batch::Reverse(*item_id),
         })
         .collect();
     post_movements(tx, &reference, &movement_lines, true).await?;

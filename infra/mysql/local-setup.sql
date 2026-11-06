@@ -6,8 +6,8 @@
 -- ones because Ubuntu's MySQL enables validate_password (MEDIUM policy:
 -- upper, lower, digit and symbol); set DATABASE_URL in backend/.env to match.
 
-CREATE DATABASE IF NOT EXISTS pos CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-CREATE DATABASE IF NOT EXISTS pos_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE DATABASE IF NOT EXISTS pos CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS pos_test CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
 -- Guard triggers are created by the migration user while binary logging is on.
 SET PERSIST log_bin_trust_function_creators = 1;

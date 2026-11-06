@@ -19,6 +19,8 @@ use rust_decimal::Decimal;
 use sqlx::{MySql, QueryBuilder};
 use uuid::Uuid;
 
+use crate::batches::Batch;
+
 /// The document a group of movements belongs to.
 #[derive(Debug, Clone)]
 pub struct MovementRef {
@@ -43,6 +45,8 @@ pub struct MovementLine {
     pub unit_cost: Option<Decimal>,
     pub reference_line_id: Option<Uuid>,
     pub reason: Option<String>,
+    /// Which batch the quantity goes to or comes from (`Auto` for most lines).
+    pub batch: Batch,
 }
 
 /// What a line did, in input order.
@@ -172,6 +176,7 @@ pub async fn post_movements(
             .push_bind(user_id);
     });
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
+    post_batches(tx, reference, lines).await?;
 
     for ((location_id, variant_id), balance) in &balances {
         sqlx::query(
@@ -188,6 +193,231 @@ pub async fn post_movements(
         .map_err(map_db_error)?;
     }
     Ok(posted)
+}
+
+/// One line's share of one batch.
+struct Allocation {
+    line: usize,
+    batch_id: Uuid,
+    /// Signed like the line.
+    quantity: Decimal,
+    origin: Option<Uuid>,
+}
+
+type BatchBalances = BTreeMap<(Uuid, Uuid), (Uuid, Decimal)>;
+
+fn available(balance: &BatchBalances, location_id: Uuid, batch_id: Uuid) -> Decimal {
+    balance.get(&(location_id, batch_id)).map_or(Decimal::ZERO, |(_, q)| (*q).max(Decimal::ZERO))
+}
+
+/// What is left of one line to place in batches.
+struct Cut {
+    line: usize,
+    location_id: Uuid,
+    variant_id: Uuid,
+    increase: bool,
+    left: Decimal,
+}
+
+impl Cut {
+    /// Moves up to `wanted` of the line into or out of `batch_id`; returns how much.
+    fn take(
+        &mut self,
+        balance: &mut BatchBalances,
+        allocations: &mut Vec<Allocation>,
+        batch_id: Uuid,
+        wanted: Decimal,
+        origin: Option<Uuid>,
+    ) -> Decimal {
+        let amount = wanted.min(self.left);
+        if amount <= Decimal::ZERO {
+            return Decimal::ZERO;
+        }
+        let signed = if self.increase { amount } else { -amount };
+        let entry = balance.entry((self.location_id, batch_id)).or_insert((self.variant_id, Decimal::ZERO));
+        entry.1 += signed;
+        self.left -= amount;
+        allocations.push(Allocation { line: self.line, batch_id, quantity: signed, origin });
+        amount
+    }
+}
+
+/// Moves batch balances for `lines` (the stock balances are already locked,
+/// so the batch rows of those variants cannot change under us): increases go
+/// into their batch, decreases take the earliest expiry first, reversals
+/// follow the batches of the line they undo. Stock not in a batch needs no row.
+async fn post_batches(tx: &mut TenantTx, reference: &MovementRef, lines: &[MovementLine]) -> AppResult<()> {
+    let tenant_id = tx.tenant_id();
+    let mut keys: Vec<(Uuid, Uuid)> = lines.iter().map(|l| (l.location_id, l.variant_id)).collect();
+    keys.sort();
+    keys.dedup();
+    let mut q: QueryBuilder<MySql> = QueryBuilder::new(
+        "SELECT location_id, batch_id, variant_id, quantity FROM stock_batch_balances WHERE tenant_id = ",
+    );
+    q.push_bind(tenant_id).push(" AND (location_id, variant_id) IN (");
+    let mut list = q.separated(", ");
+    for (location_id, variant_id) in &keys {
+        list.push("(")
+            .push_bind_unseparated(*location_id)
+            .push_unseparated(", ")
+            .push_bind_unseparated(*variant_id)
+            .push_unseparated(")");
+    }
+    q.push(") ORDER BY location_id, batch_id FOR UPDATE");
+    let rows: Vec<(Uuid, Uuid, Uuid, Decimal)> = q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
+    let explicit = lines.iter().any(|l| l.batch != Batch::Auto);
+    if rows.is_empty() && !explicit {
+        return Ok(());
+    }
+    // (location, batch) → (variant, quantity)
+    let mut balance: BatchBalances = rows.into_iter().map(|(l, b, v, q)| ((l, b), (v, q))).collect();
+
+    // What the lines being undone moved, and what earlier reversals already undid.
+    let origins: Vec<Uuid> =
+        lines.iter().filter_map(|l| if let Batch::Reverse(o) = l.batch { Some(o) } else { None }).collect();
+    // origin → batch → (taken out, put in), net of earlier reversals.
+    let mut history: BTreeMap<Uuid, BTreeMap<Uuid, (Decimal, Decimal)>> = BTreeMap::new();
+    if !origins.is_empty() {
+        let mut q: QueryBuilder<MySql> = QueryBuilder::new(
+            "SELECT batch_id, quantity, reference_line_id, origin_line_id FROM stock_batch_movements WHERE tenant_id = ",
+        );
+        q.push_bind(tenant_id).push(" AND (reference_line_id IN (");
+        let mut list = q.separated(", ");
+        for o in &origins {
+            list.push_bind(*o);
+        }
+        q.push(") OR origin_line_id IN (");
+        let mut list = q.separated(", ");
+        for o in &origins {
+            list.push_bind(*o);
+        }
+        q.push("))");
+        let moved: Vec<(Uuid, Decimal, Option<Uuid>, Option<Uuid>)> =
+            q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
+        for (batch_id, quantity, line_id, origin_id) in moved {
+            match origin_id {
+                // A reversal: putting back reduces what can still be put back, and so on.
+                Some(o) if origins.contains(&o) => {
+                    let entry = history.entry(o).or_default().entry(batch_id).or_default();
+                    if quantity > Decimal::ZERO { entry.0 -= quantity } else { entry.1 += quantity }
+                }
+                Some(_) => {}
+                None => {
+                    if let Some(o) = line_id.filter(|o| origins.contains(o)) {
+                        let entry = history.entry(o).or_default().entry(batch_id).or_default();
+                        if quantity < Decimal::ZERO { entry.0 -= quantity } else { entry.1 += quantity }
+                    }
+                }
+            }
+        }
+    }
+
+    // Expiry of every batch involved, for earliest-expiry-first order.
+    let mut batch_ids: Vec<Uuid> = balance.keys().map(|(_, b)| *b).collect();
+    batch_ids.extend(lines.iter().filter_map(|l| if let Batch::Exact(b) = l.batch { Some(b) } else { None }));
+    batch_ids.extend(history.values().flat_map(|m| m.keys().copied()));
+    batch_ids.sort();
+    batch_ids.dedup();
+    let mut order: BTreeMap<Uuid, (bool, Option<NaiveDate>, String)> = BTreeMap::new();
+    if !batch_ids.is_empty() {
+        let mut q: QueryBuilder<MySql> =
+            QueryBuilder::new("SELECT id, expiry_date, batch_no FROM product_batches WHERE tenant_id = ");
+        q.push_bind(tenant_id).push(" AND id IN (");
+        let mut list = q.separated(", ");
+        for id in &batch_ids {
+            list.push_bind(*id);
+        }
+        q.push(")");
+        let rows: Vec<(Uuid, Option<NaiveDate>, String)> =
+            q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
+        order = rows.into_iter().map(|(id, e, n)| (id, (e.is_none(), e, n))).collect();
+    }
+    let fefo = |ids: &mut Vec<Uuid>| ids.sort_by(|a, b| order.get(a).cmp(&order.get(b)).then(a.cmp(b)));
+
+    let mut allocations: Vec<Allocation> = Vec::new();
+    for (i, line) in lines.iter().enumerate() {
+        let quantity = round3(line.quantity);
+        let increase = quantity > Decimal::ZERO;
+        let mut cut =
+            Cut { line: i, location_id: line.location_id, variant_id: line.variant_id, increase, left: quantity.abs() };
+        match line.batch {
+            Batch::Auto => {}
+            Batch::Exact(b) => {
+                let can = if increase { cut.left } else { available(&balance, line.location_id, b) };
+                cut.take(&mut balance, &mut allocations, b, can, None);
+            }
+            Batch::Reverse(o) => {
+                let mut ids: Vec<Uuid> = history.get(&o).map(|m| m.keys().copied().collect()).unwrap_or_default();
+                fefo(&mut ids);
+                if increase {
+                    // Back in the reverse order of taking: latest expiry first.
+                    ids.reverse();
+                }
+                for b in ids {
+                    let Some(entry) = history.get_mut(&o).and_then(|m| m.get_mut(&b)) else { continue };
+                    let can = if increase { entry.0 } else { entry.1.min(available(&balance, line.location_id, b)) };
+                    let done = cut.take(&mut balance, &mut allocations, b, can, Some(o));
+                    if increase { entry.0 -= done } else { entry.1 -= done }
+                }
+            }
+        }
+        if !increase && cut.left > Decimal::ZERO {
+            // Earliest expiry first; what the batches lack leaves "no batch".
+            let mut ids: Vec<Uuid> = balance
+                .iter()
+                .filter(|((l, _), (v, q))| *l == line.location_id && *v == line.variant_id && *q > Decimal::ZERO)
+                .map(|((_, b), _)| *b)
+                .collect();
+            fefo(&mut ids);
+            for b in ids {
+                let can = available(&balance, line.location_id, b);
+                cut.take(&mut balance, &mut allocations, b, can, None);
+            }
+        }
+    }
+    if allocations.is_empty() {
+        return Ok(());
+    }
+
+    let mut q: QueryBuilder<MySql> = QueryBuilder::new(
+        "INSERT INTO stock_batch_movements (tenant_id, id, batch_id, variant_id, location_id, quantity, reference_type, \
+         reference_id, reference_line_id, origin_line_id) ",
+    );
+    q.push_values(&allocations, |mut row, a| {
+        let line = &lines[a.line];
+        row.push_bind(tenant_id)
+            .push_bind(new_id())
+            .push_bind(a.batch_id)
+            .push_bind(line.variant_id)
+            .push_bind(line.location_id)
+            .push_bind(a.quantity)
+            .push_bind(reference.reference_type)
+            .push_bind(reference.reference_id)
+            .push_bind(line.reference_line_id)
+            .push_bind(a.origin);
+    });
+    q.build().execute(&mut **tx).await.map_err(map_db_error)?;
+
+    let mut touched: Vec<(Uuid, Uuid)> = allocations.iter().map(|a| (lines[a.line].location_id, a.batch_id)).collect();
+    touched.sort();
+    touched.dedup();
+    for key in touched {
+        let Some((variant_id, quantity)) = balance.get(&key).copied() else { continue };
+        sqlx::query(
+            "INSERT INTO stock_batch_balances (tenant_id, location_id, batch_id, variant_id, quantity) VALUES (?, ?, ?, ?, ?) \
+             ON DUPLICATE KEY UPDATE quantity = ?",
+        )
+        .bind(tenant_id)
+        .bind(key.0)
+        .bind(key.1)
+        .bind(variant_id)
+        .bind(quantity)
+        .bind(quantity)
+        .execute(&mut **tx)
+        .await
+        .map_err(map_db_error)?;
+    }
+    Ok(())
 }
 
 /// `409 INSUFFICIENT_STOCK` naming the product and what is available (POS-R04).

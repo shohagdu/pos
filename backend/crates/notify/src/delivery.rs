@@ -212,12 +212,13 @@ pub async fn dispatch(pool: &MySqlPool, gateways: &Gateways, now: DateTime<Utc>)
     }
 
     let mut tx = pos_db::begin_platform(pool, &ctx()).await?;
-    // Locks only the delivery rows (MariaDB has no `FOR UPDATE OF`), then
-    // reads what each needs to be sent.
+    // Locks only the delivery rows, then reads what each needs to be sent.
+    // MariaDB has no `FOR UPDATE OF` and 10.5 no `SKIP LOCKED`: a second
+    // dispatcher waits here, then finds the leased rows no longer due.
     let locked: Vec<(Uuid, Uuid)> = sqlx::query_as(
         "SELECT tenant_id, id FROM notification_deliveries \
          WHERE status IN ('queued', 'failed') AND next_attempt_at <= ? \
-         ORDER BY next_attempt_at LIMIT ? FOR UPDATE SKIP LOCKED \
+         ORDER BY next_attempt_at LIMIT ? FOR UPDATE \
          /* tenant-lint: allow the dispatcher serves every business */",
     )
     .bind(now)

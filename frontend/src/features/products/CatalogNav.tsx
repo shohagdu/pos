@@ -13,6 +13,7 @@ export function CatalogNav() {
     { to: '/products/setup/brands', key: 'products.tabs.brands' },
     { to: '/products/setup/units', key: 'products.tabs.units' },
     ...(can('settings.manage') ? [{ to: '/products/setup/tax-rates', key: 'products.tabs.taxRates' }] : []),
+    { to: '/labels', key: 'labels.nav' },
   ]
   return (
     <nav aria-label={t('products.tabs.label')} className="flex flex-wrap gap-1 border-b border-border">

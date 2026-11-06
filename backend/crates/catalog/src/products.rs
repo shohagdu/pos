@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use chrono::{DateTime, Utc};
 use pos_audit::AuditEntry;
 use pos_core::{
-    AppError, AppResult, RequestMeta,
+    AppError, AppResult, FieldError, RequestMeta,
     id::new_id,
     page::{self, Keyset},
 };
@@ -59,6 +59,12 @@ pub struct Product {
     #[schema(value_type = Option<String>)]
     pub tax_rate_pct: Option<Decimal>,
     pub track_inventory: bool,
+    /// Stock is kept by batch with expiry dates (turned on by the first batch received).
+    pub track_batches: bool,
+    /// Warranty length; `null` with `warranty_unit` = no warranty.
+    pub warranty_period: Option<i16>,
+    /// `day`, `month` or `year`.
+    pub warranty_unit: Option<String>,
     /// Default cost; `null` without `products.view_cost`.
     #[schema(value_type = Option<String>)]
     pub purchase_price: Option<Decimal>,
@@ -96,6 +102,9 @@ pub struct ProductInput {
     /// Replaces the product's barcodes; the first is the primary.
     #[serde(default)]
     pub barcodes: Vec<String>,
+    /// Adds a new in-store EAN-13 (`20…`) as the primary barcode.
+    #[serde(default)]
+    pub generate_barcode: bool,
     #[serde(default)]
     pub category_id: Option<Uuid>,
     #[serde(default)]
@@ -107,6 +116,17 @@ pub struct ProductInput {
     /// Defaults to true for `standard`; always false for `service`.
     #[serde(default)]
     pub track_inventory: Option<bool>,
+    /// Ask for batch numbers and expiry dates when stock arrives. Blank =
+    /// off on create, unchanged on update. Always off without stock tracking.
+    #[serde(default)]
+    pub track_batches: Option<bool>,
+    /// Warranty length (1–3650 days, 1–120 months or 1–10 years). Blank with
+    /// `warranty_unit` = no warranty; sales show the date it runs out.
+    #[serde(default)]
+    pub warranty_period: Option<i16>,
+    /// `day`, `month` or `year`.
+    #[serde(default)]
+    pub warranty_unit: Option<String>,
     /// Needs `products.view_cost`. Blank = 0 on create, unchanged on update.
     #[serde(default)]
     #[schema(value_type = Option<String>)]
@@ -187,6 +207,9 @@ struct Row {
     tax_rate_id: Option<Uuid>,
     tax_rate_pct: Option<Decimal>,
     track_inventory: bool,
+    track_batches: bool,
+    warranty_period: Option<i16>,
+    warranty_unit: Option<String>,
     purchase_price: Decimal,
     selling_price: Decimal,
     wholesale_price: Option<Decimal>,
@@ -220,6 +243,9 @@ impl Row {
             tax_rate_id: self.tax_rate_id,
             tax_rate_pct: self.tax_rate_pct,
             track_inventory: self.track_inventory,
+            track_batches: self.track_batches,
+            warranty_period: self.warranty_period,
+            warranty_unit: self.warranty_unit,
             purchase_price: viewer.can_view_cost.then_some(self.purchase_price),
             selling_price: self.selling_price,
             wholesale_price: self.wholesale_price,
@@ -239,7 +265,7 @@ fn select(tenant_id: Uuid) -> QueryBuilder<MySql> {
         "SELECT p.id, v.id AS variant_id, p.product_type, p.name, p.name_bn, p.description, v.sku, \
          p.category_id, c.name AS category_name, p.brand_id, b.name AS brand_name, p.base_unit_id AS unit_id, \
          u.short_name AS unit_short_name, u.allow_fraction, p.tax_rate_id, t.rate_pct AS tax_rate_pct, \
-         p.track_inventory, v.purchase_price, v.selling_price, v.wholesale_price, v.min_selling_price, \
+         p.track_inventory, p.track_batches, p.warranty_period, p.warranty_unit, v.purchase_price, v.selling_price, v.wholesale_price, v.min_selling_price, \
          v.reorder_level, p.image_file_id, p.status, p.version, p.created_at, p.updated_at \
          FROM products p \
          JOIN product_variants v ON v.tenant_id = p.tenant_id AND v.product_id = p.id AND v.is_default \
@@ -387,11 +413,16 @@ struct Valid {
     description: Option<String>,
     sku: Option<String>,
     barcodes: Vec<(String, &'static str)>,
+    generate_barcode: bool,
     category_id: Option<Uuid>,
     brand_id: Option<Uuid>,
     unit_id: Uuid,
     tax_rate_id: Option<Uuid>,
     track_inventory: bool,
+    /// `None` = unchanged (update) / off (create).
+    track_batches: Option<bool>,
+    warranty_period: Option<i16>,
+    warranty_unit: Option<String>,
     purchase_price: Option<Decimal>,
     selling_price: Decimal,
     wholesale_price: Option<Decimal>,
@@ -448,7 +479,7 @@ fn validate(input: ProductInput, viewer: Viewer) -> AppResult<Valid> {
             barcodes.push((code, kind));
         }
     }
-    if barcodes.len() > MAX_BARCODES {
+    if barcodes.len() + usize::from(input.generate_barcode) > MAX_BARCODES {
         return Err(AppError::field("barcodes", "TOO_MANY", format!("use at most {MAX_BARCODES} barcodes")));
     }
     let reorder_level = match input.reorder_level {
@@ -461,6 +492,7 @@ fn validate(input: ProductInput, viewer: Viewer) -> AppResult<Valid> {
         }
         other => other.map(|v| v.normalize()),
     };
+    let (warranty_period, warranty_unit) = crate::warranty::validate(input.warranty_period, input.warranty_unit)?;
     Ok(Valid {
         product_type,
         name: name(&input.name, "name", 1, 200)?,
@@ -468,11 +500,15 @@ fn validate(input: ProductInput, viewer: Viewer) -> AppResult<Valid> {
         description: optional(input.description, "description", 2000)?,
         sku: valid_sku(input.sku)?,
         barcodes,
+        generate_barcode: input.generate_barcode,
         category_id: input.category_id,
         brand_id: input.brand_id,
         unit_id: input.unit_id,
         tax_rate_id: input.tax_rate_id,
         track_inventory,
+        track_batches: if track_inventory { input.track_batches } else { Some(false) },
+        warranty_period,
+        warranty_unit,
         purchase_price: price(input.purchase_price, "purchase_price")?,
         selling_price: price(Some(input.selling_price), "selling_price")?.unwrap_or_default(),
         wholesale_price: price(input.wholesale_price, "wholesale_price")?,
@@ -583,6 +619,25 @@ async fn resolve_sku(tx: &mut TenantTx, wanted: Option<&str>, except_variant: Op
     Err(AppError::Conflict { code: "DUPLICATE_SKU", message: "could not find a free SKU; enter one".into() })
 }
 
+/// The SKU a new product would get automatically, for the form to show.
+pub async fn suggest_sku(tx: &mut TenantTx) -> AppResult<Option<String>> {
+    for code in sequences::preview(tx, "product", None, Utc::now().date_naive(), 20).await? {
+        if !sku_taken(tx, &code, None).await? {
+            return Ok(Some(code));
+        }
+    }
+    Ok(None)
+}
+
+/// With `generate_barcode`, puts a new in-store EAN-13 first (the primary).
+async fn add_generated_barcode(tx: &mut TenantTx, v: &mut Valid) -> AppResult<()> {
+    if v.generate_barcode {
+        let code = crate::labels::take_in_store_code(tx).await?;
+        v.barcodes.insert(0, (code, "ean13"));
+    }
+    Ok(())
+}
+
 async fn check_barcodes(
     tx: &mut TenantTx,
     codes: &[(String, &'static str)],
@@ -647,14 +702,15 @@ pub async fn create(tx: &mut TenantTx, meta: &RequestMeta, viewer: Viewer, input
     entitlements::ensure_within(tx, "products.max", used, 1).await?;
     check_references(tx, &mut v, None).await?;
     let sku = resolve_sku(tx, v.sku.as_deref(), None).await?;
+    add_generated_barcode(tx, &mut v).await?;
     check_barcodes(tx, &v.barcodes, None).await?;
 
     let tenant_id = tx.tenant_id();
     let (product_id, variant_id) = (new_id(), new_id());
     sqlx::query(
         "INSERT INTO products (tenant_id, id, product_type, name, name_bn, search_name, description, category_id, \
-         brand_id, base_unit_id, tax_rate_id, track_inventory, created_by, updated_by) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+         brand_id, base_unit_id, tax_rate_id, track_inventory, track_batches, warranty_period, warranty_unit, created_by, \
+         updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(tenant_id)
     .bind(product_id)
@@ -668,6 +724,9 @@ pub async fn create(tx: &mut TenantTx, meta: &RequestMeta, viewer: Viewer, input
     .bind(v.unit_id)
     .bind(v.tax_rate_id)
     .bind(v.track_inventory)
+    .bind(v.track_batches.unwrap_or(false))
+    .bind(v.warranty_period)
+    .bind(&v.warranty_unit)
     .bind(viewer.user_id)
     .bind(viewer.user_id)
     .execute(&mut **tx)
@@ -778,14 +837,15 @@ pub async fn update(
         Some(s) if s != current.sku => resolve_sku(tx, Some(s), Some(current.variant_id)).await?,
         _ => current.sku.clone(),
     };
+    add_generated_barcode(tx, &mut v).await?;
     check_barcodes(tx, &v.barcodes, Some(current.variant_id)).await?;
     let purchase_price = v.purchase_price.or(current.purchase_price).unwrap_or_default();
 
     let tenant_id = tx.tenant_id();
     sqlx::query(
         "UPDATE products SET product_type = ?, name = ?, name_bn = ?, search_name = ?, description = ?, \
-         category_id = ?, brand_id = ?, base_unit_id = ?, tax_rate_id = ?, track_inventory = ?, updated_by = ?, \
-         version = version + 1 WHERE tenant_id = ? AND id = ?",
+         category_id = ?, brand_id = ?, base_unit_id = ?, tax_rate_id = ?, track_inventory = ?, \
+         track_batches = COALESCE(?, track_batches), warranty_period = ?, warranty_unit = ?, updated_by = ?, version = version + 1 WHERE tenant_id = ? AND id = ?",
     )
     .bind(&v.product_type)
     .bind(&v.name)
@@ -797,6 +857,9 @@ pub async fn update(
     .bind(v.unit_id)
     .bind(v.tax_rate_id)
     .bind(v.track_inventory)
+    .bind(v.track_batches)
+    .bind(v.warranty_period)
+    .bind(&v.warranty_unit)
     .bind(viewer.user_id)
     .bind(tenant_id)
     .bind(id)
@@ -968,6 +1031,133 @@ pub async fn delete(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResul
     )
     .await?;
     Ok(())
+}
+
+// ------------------------------------------------------------------- CSV import
+
+/// At most this many products per import (and codes per lookup).
+pub const MAX_IMPORT: usize = 1000;
+
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ProductImport {
+    pub products: Vec<ProductInput>,
+    /// Opening stock for some of the new products, posted in the same
+    /// transaction (needs `inventory.opening_stock`).
+    #[serde(default)]
+    pub opening_stock: Vec<ImportOpeningStock>,
+    /// Where the opening stock goes; blank = the branch's default location.
+    #[serde(default)]
+    pub location_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ImportOpeningStock {
+    /// Index into `products`.
+    pub row: usize,
+    #[schema(value_type = String)]
+    pub quantity: Decimal,
+    /// Blank = the product's purchase price. Needs `products.view_cost`.
+    #[serde(default)]
+    #[schema(value_type = Option<String>)]
+    pub unit_cost: Option<Decimal>,
+    /// The batch the stock is (a blank number with an expiry date uses the date).
+    #[serde(default)]
+    pub batch_no: Option<String>,
+    #[serde(default)]
+    pub expiry_date: Option<chrono::NaiveDate>,
+}
+
+/// Creates every product or none (PROD import). Row problems come back
+/// together as field errors named `products[i].<field>`, so the preview can
+/// show each one on its cell; duplicates inside the file are caught too.
+pub async fn import(
+    tx: &mut TenantTx,
+    meta: &RequestMeta,
+    viewer: Viewer,
+    inputs: Vec<ProductInput>,
+) -> AppResult<Vec<Product>> {
+    if inputs.is_empty() {
+        return Err(AppError::field("products", "REQUIRED", "add at least one product"));
+    }
+    if inputs.len() > MAX_IMPORT {
+        return Err(AppError::field("products", "TOO_MANY", format!("import at most {MAX_IMPORT} products at a time")));
+    }
+    let used = entitlements::products_used(tx).await?;
+    entitlements::ensure_within(tx, "products.max", used, i64::try_from(inputs.len()).unwrap_or(i64::MAX)).await?;
+
+    let mut created = Vec::with_capacity(inputs.len());
+    let mut errors = Vec::new();
+    for (i, input) in inputs.into_iter().enumerate() {
+        match create(tx, meta, viewer, input).await {
+            Ok(p) => created.push(p),
+            Err(AppError::Validation { errors: row, .. }) => {
+                errors.extend(row.into_iter().map(|e| FieldError { field: format!("products[{i}].{}", e.field), ..e }))
+            }
+            Err(AppError::Conflict { code, message }) if matches!(code, "DUPLICATE_SKU" | "DUPLICATE_BARCODE") => {
+                let field = if code == "DUPLICATE_SKU" { "sku" } else { "barcodes" };
+                errors.push(FieldError { field: format!("products[{i}].{field}"), code: code.to_owned(), message });
+            }
+            Err(other) => return Err(other),
+        }
+    }
+    if !errors.is_empty() {
+        // The caller drops the transaction, so nothing from this file is kept.
+        return Err(AppError::Validation { message: format!("{} problem(s) in the file", errors.len()), errors });
+    }
+    Ok(created)
+}
+
+#[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CodeLookup {
+    /// SKUs or barcodes, as typed in a file.
+    pub codes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+pub struct CodeMatch {
+    /// The code as asked.
+    pub code: String,
+    pub product: Product,
+}
+
+/// Finds products by SKU (any case) or barcode, for files that name products
+/// by code. Codes without a product are left out of the answer.
+pub async fn lookup(tx: &mut TenantTx, codes: &[String], viewer: Viewer) -> AppResult<Vec<CodeMatch>> {
+    if codes.len() > MAX_IMPORT {
+        return Err(AppError::field("codes", "TOO_MANY", format!("look up at most {MAX_IMPORT} codes at a time")));
+    }
+    let wanted: BTreeSet<String> = codes.iter().map(|c| c.trim().to_owned()).filter(|c| !c.is_empty()).collect();
+    if wanted.is_empty() {
+        return Ok(Vec::new());
+    }
+    let tenant_id = tx.tenant_id();
+    let mut q = select(tenant_id);
+    q.push(" AND (v.live_sku IN (");
+    let mut list = q.separated(", ");
+    for c in &wanted {
+        list.push_bind(c.clone());
+    }
+    q.push(") OR EXISTS (SELECT 1 FROM product_barcodes pb WHERE pb.tenant_id = v.tenant_id AND pb.variant_id = v.id AND pb.barcode IN (");
+    let mut list = q.separated(", ");
+    for c in &wanted {
+        list.push_bind(c.clone());
+    }
+    q.push(")))");
+    let rows: Vec<Row> = q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
+    let products = hydrate(tx, rows, viewer).await?;
+    Ok(wanted
+        .into_iter()
+        .filter_map(|code| {
+            let found = products
+                .iter()
+                .find(|p| p.sku.eq_ignore_ascii_case(&code))
+                .or_else(|| products.iter().find(|p| p.barcodes.contains(&code)))?;
+            Some(CodeMatch { code, product: found.clone() })
+        })
+        .collect())
 }
 
 #[cfg(test)]

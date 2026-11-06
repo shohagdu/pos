@@ -190,17 +190,7 @@ async fn write_permissions(tx: &mut TenantTx, role_id: Uuid, permissions: &[Stri
         .execute(&mut **tx)
         .await
         .map_err(map_db_error)?;
-    sqlx::query(
-        "INSERT INTO role_permissions (tenant_id, role_id, permission_code) \
-         SELECT ?, ?, j.code FROM JSON_TABLE(?, '$[*]' COLUMNS (code VARCHAR(60) PATH '$')) AS j",
-    )
-    .bind(tenant_id)
-    .bind(role_id)
-    .bind(serde_json::to_string(permissions).map_err(AppError::internal)?)
-    .execute(&mut **tx)
-    .await
-    .map_err(map_db_error)?;
-    Ok(())
+    crate::grants::insert_role_permissions(tx, role_id, permissions).await
 }
 
 /// Custom role codes are opaque (`c_` + random); names are what people see.

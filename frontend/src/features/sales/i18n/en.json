@@ -133,7 +133,44 @@
       "appliedToDue": "Adjusted against due",
       "refunded": "Refunded",
       "credited": "Customer credit",
-      "reason": "Reason: {{reason}}"
+      "reason": "Reason: {{reason}}",
+      "warranty": "Warranty {{tenure}}, until {{date}}"
+    },
+    "warrantyUntil": "Warranty until {{date}}",
+    "warrantyExpired": "Warranty expired {{date}}",
+    "warrantyTenure": {
+      "day_one": "{{count}} day",
+      "day_other": "{{count}} days",
+      "month_one": "{{count}} month",
+      "month_other": "{{count}} months",
+      "year_one": "{{count}} year",
+      "year_other": "{{count}} years"
+    },
+    "warranty": "Warranty",
+    "withWarranty": "Only sales with a warranty",
+    "warrantyListUntil": "Until {{date}}",
+    "warrantyListExpired": "Expired {{date}}",
+    "warrantyItems_one": "{{count}} item",
+    "warrantyItems_other": "{{count}} items",
+    "warrantyTable": {
+      "product": "Product",
+      "soldOn": "Sold on",
+      "tenure": "Warranty",
+      "expiresOn": "Expires on",
+      "active": "Active",
+      "expired": "Expired",
+      "returned": "Returned",
+      "lastDay": "Last day today",
+      "daysLeft_one": "{{count}} day left",
+      "daysLeft_other": "{{count}} days left",
+      "returnedQty": "{{qty}} returned"
+    },
+    "warrantyLookup": {
+      "title": "Warranty lookup",
+      "subtitle": "Check a claim: find the item by invoice number, customer phone, product name, SKU or barcode.",
+      "searchHint": "Invoice, phone, product, SKU or scan a barcode",
+      "none": "No items sold with a warranty yet.",
+      "noMatch": "Nothing sold with a warranty matches “{{q}}”."
     }
   }
 }

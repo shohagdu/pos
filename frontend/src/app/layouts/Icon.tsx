@@ -25,6 +25,7 @@ const ICONS = {
   plus: 'M12 5v14M5 12h14',
   chevronDown: 'M6 9l6 6 6-6',
   devices: 'M4 5h16v10H4zM2 19h20',
+  key: 'M15 7a4 4 0 1 1-3.9 5H9v2H7v2H4v-3l6.1-6.1A4 4 0 0 1 15 7zM16 10h.01',
   shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
   signOut: 'M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 16l-4-4 4-4M6 12h10',
   language: 'M4 5h9M8.5 3v2M6 5c.8 3.5 3 6 6 7.5M11 5c-.8 3.5-3 6.5-7 8M13 21l4-9 4 9M14.5 18h5',

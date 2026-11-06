@@ -24,7 +24,10 @@ use serde::{Deserialize, Serialize};
 use sqlx::{MySql, QueryBuilder};
 use uuid::Uuid;
 
-use crate::posting::{MovementLine, MovementRef, post_movements};
+use crate::{
+    batches::Batch,
+    posting::{MovementLine, MovementRef, post_movements},
+};
 
 pub const MAX_ITEMS: usize = 5000;
 
@@ -443,6 +446,8 @@ pub async fn post(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid, can_view_cost
             unit_cost: *cost,
             reference_line_id: Some(*item_id),
             reason: Some("count".into()),
+            // A shortfall comes out earliest expiry first; a surplus has no batch.
+            batch: Batch::Auto,
         })
         .collect();
     // A count records what is physically there, so it may correct below zero.

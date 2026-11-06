@@ -74,6 +74,7 @@ export function UserMenu() {
           </div>
           <div className="my-1 border-t border-border" />
           {staff.data && link('/admin', 'shield', t('nav.admin'))}
+          {link('/account/password', 'key', t('password.title'))}
           {link('/account/sessions', 'devices', t('sessions.title'))}
           <div className="my-1 border-t border-border" />
           <button type="button" onClick={() => void signOut()} className={`${item} text-danger`}>

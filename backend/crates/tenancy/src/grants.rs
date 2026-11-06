@@ -5,7 +5,8 @@ use std::collections::BTreeSet;
 
 use pos_auth::{TenantAccess, rbac::OWNER_ROLE};
 use pos_core::{AppError, AppResult};
-use pos_db::{TenantTx, map_db_error};
+use pos_db::{MySql, TenantTx, map_db_error};
+use sqlx::QueryBuilder;
 use uuid::Uuid;
 
 /// Granted to the owner only, never through invitations or custom roles (§10.2).
@@ -19,24 +20,43 @@ pub struct RoleRef {
     pub name: String,
 }
 
-fn ids_json(ids: &[Uuid]) -> AppResult<String> {
-    serde_json::to_string(&ids.iter().map(Uuid::to_string).collect::<Vec<_>>()).map_err(AppError::internal)
+/// Appends `(?, ?, …)` for an `IN` list. Lists are bound value by value:
+/// `JSON_TABLE` is missing on MariaDB 10.5. Callers handle the empty list.
+fn push_in_list(q: &mut QueryBuilder<MySql>, ids: &BTreeSet<Uuid>) {
+    q.push(" IN (");
+    let mut list = q.separated(", ");
+    for id in ids {
+        list.push_bind(*id);
+    }
+    list.push_unseparated(")");
+}
+
+/// Adds the permission codes to a role in one multi-row insert.
+pub async fn insert_role_permissions<S: AsRef<str>>(tx: &mut TenantTx, role_id: Uuid, codes: &[S]) -> AppResult<()> {
+    if codes.is_empty() {
+        return Ok(());
+    }
+    let tenant_id = tx.tenant_id();
+    let mut q: QueryBuilder<MySql> = QueryBuilder::new("INSERT INTO role_permissions (tenant_id, role_id, permission_code) ");
+    q.push_values(codes, |mut row, code| {
+        row.push_bind(tenant_id).push_bind(role_id).push_bind(code.as_ref().to_owned());
+    });
+    q.build().execute(&mut **tx).await.map_err(map_db_error)?;
+    Ok(())
 }
 
 /// Loads the tenant's roles with these ids; any unknown id is a 422.
 pub async fn roles(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<Vec<RoleRef>> {
     let unique: BTreeSet<Uuid> = ids.iter().copied().collect();
+    if unique.is_empty() {
+        return Ok(Vec::new());
+    }
     let tenant_id = tx.tenant_id();
-    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
-        "SELECT r.id, r.code, r.name FROM roles r \
-         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON r.id = UNHEX(REPLACE(j.id, '-', '')) \
-         WHERE r.tenant_id = ?",
-    )
-    .bind(ids_json(&unique.iter().copied().collect::<Vec<_>>())?)
-    .bind(tenant_id)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(map_db_error)?;
+    let mut q: QueryBuilder<MySql> = QueryBuilder::new("SELECT r.id, r.code, r.name FROM roles r WHERE r.tenant_id = ");
+    q.push_bind(tenant_id).push(" AND r.id");
+    push_in_list(&mut q, &unique);
+    let rows: Vec<(Uuid, String, String)> =
+        q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
     if rows.len() != unique.len() {
         return Err(AppError::field("role_ids", "UNKNOWN_ROLE", "a selected role does not exist"));
     }
@@ -50,16 +70,11 @@ pub async fn ensure_branches(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<()> {
     }
     let unique: BTreeSet<Uuid> = ids.iter().copied().collect();
     let tenant_id = tx.tenant_id();
-    let found: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM branches b \
-         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON b.id = UNHEX(REPLACE(j.id, '-', '')) \
-         WHERE b.tenant_id = ? AND b.status = 'active'",
-    )
-    .bind(ids_json(&unique.iter().copied().collect::<Vec<_>>())?)
-    .bind(tenant_id)
-    .fetch_one(&mut **tx)
-    .await
-    .map_err(map_db_error)?;
+    let mut q: QueryBuilder<MySql> =
+        QueryBuilder::new("SELECT COUNT(*) FROM branches b WHERE b.status = 'active' AND b.tenant_id = ");
+    q.push_bind(tenant_id).push(" AND b.id");
+    push_in_list(&mut q, &unique);
+    let found: i64 = q.build_query_scalar().fetch_one(&mut **tx).await.map_err(map_db_error)?;
     if usize::try_from(found).unwrap_or(0) != unique.len() {
         return Err(AppError::field("branch_ids", "UNKNOWN_BRANCH", "a selected branch does not exist"));
     }
@@ -68,17 +83,16 @@ pub async fn ensure_branches(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<()> {
 
 /// Permission codes the given roles grant together.
 pub async fn role_permissions(tx: &mut TenantTx, role_ids: &[Uuid]) -> AppResult<Vec<String>> {
+    let unique: BTreeSet<Uuid> = role_ids.iter().copied().collect();
+    if unique.is_empty() {
+        return Ok(Vec::new());
+    }
     let tenant_id = tx.tenant_id();
-    sqlx::query_scalar(
-        "SELECT DISTINCT rp.permission_code FROM role_permissions rp \
-         JOIN JSON_TABLE(?, '$[*]' COLUMNS (id CHAR(36) PATH '$')) AS j ON rp.role_id = UNHEX(REPLACE(j.id, '-', '')) \
-         WHERE rp.tenant_id = ?",
-    )
-    .bind(ids_json(role_ids)?)
-    .bind(tenant_id)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(map_db_error)
+    let mut q: QueryBuilder<MySql> =
+        QueryBuilder::new("SELECT DISTINCT rp.permission_code FROM role_permissions rp WHERE rp.tenant_id = ");
+    q.push_bind(tenant_id).push(" AND rp.role_id");
+    push_in_list(&mut q, &unique);
+    q.build_query_scalar().fetch_all(&mut **tx).await.map_err(map_db_error)
 }
 
 /// No privilege escalation: a non-owner can only grant permissions they hold.

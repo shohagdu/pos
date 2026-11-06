@@ -12,7 +12,9 @@ rustup target add "$TARGET" >/dev/null
 command -v musl-gcc >/dev/null || export CC_x86_64_unknown_linux_musl=gcc
 
 (cd "$ROOT/backend" && cargo build --release --target "$TARGET" -p pos-api -p pos-worker)
-(cd "$ROOT/frontend" && npm ci && npm run build)
+# `npm ci` deletes node_modules, which breaks a running `npm run dev` (its
+# .vite dependency cache goes with it); only reinstall when the lock changed.
+(cd "$ROOT/frontend" && { [ node_modules/.package-lock.json -nt package-lock.json ] || npm ci; } && npm run build)
 
 rm -rf "$OUT" "$ROOT/deploy/pos-cpanel.zip"
 mkdir -p "$OUT/bin" "$OUT/storage" "$OUT/logs"

@@ -36,6 +36,7 @@ APPEND_ONLY = {
     "subscription_events",
     "auth_events",
     "journal_lines",
+    "stock_batch_movements",
 }
 
 CREATE_TABLE = re.compile(r"CREATE TABLE\s+(?:IF NOT EXISTS\s+)?`?(\w+)`?\s*\((.*?)\n\)", re.S | re.I)

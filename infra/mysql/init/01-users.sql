@@ -13,6 +13,6 @@ GRANT pos_migrator TO 'pos_app'@'%';
 SET DEFAULT ROLE pos_migrator TO 'pos_app'@'%';
 
 -- Integration tests: #[sqlx::test] creates and drops one database per test.
-CREATE DATABASE IF NOT EXISTS pos_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE DATABASE IF NOT EXISTS pos_test CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 CREATE USER IF NOT EXISTS 'pos_test'@'%' IDENTIFIED BY 'pos_test_dev_only';
 GRANT ALL PRIVILEGES ON *.* TO 'pos_test'@'%';

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
@@ -8,6 +8,7 @@ import {
   type ProductInput,
   PRODUCT_TYPES,
   type ProductType,
+  type WarrantyUnit,
   catalogApi,
   catalogKeys,
   categoryTree,
@@ -38,7 +39,7 @@ import { dateLocale } from '../../lib/dates'
 export function ProductFormPage() {
   const { t } = useTranslation()
   const { id } = useParams()
-  const { me } = useSession()
+  const { me, can } = useSession()
   const tenantId = me?.tenant?.tenant_id ?? ''
   const units = useUnits(tenantId)
   const taxRates = useTaxRates(tenantId)
@@ -46,18 +47,49 @@ export function ProductFormPage() {
   const brands = useBrands(tenantId)
   const product = useProduct(tenantId, id ?? '')
   const lists = [units, taxRates, categories, brands]
+  // A new product starts with the next automatic SKU and a new in-store barcode
+  // filled in; so does a saved product that has no barcode yet.
+  const needsCodes = id ? product.data?.barcodes.length === 0 && can('products.update') : can('products.create')
+  const nextCodes = useQuery({
+    queryKey: [...catalogKeys.products(tenantId), 'next-codes'],
+    queryFn: catalogApi.nextCodes,
+    enabled: needsCodes,
+    staleTime: 0,
+    gcTime: 0,
+  })
 
-  if (lists.some((q) => q.isPending) || (id && product.isPending)) return <Spinner />
+  if (lists.some((q) => q.isPending) || (id && product.isPending) || nextCodes.isLoading) return <Spinner />
   const failed = lists.find((q) => q.isError) ?? (id && product.isError ? product : undefined)
   if (failed) return <Alert tone="danger">{problemMessage(failed.error, t)}</Alert>
-  return <ProductForm key={id ?? 'new'} product={id ? product.data : undefined} tenantId={tenantId} />
+  return (
+    <ProductForm
+      key={id ?? 'new'}
+      product={id ? product.data : undefined}
+      suggestedSku={id ? undefined : (nextCodes.data?.sku ?? undefined)}
+      suggestedBarcode={needsCodes ? nextCodes.data?.barcode : undefined}
+      tenantId={tenantId}
+    />
+  )
 }
 
 function decimal(value: string | null | undefined): string {
   return value ? trimDecimal(value) : ''
 }
 
-function ProductForm({ product, tenantId }: { product?: Product; tenantId: string }) {
+/** Fields the form checks before sending (the server checks them too). */
+const REQUIRED_FIELDS = ['product_type', 'name', 'sku', 'barcodes', 'unit_id', 'selling_price'] as const
+
+function ProductForm({
+  product,
+  suggestedSku,
+  suggestedBarcode,
+  tenantId,
+}: {
+  product?: Product
+  suggestedSku?: string
+  suggestedBarcode?: string
+  tenantId: string
+}) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -75,13 +107,17 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
     name: product?.name ?? '',
     name_bn: product?.name_bn ?? '',
     description: product?.description ?? '',
-    sku: product?.sku ?? '',
-    barcodes: product?.barcodes.join(', ') ?? '',
+    sku: product?.sku ?? suggestedSku ?? '',
+    barcodes: product?.barcodes.length ? product.barcodes.join(', ') : (suggestedBarcode ?? ''),
     category_id: product?.category_id ?? '',
     brand_id: product?.brand_id ?? '',
     unit_id: product?.unit_id ?? defaultUnit?.id ?? '',
     tax_rate_id: product?.tax_rate_id ?? '',
     track_inventory: product?.track_inventory ?? true,
+    track_batches: product?.track_batches ?? false,
+    has_warranty: product?.warranty_period != null,
+    warranty_period: product?.warranty_period?.toString() ?? '',
+    warranty_unit: product?.warranty_unit ?? 'month',
     purchase_price: decimal(product?.purchase_price),
     selling_price: decimal(product?.selling_price),
     wholesale_price: decimal(product?.wholesale_price),
@@ -93,21 +129,42 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
   const refresh = () => queryClient.invalidateQueries({ queryKey: catalogKeys.products(tenantId) })
   const save = useMutation({
     mutationFn: () => {
+      // Blank required fields are flagged on the field; a blank price would otherwise be a raw 400.
+      const barcodes = values.barcodes
+        .split(/[\s,]+/)
+        .map((b) => b.trim())
+        .filter(Boolean)
+      const missing: string[] = REQUIRED_FIELDS.filter((f) => (f === 'barcodes' ? barcodes.length === 0 : !values[f].trim()))
+      if (values.has_warranty && !values.warranty_period.trim()) missing.push('warranty_period')
+      if (missing.length > 0) {
+        throw new ApiError({
+          type: 'urn:pos:problem:validation_failed',
+          title: 'Bad Request',
+          status: 400,
+          code: 'VALIDATION_FAILED',
+          detail: '',
+          errors: missing.map((field) => ({ field, code: 'REQUIRED', message: '' })),
+        })
+      }
       const input: ProductInput = {
         product_type: values.product_type as ProductType,
         name: values.name.trim(),
         name_bn: optional(values.name_bn),
         description: optional(values.description),
-        sku: optional(values.sku),
-        barcodes: values.barcodes
-          .split(/[\s,]+/)
-          .map((b) => b.trim())
-          .filter(Boolean),
+        // The suggested code is left to the server, which takes the next free one when saving.
+        sku: !product && values.sku.trim() === suggestedSku ? undefined : optional(values.sku),
+        // The suggested barcode is left to the server, which takes the next free in-store code when saving.
+        barcodes: barcodes.filter((b) => b !== suggestedBarcode),
+        generate_barcode: suggestedBarcode !== undefined && barcodes.includes(suggestedBarcode) ? true : undefined,
         category_id: optional(values.category_id),
         brand_id: optional(values.brand_id),
         unit_id: values.unit_id,
         tax_rate_id: optional(values.tax_rate_id),
         track_inventory: isService ? false : values.track_inventory,
+        track_batches: !isService && values.track_inventory ? values.track_batches : false,
+        // A malformed length is sent as-is so the server flags the field.
+        warranty_period: values.has_warranty ? Number(values.warranty_period.trim()) : undefined,
+        warranty_unit: values.has_warranty ? (values.warranty_unit as WarrantyUnit) : undefined,
         // Without view_cost the field is hidden and must not be sent (403).
         purchase_price: canViewCost ? optional(values.purchase_price) : undefined,
         selling_price: values.selling_price.trim(),
@@ -164,7 +221,17 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
       </Link>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{product ? product.name : t('products.new')}</h1>
-        {product?.status === 'archived' && <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-ink-muted">{t('products.statuses.archived')}</span>}
+        <div className="flex flex-wrap items-center gap-2">
+          {product?.status === 'archived' && <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-ink-muted">{t('products.statuses.archived')}</span>}
+          {product && (
+            <Link
+              to={`/labels?variants=${product.variant_id}`}
+              className="inline-flex min-h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-canvas"
+            >
+              {t('labels.printBarcode')}
+            </Link>
+          )}
+        </div>
       </div>
       {product?.status === 'archived' && <Alert>{t('products.archivedHint')}</Alert>}
       {save.isSuccess && <Alert tone="success">{t('products.saved')}</Alert>}
@@ -175,6 +242,7 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
             <Select
               label={t('products.type')}
               {...bind('product_type')}
+              required
               options={PRODUCT_TYPES.map((p) => ({ value: p, label: t(`products.types.${p}`) }))}
               error={errors.product_type}
             />
@@ -184,11 +252,18 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
               <TextField
                 label={t('products.sku')}
                 {...bind('sku')}
+                required
                 hint={product ? undefined : t('products.skuHint')}
                 maxLength={64}
                 error={errors.sku}
               />
-              <TextField label={t('products.barcodes')} {...bind('barcodes')} hint={t('products.barcodesHint')} error={errors.barcodes} />
+              <TextField
+                label={t('products.barcodes')}
+                {...bind('barcodes')}
+                required
+                hint={suggestedBarcode && values.barcodes.includes(suggestedBarcode) ? t('products.barcodeGenerated') : t('products.barcodesHint')}
+                error={errors.barcodes}
+              />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <Select
@@ -209,7 +284,11 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
               <Select
                 label={t('products.unit')}
                 {...bind('unit_id')}
-                options={active(units, values.unit_id).map((u) => ({ value: u.id, label: unitLabel(u) }))}
+                required
+                options={[
+                  ...(values.unit_id ? [] : [{ value: '', label: t('products.chooseUnit') }]),
+                  ...active(units, values.unit_id).map((u) => ({ value: u.id, label: unitLabel(u) })),
+                ]}
                 error={errors.unit_id}
               />
               <Select
@@ -232,6 +311,30 @@ function ProductForm({ product, tenantId }: { product?: Product; tenantId: strin
               />
             </label>
             {!isService && <Checkbox label={t('products.trackInventory')} hint={t('products.trackInventoryHint')} {...bindCheck('track_inventory')} />}
+            {!isService && values.track_inventory && (
+              <Checkbox label={t('products.trackBatches')} hint={t('products.trackBatchesHint')} {...bindCheck('track_batches')} />
+            )}
+            <Checkbox label={t('products.hasWarranty')} hint={t('products.hasWarrantyHint')} {...bindCheck('has_warranty')} />
+            {values.has_warranty && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField
+                  label={t('products.warrantyPeriod')}
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  {...bind('warranty_period')}
+                  required
+                  error={errors.warranty_period}
+                />
+                <Select
+                  label={t('products.warrantyUnit')}
+                  {...bind('warranty_unit')}
+                  options={(['day', 'month', 'year'] as const).map((u) => ({ value: u, label: t(`products.warrantyUnits.${u}`) }))}
+                  error={errors.warranty_unit}
+                />
+              </div>
+            )}
           </Card>
           <Card className="flex flex-col gap-4">
             <h2 className="font-semibold">{t('products.prices')}</h2>

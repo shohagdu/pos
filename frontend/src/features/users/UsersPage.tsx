@@ -23,6 +23,10 @@ export function UsersPage() {
   const { me, can } = useSession()
   const tenantId = me?.tenant?.tenant_id ?? ''
   const current = (TABS.includes(tab as Tab) ? tab : 'members') as Tab
+  // Staff are added directly now; the tab stays only while old invitations are open.
+  const invitations = useInvitations(tenantId)
+  const openInvitations = invitations.data?.some((i) => i.status === 'pending') ?? false
+  const tabs = TABS.filter((s) => s !== 'invitations' || openInvitations || current === 'invitations')
 
   return (
     <div className="flex max-w-4xl flex-col gap-6">
@@ -36,13 +40,13 @@ export function UsersPage() {
           )}
           {can('users.invite') && (
             <Link to="/users/invite" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
-              {t('users.invite')}
+              {t('users.addMember')}
             </Link>
           )}
         </div>
       </div>
       <nav aria-label={t('users.title')} className="flex flex-wrap gap-1 border-b border-border">
-        {TABS.map((s) => (
+        {tabs.map((s) => (
           <NavLink
             key={s}
             to={s === 'members' ? '/users' : `/users/${s}`}

@@ -29,6 +29,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(switch_tenant)
             .service(forgot_password)
             .service(reset_password)
+            .service(change_password)
             .service(me)
             .service(sessions)
             .service(revoke_session),
@@ -222,6 +223,40 @@ pub async fn reset_password(
     let mut res = HttpResponse::NoContent();
     clear_refresh_cookie(&mut res, &state);
     Ok(res.finish())
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PasswordChanged {
+    /// Other devices that were signed out.
+    pub signed_out_sessions: u64,
+}
+
+/// Changes the signed-in user's password; this device stays signed in, the
+/// others are signed out. A wrong current password is `400` on
+/// `current_password`; five in 15 minutes lock it (`429`).
+#[utoipa::path(post, path = "/api/v1/auth/password/change", tag = "auth", request_body = ChangePasswordRequest,
+    security(("bearer" = [])),
+    responses((status = 200, body = PasswordChanged), (status = 400, body = crate::error::Problem),
+              (status = 429, body = crate::error::Problem)))]
+#[post("/password/change")]
+pub async fn change_password(
+    state: web::Data<AppState>,
+    auth: Authenticated,
+    body: web::Json<ChangePasswordRequest>,
+) -> Result<HttpResponse, ApiError> {
+    let body = body.into_inner();
+    let signed_out_sessions = state
+        .auth
+        .change_password(&state.pool, &auth.claims, body.current_password, body.new_password, &auth.meta)
+        .await?;
+    Ok(HttpResponse::Ok().json(PasswordChanged { signed_out_sessions }))
 }
 
 #[derive(Debug, Serialize, ToSchema)]

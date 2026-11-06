@@ -56,11 +56,11 @@ async fn provisioning_creates_all_defaults(pool: MySqlPool) {
         (
             "SELECT COUNT(*) FROM role_permissions rp JOIN roles r ON r.tenant_id = rp.tenant_id AND r.id = rp.role_id \
           WHERE rp.tenant_id = ? AND r.code = 'owner'",
-            64,
+            65,
         ),
         ("SELECT COUNT(*) FROM tenant_memberships WHERE tenant_id = ? AND is_owner AND status = 'active'", 1),
         ("SELECT COUNT(*) FROM membership_roles WHERE tenant_id = ? AND branch_id IS NULL", 1),
-        ("SELECT COUNT(*) FROM document_sequences WHERE tenant_id = ?", 12),
+        ("SELECT COUNT(*) FROM document_sequences WHERE tenant_id = ?", 16),
         ("SELECT COUNT(*) FROM document_sequences WHERE tenant_id = ? AND branch_id IS NULL AND NOT include_period", 3),
         (
             "SELECT COUNT(*) FROM subscriptions WHERE tenant_id = ? AND status = 'trialing' \
@@ -99,7 +99,7 @@ async fn provisioning_creates_all_defaults(pool: MySqlPool) {
     let me = call(&srv, Req::get("/api/v1/auth/me").bearer(&session.token).build()).await;
     assert_eq!(me.body["tenant"]["name"], "Rahim General Store");
     assert_eq!(me.body["tenant"]["is_owner"], true);
-    assert_eq!(me.body["tenant"]["permissions"].as_array().map(Vec::len), Some(64));
+    assert_eq!(me.body["tenant"]["permissions"].as_array().map(Vec::len), Some(65));
     assert_eq!(me.body["tenant"]["subscription"]["status"], "trialing");
     assert_eq!(me.body["tenant"]["subscription"]["plan_code"], "trial");
 }

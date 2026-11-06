@@ -9,6 +9,7 @@
     "pos": "POS",
     "products": "Products",
     "sales": "Sales",
+    "warranties": "Warranty lookup",
     "settings": "Settings",
     "users": "Users",
     "plan": "Plan & usage",
@@ -214,6 +215,18 @@
     "lastActive": "Last active {{when}}",
     "signedIn": "Signed in {{when}}",
     "revoke": "Sign out"
+  },
+  "password": {
+    "title": "Change password",
+    "intro": "Enter your current password, then the new one. Your other devices are signed out; this one stays signed in.",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Type the new password again",
+    "show": "Show passwords",
+    "submit": "Change password",
+    "done": "Your password was changed.",
+    "doneSignedOut_one": "Your password was changed and {{count}} other device was signed out.",
+    "doneSignedOut_other": "Your password was changed and {{count}} other devices were signed out."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -439,7 +452,10 @@
     "PAST_DATE": "The date must be in the future.",
     "INVALID_LIMIT": "A limit cannot be negative.",
     "INVALID_DAYS": "Use 1 to 365 days.",
-    "CURRENCY_LOCKED": "The currency cannot change after sales, purchases or payments are recorded."
+    "CURRENCY_LOCKED": "The currency cannot change after sales, purchases or payments are recorded.",
+    "WRONG_PASSWORD": "The current password is wrong.",
+    "SAME_PASSWORD": "Choose a password different from the current one.",
+    "PASSWORD_MISMATCH": "The two new passwords do not match."
   },
   "users": {
     "title": "Users & roles",
@@ -474,7 +490,8 @@
     "noSessions": "Not signed in on any device.",
     "signedOut_one": "Signed out of {{count}} device.",
     "signedOut_other": "Signed out of {{count}} devices.",
-    "noPermission": "You do not have permission to invite users."
+    "noPermission": "You do not have permission to invite users.",
+    "addMember": "Add staff"
   },
   "invitations": {
     "title": "Invite staff",
@@ -494,6 +511,25 @@
     "viewAll": "See all invitations",
     "seats": "{{used}} of {{max}} user seats used (open invitations count).",
     "seatsFull": "Remove someone or upgrade the plan to invite more."
+  },
+  "addMember": {
+    "title": "Add staff",
+    "intro": "Create the account here and give them their mobile number and password. They can sign in right away, no invitation needed.",
+    "fullName": "Full name",
+    "phone": "Mobile number",
+    "phoneHint": "They sign in with this number.",
+    "email": "Email (optional)",
+    "password": "Password",
+    "passwordHint": "At least 8 characters. They can change it later under Change password in the account menu. If the number already has an account, it keeps its own password.",
+    "showPassword": "Show password",
+    "submit": "Add staff",
+    "doneTitle": "{{name}} was added",
+    "doneNew": "They can sign in now with {{phone}} and the password you set. Give it to them in person.",
+    "doneExisting": "{{phone}} already had an account, so they sign in with their own password. This business is now in their list.",
+    "another": "Add someone else",
+    "viewMember": "View member",
+    "seats": "{{used}} of {{max}} user seats used.",
+    "seatsFull": "Remove someone or upgrade the plan to add more."
   },
   "invitation": {
     "title": "Join {{business}}",
@@ -722,9 +758,10 @@
     "name": "Name",
     "nameBn": "Name in Bengali (optional)",
     "sku": "SKU",
-    "skuHint": "Leave blank to number it automatically (P000001).",
+    "skuHint": "Filled in with the next automatic code; type your own to replace it.",
     "barcodes": "Barcodes",
     "barcodesHint": "Scan or type; separate several with commas.",
+    "barcodeGenerated": "A new in-store barcode is filled in; scan the maker's barcode to use it instead.",
     "status": "Status",
     "statuses": {
       "active": "Active",
@@ -741,6 +778,7 @@
     "noCategory": "No category",
     "noBrand": "No brand",
     "unit": "Unit",
+    "chooseUnit": "Choose a unit",
     "taxRate": "Tax rate",
     "defaultTax": "Business default",
     "description": "Description (optional)",
@@ -774,6 +812,17 @@
       "brands": "Brands",
       "units": "Units",
       "taxRates": "Tax rates"
+    },
+    "trackBatches": "Track batch & expiry",
+    "trackBatchesHint": "Ask for a batch number and expiry date when stock comes in; sales take the earliest expiry first.",
+    "hasWarranty": "Has warranty",
+    "hasWarrantyHint": "Sales show the date the warranty runs out on the invoice and receipt.",
+    "warrantyPeriod": "Warranty length",
+    "warrantyUnit": "Warranty in",
+    "warrantyUnits": {
+      "day": "Days",
+      "month": "Months",
+      "year": "Years"
     }
   },
   "catalog": {

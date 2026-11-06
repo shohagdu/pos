@@ -15,7 +15,7 @@ use pos_core::{
     page::{self, Keyset},
 };
 use pos_db::{TenantTx, map_db_error};
-use pos_inventory::{MovementLine, MovementRef, post_movements};
+use pos_inventory::{Batch, MovementLine, MovementRef, post_movements};
 use pos_money::payments::{self, Allocation, Direction, NewPayment};
 use pos_parties::{PartyEntry, PartyType, ledger};
 use pos_tenancy::{context, sequences};
@@ -329,6 +329,8 @@ pub async fn create(
                 unit_cost: None,
                 reference_line_id: Some(*item_id),
                 reason: Some(reason.chars().take(255).collect()),
+                // Out of the batches the purchase line brought in.
+                batch: Batch::Reverse(o.item.id),
             })
             .collect::<Vec<_>>(),
         ctx.allow_negative_stock,

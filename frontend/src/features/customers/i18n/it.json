@@ -94,6 +94,8 @@
     "void": "Annulla",
     "voidPaymentNo": "Annulla pagamento {{no}}",
     "voidHint": "L'annullamento storna questo pagamento di {{amount}}: il saldo del cliente e quello del conto tornano come prima.",
-    "noPayments": "Nessun pagamento da questo cliente."
+    "noPayments": "Nessun pagamento da questo cliente.",
+    "warranties": "Garanzie",
+    "noWarranties": "Nessun articolo acquistato con garanzia."
   }
 }

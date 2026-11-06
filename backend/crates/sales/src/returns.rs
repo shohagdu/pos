@@ -15,7 +15,7 @@ use pos_core::{
     page::{self, Keyset},
 };
 use pos_db::{TenantTx, map_db_error};
-use pos_inventory::{MovementLine, MovementRef, post_movements};
+use pos_inventory::{Batch, MovementLine, MovementRef, post_movements};
 use pos_money::{
     accounts, methods,
     payments::{self, Allocation, Direction, NewPayment},
@@ -411,6 +411,8 @@ pub async fn create(
             unit_cost: Some(o.item.unit_cost),
             reference_line_id: Some(*item_id),
             reason: Some(reason.chars().take(255).collect()),
+            // Back into the batches the sale line took it from.
+            batch: Batch::Reverse(o.item.id),
         })
         .collect();
     let posted = post_movements(

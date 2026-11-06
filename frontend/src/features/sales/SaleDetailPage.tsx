@@ -23,6 +23,7 @@ import { PrintOnly, ScreenOnly } from './print'
 import { SaleReceipt } from './Receipt'
 import { SaleTotals } from './SaleTotals'
 import { usePrint } from './usePrint'
+import { warrantyExpired, warrantyTenure } from './warranty'
 
 const linkButton = 'inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold'
 
@@ -66,6 +67,14 @@ export function SaleDetailPage() {
         <>
           <span className="font-medium">{i.product_name}</span>
           <span className="block font-mono text-xs text-ink-muted">{i.sku}</span>
+          {i.warranty_expires_on && (
+            <span className={`block text-xs ${warrantyExpired(i.warranty_expires_on, today()) ? 'text-danger' : 'text-brand-700'}`}>
+              {t(warrantyExpired(i.warranty_expires_on, today()) ? 'sales.warrantyExpired' : 'sales.warrantyUntil', {
+                date: formatDate(i.warranty_expires_on, lang),
+              })}
+              {warrantyTenure(i, t) && <span className="text-ink-muted"> · {warrantyTenure(i, t)}</span>}
+            </span>
+          )}
         </>
       ),
     },

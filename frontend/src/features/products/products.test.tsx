@@ -38,6 +38,7 @@ function signedIn(perms = managerPerms) {
     'GET /api/v1/tax-rates': taxRates,
     'GET /api/v1/categories': categories,
     'GET /api/v1/brands': [],
+    'GET /api/v1/products/next-codes': { sku: 'P000002', barcode: '2000000000015' },
   }
 }
 
@@ -66,7 +67,9 @@ describe('products', () => {
     })
     const { router } = renderRoute('/products/new')
     await userEvent.type(await screen.findByLabelText('Name'), 'Soybean Oil')
-    await userEvent.type(screen.getByLabelText('Barcodes'), '4006381333931, OIL-1')
+    // The new in-store barcode is filled in; the maker's codes are added after it.
+    expect(screen.getByLabelText('Barcodes')).toHaveValue('2000000000015')
+    await userEvent.type(screen.getByLabelText('Barcodes'), ', 4006381333931, OIL-1')
     await userEvent.selectOptions(screen.getByLabelText('Category'), 'c-rice')
     await userEvent.type(screen.getByLabelText('Selling price'), '190')
     await userEvent.type(screen.getByLabelText('Purchase price (cost)'), '170')
@@ -77,12 +80,40 @@ describe('products', () => {
       product_type: 'standard',
       name: 'Soybean Oil',
       barcodes: ['4006381333931', 'OIL-1'],
+      generate_barcode: true,
       category_id: 'c-rice',
       unit_id: 'u-pcs',
       track_inventory: true,
       purchase_price: '170',
       selling_price: '190',
     })
+  })
+
+  it('sets a warranty tenure', async () => {
+    const calls = mockApi({
+      ...signedIn(),
+      'POST /api/v1/products': (call) => Response.json({ ...rice, id: 'p4', ...(call.body as object) }, { status: 201 }),
+      'GET /api/v1/products/p4': { ...rice, id: 'p4', warranty_period: 3, warranty_unit: 'month' },
+      'GET /api/v1/products/p4/price-history': [],
+    })
+    const { router } = renderRoute('/products/new')
+    await userEvent.type(await screen.findByLabelText('Name'), 'Power Bank')
+    await userEvent.type(screen.getByLabelText('Selling price'), '1500')
+    expect(screen.queryByLabelText(/Warranty length/)).not.toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText(/Has warranty/))
+
+    // Ticked without a length: flagged before anything is sent.
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByLabelText(/Warranty length/)).toHaveAttribute('aria-invalid', 'true')
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/products')).toBe(false)
+
+    await userEvent.type(screen.getByLabelText(/Warranty length/), '3')
+    expect(screen.getByLabelText('Warranty in')).toHaveValue('month')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/products/p4'))
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/products')?.body).toMatchObject({ warranty_period: 3, warranty_unit: 'month' })
+    // The saved product opens with the warranty shown.
+    expect(await screen.findByLabelText(/Warranty length/)).toHaveValue(3)
   })
 
   it('never sends the cost for users who cannot see it', async () => {
@@ -103,11 +134,42 @@ describe('products', () => {
     expect(body).not.toHaveProperty('sku')
   })
 
+  it('flags blank required fields on the form and allows a zero price', async () => {
+    const calls = mockApi({
+      ...signedIn(),
+      'POST /api/v1/products': (call) => Response.json({ ...rice, id: 'p4', ...(call.body as object) }, { status: 201 }),
+      'GET /api/v1/products/p4': { ...rice, id: 'p4' },
+      'GET /api/v1/products/p4/price-history': [],
+    })
+    const { router } = renderRoute('/products/new')
+    const sku = await screen.findByLabelText('SKU')
+    expect(sku).toHaveValue('P000002')
+    expect(sku).toBeRequired()
+    expect(screen.getByLabelText('Type')).toBeRequired()
+    expect(screen.getByLabelText('Unit')).toBeRequired()
+    expect(screen.getByLabelText('Barcodes')).toBeRequired()
+    await userEvent.clear(sku)
+    await userEvent.clear(screen.getByLabelText('Barcodes'))
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findAllByText('This field is required.')).toHaveLength(4)
+    for (const field of ['Name', 'SKU', 'Barcodes', 'Selling price']) expect(screen.getByLabelText(field)).toHaveAttribute('aria-invalid', 'true')
+    expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/products')).toBe(false)
+
+    await userEvent.type(screen.getByLabelText('Name'), 'Free sample')
+    await userEvent.type(sku, 'SAMPLE-1')
+    await userEvent.type(screen.getByLabelText('Barcodes'), 'SAMPLE')
+    await userEvent.type(screen.getByLabelText('Selling price'), '0.00')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/products/p4'))
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/products')?.body).toMatchObject({ sku: 'SAMPLE-1', barcodes: ['SAMPLE'], selling_price: '0.00' })
+  })
+
   it('shows a duplicate barcode on the barcode field', async () => {
     mockApi({ ...signedIn(), 'POST /api/v1/products': () => problem(409, 'DUPLICATE_BARCODE') })
     renderRoute('/products/new')
     await userEvent.type(await screen.findByLabelText('Name'), 'Copy')
     const barcodes = screen.getByLabelText('Barcodes')
+    await userEvent.clear(barcodes)
     await userEvent.type(barcodes, '4006381333931')
     await userEvent.type(screen.getByLabelText('Selling price'), '1')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
@@ -132,6 +194,21 @@ describe('products', () => {
     const put = calls.find((c) => c.method === 'PUT')
     expect(put?.headers.get('If-Match')).toBe('"1"')
     expect(put?.body).toMatchObject({ sku: 'P000001', barcodes: ['4006381333931'], tax_rate_id: 't0', purchase_price: '400' })
+  })
+
+  it('offers a new barcode for a saved product that has none', async () => {
+    const calls = mockApi({
+      ...signedIn(),
+      'GET /api/v1/products/p1': { ...rice, barcodes: [] },
+      'GET /api/v1/products/p1/price-history': [],
+      'PUT /api/v1/products/p1': { ...rice, barcodes: ['2000000000015'], version: 2 },
+    })
+    renderRoute('/products/p1')
+    expect(await screen.findByLabelText('Barcodes')).toHaveValue('2000000000015')
+    expect(screen.getByText(/A new in-store barcode is filled in/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true))
+    expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ barcodes: [], generate_barcode: true })
   })
 
   it('adds a sub-category and only offers parents with room below', async () => {

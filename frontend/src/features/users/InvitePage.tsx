@@ -11,11 +11,18 @@ import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
 import { Spinner } from '../../components/ui/Spinner'
 import { TextField } from '../../components/ui/TextField'
+import { useFields } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { BranchScopePicker, RolePicker } from './RolePicker'
 
-/** US-AUTH-04: invite staff by phone or email with roles. */
+const EMPTY = { full_name: '', phone: '', email: '', password: '' }
+
+/**
+ * Adds staff directly: name, mobile number, a first password and roles. The
+ * account signs in at once, without an invitation link. A number that already
+ * has an account joins with its own password.
+ */
 export function InvitePage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -25,53 +32,63 @@ export function InvitePage() {
   const branches = useBranches(tenantId)
   const seats = useSubscription(tenantId).data?.usage.find((m) => m.feature === 'users.max')
   const full = seats?.used != null && seats.limit !== null && seats.used >= seats.limit
-  const [destination, setDestination] = useState('')
+  const { values, bind, setValues } = useFields(EMPTY)
+  const [showPassword, setShowPassword] = useState(false)
   const [roleIds, setRoleIds] = useState<string[]>([])
   const [branchIds, setBranchIds] = useState<string[]>([])
-  const invite = useMutation({
-    mutationFn: () => usersApi.invite(destination, roleIds, branchIds),
+  const add = useMutation({
+    mutationFn: () =>
+      usersApi.createMember({
+        full_name: values.full_name.trim(),
+        phone: values.phone.trim(),
+        email: values.email.trim() || undefined,
+        password: values.password || undefined,
+        role_ids: roleIds,
+        branch_ids: branchIds,
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: usersKeys.all(tenantId) })
       void queryClient.invalidateQueries({ queryKey: ['tenancy', tenantId, 'onboarding'] })
+      void queryClient.invalidateQueries({ queryKey: ['billing', tenantId] })
     },
   })
-  const errors = fieldErrors(invite.error, t)
+  const errors = fieldErrors(add.error, t)
 
   if (!can('users.invite')) return <Alert tone="warning">{t('users.noPermission')}</Alert>
   if (roles.isPending || branches.isPending) return <Spinner />
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    invite.mutate()
+    add.mutate()
   }
 
-  if (invite.isSuccess) {
-    const sent = invite.data.invitation
+  if (add.isSuccess) {
+    const { member, existing_account } = add.data
     return (
       <Card className="flex max-w-xl flex-col gap-4">
-        <h1 className="text-xl font-bold">{t('invitations.sentTitle')}</h1>
-        <p className="text-sm">{t('invitations.sentBody', { destination: sent.destination })}</p>
-        {invite.data.dev_link && (
-          <Alert tone="warning">
-            {t('invitations.devLinkIntro')}{' '}
-            <a href={invite.data.dev_link} className="break-all font-mono underline">
-              {invite.data.dev_link}
-            </a>
-          </Alert>
-        )}
+        <h1 className="text-xl font-bold">{t('addMember.doneTitle', { name: member.full_name })}</h1>
+        <p className="text-sm">
+          {existing_account
+            ? t('addMember.doneExisting', { phone: member.phone ?? values.phone })
+            : t('addMember.doneNew', { phone: member.phone ?? values.phone })}
+        </p>
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
             onClick={() => {
-              invite.reset()
-              setDestination('')
+              add.reset()
+              setValues(EMPTY)
               setRoleIds([])
+              setBranchIds([])
             }}
           >
-            {t('invitations.inviteAnother')}
+            {t('addMember.another')}
           </Button>
-          <Link to="/users/invitations" className="inline-flex min-h-11 items-center px-4 text-sm font-semibold text-brand-700 hover:underline">
-            {t('invitations.viewAll')}
+          <Link
+            to={`/users/members/${member.id}`}
+            className="inline-flex min-h-11 items-center px-4 text-sm font-semibold text-brand-700 hover:underline"
+          >
+            {t('addMember.viewMember')}
           </Link>
         </div>
       </Card>
@@ -80,32 +97,54 @@ export function InvitePage() {
 
   return (
     <Card className="max-w-xl">
-      <h1 className="mb-2 text-xl font-bold">{t('invitations.title')}</h1>
-      <p className="mb-4 text-sm text-ink-muted">{t('invitations.intro')}</p>
+      <h1 className="mb-2 text-xl font-bold">{t('addMember.title')}</h1>
+      <p className="mb-4 text-sm text-ink-muted">{t('addMember.intro')}</p>
       {seats?.used != null && seats.limit !== null && (
         <Alert tone={full ? 'warning' : 'info'} className="mb-6">
-          {t('invitations.seats', { used: seats.used, max: seats.limit })}
-          {full && <> {t('invitations.seatsFull')}</>}
+          {t('addMember.seats', { used: seats.used, max: seats.limit })}
+          {full && <> {t('addMember.seatsFull')}</>}
         </Alert>
       )}
       <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
-        <TextField
-          label={t('invitations.destination')}
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="01XXXXXXXXX"
-          required
-          error={errors.destination}
-        />
+        <TextField label={t('addMember.fullName')} autoComplete="off" required error={errors.full_name} {...bind('full_name')} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label={t('addMember.phone')}
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            placeholder="01XXXXXXXXX"
+            required
+            hint={t('addMember.phoneHint')}
+            error={errors.phone}
+            {...bind('phone')}
+          />
+          <TextField label={t('addMember.email')} type="email" autoComplete="off" error={errors.email} {...bind('email')} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <TextField
+            label={t('addMember.password')}
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="new-password"
+            required
+            hint={t('addMember.passwordHint')}
+            error={errors.password}
+            {...bind('password')}
+          />
+          <label className="flex items-center gap-2 text-sm text-ink-muted">
+            <input type="checkbox" className="size-4 accent-brand-600" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+            {t('addMember.showPassword')}
+          </label>
+        </div>
         <RolePicker roles={roles.data ?? []} selected={roleIds} onChange={setRoleIds} isOwner={me?.tenant?.is_owner ?? false} error={errors.role_ids} />
         <BranchScopePicker branches={branches.data ?? []} selected={branchIds} onChange={setBranchIds} />
-        {invite.isError && hasFormError(invite.error) && <Alert tone="danger">{problemMessage(invite.error, t)}</Alert>}
+        {add.isError && hasFormError(add.error) && <Alert tone="danger">{problemMessage(add.error, t)}</Alert>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Link to="/users" className="inline-flex min-h-11 items-center justify-center px-4 text-sm font-semibold text-ink-muted hover:text-ink">
             {t('common.cancel')}
           </Link>
-          <Button type="submit" disabled={invite.isPending || full}>
-            {invite.isPending ? t('common.pleaseWait') : t('invitations.send')}
+          <Button type="submit" disabled={add.isPending || full}>
+            {add.isPending ? t('common.pleaseWait') : t('addMember.submit')}
           </Button>
         </div>
       </form>

@@ -11,6 +11,7 @@ use pos_sales::{
     lookup::{self, LookupQuery, PosContext, PosItem},
     returns::{self, ReturnFilter, ReturnInput, ReturnPage, SaleReturnDetail},
     sales::{self, SaleDetail, SaleFilter, SaleInput, SalePage, Seller},
+    warranties::{self, WarrantyFilter, WarrantyPage},
 };
 use serde::Deserialize;
 use uuid::Uuid;
@@ -32,6 +33,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(create_return)
         .service(list_returns)
         .service(get_return)
+        .service(list_warranties)
         .service(list_held_carts)
         .service(hold_cart)
         .service(remove_held_cart)
@@ -239,6 +241,23 @@ pub async fn list_returns(
     auth.require("sales.view")?;
     let mut tx = auth.begin(&state).await?;
     let page = returns::list(&mut tx, &filter, auth.access.can("products.view_cost")).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(page))
+}
+
+/// Items sold with a warranty, newest sale first (claims, customer history).
+/// Without `sales.view_all_users` only the caller's own sales.
+#[utoipa::path(get, path = "/api/v1/sale-warranties", tag = "sales", params(WarrantyFilter), security(("bearer" = [])),
+    responses((status = 200, body = WarrantyPage)))]
+#[get("/sale-warranties")]
+pub async fn list_warranties(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    filter: web::Query<WarrantyFilter>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("sales.view")?;
+    let mut tx = auth.begin(&state).await?;
+    let page = warranties::list(&mut tx, &filter, seller(&auth)).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(page))
 }

@@ -2,7 +2,9 @@
 //! products with their default variant, barcodes and price history.
 
 pub mod barcode;
+pub mod labels;
 pub mod masters;
 pub mod products;
 mod text;
 pub mod variants;
+pub mod warranty;

@@ -650,17 +650,7 @@ async fn create_system_roles(tx: &mut TenantTx) -> AppResult<Uuid> {
         .await
         .map_err(map_db_error)?;
 
-        let codes = serde_json::to_string(&role.permissions()).map_err(AppError::internal)?;
-        sqlx::query(
-            "INSERT INTO role_permissions (tenant_id, role_id, permission_code) \
-             SELECT ?, ?, j.code FROM JSON_TABLE(?, '$[*]' COLUMNS (code VARCHAR(60) PATH '$')) AS j",
-        )
-        .bind(tenant_id)
-        .bind(role_id)
-        .bind(codes)
-        .execute(&mut **tx)
-        .await
-        .map_err(map_db_error)?;
+        crate::grants::insert_role_permissions(tx, role_id, &role.permissions()).await?;
 
         if role.code == pos_auth::rbac::OWNER_ROLE {
             owner_role_id = Some(role_id);

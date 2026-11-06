@@ -23,6 +23,22 @@ export interface Member {
   last_login_at: string | null
 }
 
+export interface NewMember {
+  full_name: string
+  phone: string
+  email?: string
+  /** Ignored when the number already has an account (it keeps its own). */
+  password?: string
+  role_ids: string[]
+  branch_ids: string[]
+}
+
+export interface CreatedMember {
+  member: Member
+  /** The number already had an account: it signs in with its own password. */
+  existing_account: boolean
+}
+
 export interface RoleAssignment {
   role_id: string
   branch_id: string | null
@@ -83,6 +99,7 @@ export interface RoleInput {
 export const usersApi = {
   members: () => apiFetch<Member[]>('/api/v1/members'),
   member: (id: string) => apiFetch<Member>(`/api/v1/members/${id}`),
+  createMember: (input: NewMember) => apiFetch<CreatedMember>('/api/v1/members', { method: 'POST', body: input }),
   setRoles: (id: string, assignments: RoleAssignment[]) =>
     apiFetch<Member>(`/api/v1/members/${id}/roles`, { method: 'PUT', body: { assignments } }),
   suspend: (id: string) => apiFetch<Member>(`/api/v1/members/${id}/suspend`, { method: 'POST' }),

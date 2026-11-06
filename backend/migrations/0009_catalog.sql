@@ -139,7 +139,7 @@ CREATE TABLE product_variants (
     UNIQUE KEY uq_variants_default (tenant_id, product_id, default_key),
     KEY idx_variants_product (tenant_id, product_id),
     KEY idx_variants_search_prefix (tenant_id, search_text(64)),
-    FULLTEXT KEY ft_variants_search (search_text) WITH PARSER ngram,
+    FULLTEXT KEY ft_variants_search (search_text),
     CONSTRAINT fk_variants_tenant  FOREIGN KEY (tenant_id) REFERENCES tenants (id),
     CONSTRAINT fk_variants_product FOREIGN KEY (tenant_id, product_id) REFERENCES products (tenant_id, id),
     CONSTRAINT ck_variants_sku     CHECK (sku REGEXP '^[A-Za-z0-9._-]{1,64}$'),

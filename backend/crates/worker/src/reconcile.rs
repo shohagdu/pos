@@ -30,6 +30,14 @@ const CHECKS: &[(&str, &str)] = &[
          /* tenant-lint: allow platform-wide reconciliation job */",
     ),
     (
+        "batch_balances",
+        "SELECT b.tenant_id, b.batch_id, b.quantity, COALESCE(SUM(m.quantity), 0) AS ledger \
+         FROM stock_batch_balances b LEFT JOIN stock_batch_movements m ON m.tenant_id = b.tenant_id \
+           AND m.batch_id = b.batch_id AND m.location_id = b.location_id \
+         GROUP BY b.tenant_id, b.location_id, b.batch_id, b.quantity HAVING b.quantity <> ledger LIMIT 100 \
+         /* tenant-lint: allow platform-wide reconciliation job */",
+    ),
+    (
         "customer_balances",
         "SELECT c.tenant_id, c.id, c.current_balance, COALESCE(SUM(l.amount), 0) AS ledger \
          FROM customers c LEFT JOIN party_ledger_entries l ON l.tenant_id = c.tenant_id \

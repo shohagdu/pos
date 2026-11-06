@@ -99,6 +99,7 @@
     "useWalkIn": "সাধারণ গ্রাহক",
     "newCustomerTitle": "নতুন গ্রাহক",
     "customerPhoneHint": "যেমন 01712345678। পরের বার গ্রাহক খুঁজতে কাজে লাগবে।",
-    "customerAddress": "ঠিকানা"
+    "customerAddress": "ঠিকানা",
+    "warranty": "ওয়ারেন্টি {{tenure}} · {{date}} পর্যন্ত"
   }
 }

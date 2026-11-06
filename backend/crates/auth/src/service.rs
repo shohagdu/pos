@@ -353,11 +353,7 @@ impl Auth {
             "UPDATE users SET last_login_at = NOW(6), \
              phone_verified_at = IF(phone IS NULL, NULL, COALESCE(phone_verified_at, NOW(6))) WHERE id = ?"
         };
-        sqlx::query(update)
-            .bind(user.id)
-            .execute(&mut *tx)
-            .await
-            .map_err(map_db_error)?;
+        sqlx::query(update).bind(user.id).execute(&mut *tx).await.map_err(map_db_error)?;
         events::record(&mut tx, events::LOGIN_SUCCESS, EventSubject::user(user.id), meta, json!({})).await?;
         let tenant = default_tenant(&mut tx, user.id).await?;
         let tokens = self.start_session(&mut tx, user.id, tenant, meta).await?;
@@ -562,6 +558,79 @@ impl Auth {
         )
         .await?;
         tx.commit().await.map_err(map_db_error)
+    }
+
+    /// Changes the signed-in user's password after checking the current one,
+    /// and signs out their other devices (this one stays signed in). Wrong
+    /// current passwords count like failed sign-ins: five in 15 minutes lock it.
+    pub async fn change_password(
+        &self,
+        pool: &MySqlPool,
+        claims: &AccessClaims,
+        current_password: String,
+        new_password: String,
+        meta: &RequestMeta,
+    ) -> AppResult<u64> {
+        let user_id = claims.sub;
+        let (failures, retry_after): (i64, Option<i64>) = sqlx::query_as(
+            "SELECT COUNT(*), TIMESTAMPDIFF(SECOND, NOW(6), MAX(created_at) + INTERVAL ? MINUTE) FROM auth_events \
+             WHERE user_id = ? AND event = ? AND created_at > NOW(6) - INTERVAL ? MINUTE \
+             /* tenant-lint: allow security log, not tenant data */",
+        )
+        .bind(LOCKOUT_MINUTES)
+        .bind(user_id)
+        .bind(events::PASSWORD_CHANGE_FAILURE)
+        .bind(LOCKOUT_MINUTES)
+        .fetch_one(pool)
+        .await
+        .map_err(map_db_error)?;
+        if failures >= MAX_LOGIN_FAILURES {
+            return Err(locked_out(retry_after));
+        }
+        let user: Option<(String, String, Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT password_hash, full_name, phone, email FROM users WHERE id = ? AND status = 'active'",
+        )
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(map_db_error)?;
+        let (hash, full_name, phone, email) = user.ok_or(AppError::Unauthorized)?;
+        if !password::verify(current_password.clone(), Some(hash)).await? {
+            let mut tx = pool.begin().await.map_err(map_db_error)?;
+            events::record(&mut tx, events::PASSWORD_CHANGE_FAILURE, EventSubject::user(user_id), meta, json!({}))
+                .await?;
+            tx.commit().await.map_err(map_db_error)?;
+            return Err(AppError::field("current_password", "WRONG_PASSWORD", "the current password is wrong"));
+        }
+        if new_password == current_password {
+            return Err(AppError::field(
+                "new_password",
+                "SAME_PASSWORD",
+                "choose a password different from the current one",
+            ));
+        }
+        let personal = [full_name.as_str(), phone.as_deref().unwrap_or(""), email.as_deref().unwrap_or("")];
+        password::validate_policy(&new_password, "new_password", &personal)?;
+        let password_hash = password::hash(new_password).await?;
+
+        let mut tx = pool.begin().await.map_err(map_db_error)?;
+        sqlx::query("UPDATE users SET password_hash = ? WHERE id = ?")
+            .bind(&password_hash)
+            .bind(user_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(map_db_error)?;
+        let revoked = session::revoke_others(&mut tx, user_id, claims.sid, session::REASON_PASSWORD_CHANGED).await?;
+        events::record(
+            &mut tx,
+            events::PASSWORD_CHANGED,
+            EventSubject::user(user_id),
+            meta,
+            json!({ "revoked_sessions": revoked }),
+        )
+        .await?;
+        tx.commit().await.map_err(map_db_error)?;
+        Ok(revoked)
     }
 
     // ---------------------------------------------------------------- sessions

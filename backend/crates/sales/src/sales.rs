@@ -9,7 +9,10 @@
 use chrono::{DateTime, NaiveDate, Utc};
 use pos_accounting::{JournalLine, NewJournal, SystemAccounts, journal};
 use pos_audit::AuditEntry;
-use pos_catalog::variants::{self, VariantInfo};
+use pos_catalog::{
+    variants::{self, VariantInfo},
+    warranty,
+};
 use pos_core::{
     AppError, AppResult, RequestMeta,
     id::new_id,
@@ -17,7 +20,7 @@ use pos_core::{
     page::{self, Keyset},
 };
 use pos_db::{TenantTx, map_db_error};
-use pos_inventory::{MovementLine, MovementRef, post_movements};
+use pos_inventory::{Batch, MovementLine, MovementRef, post_movements};
 use pos_money::payments::{self, Allocation, Direction, NewPayment};
 use pos_parties::{PartyEntry, PartyType, customers, ledger};
 use pos_tenancy::{context, sequences};
@@ -158,6 +161,10 @@ pub struct Sale {
     pub cancelled_at: Option<DateTime<Utc>>,
     pub cancel_reason: Option<String>,
     pub item_count: i64,
+    /// Lines sold with a warranty.
+    pub warranty_items: i64,
+    /// The latest day any of those warranties runs out.
+    pub warranty_until: Option<NaiveDate>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -170,6 +177,11 @@ pub struct SaleItem {
     pub sku: String,
     pub unit_short_name: String,
     pub track_inventory: bool,
+    /// The product's warranty when it was sold (`day`/`month`/`year`).
+    pub warranty_period: Option<i16>,
+    pub warranty_unit: Option<String>,
+    /// The warranty's last day (the sale's business date + tenure).
+    pub warranty_expires_on: Option<NaiveDate>,
     #[schema(value_type = String)]
     pub quantity: Decimal,
     #[schema(value_type = String)]
@@ -269,7 +281,10 @@ const SALE_SELECT: &str = "SELECT s.id, s.invoice_no, s.sale_date, s.business_da
      s.invoice_discount_value, s.invoice_discount_amount, s.tax_total, s.shipping_charge, s.other_charge, \
      s.rounding_adjustment, s.grand_total, s.paid_total, s.returned_total, s.due_total, s.change_given, s.cost_total, \
      s.note, s.reprint_count, s.cancelled_at, s.cancel_reason, \
-     (SELECT COUNT(*) FROM sale_items i WHERE i.tenant_id = s.tenant_id AND i.sale_id = s.id) AS item_count, s.created_at \
+     (SELECT COUNT(*) FROM sale_items i WHERE i.tenant_id = s.tenant_id AND i.sale_id = s.id) AS item_count, \
+     (SELECT COUNT(i.warranty_expires_on) FROM sale_items i WHERE i.tenant_id = s.tenant_id AND i.sale_id = s.id) AS warranty_items, \
+     (SELECT MAX(i.warranty_expires_on) FROM sale_items i WHERE i.tenant_id = s.tenant_id AND i.sale_id = s.id) AS warranty_until, \
+     s.created_at \
      FROM sales s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE s.tenant_id = ";
 
 #[derive(Debug, Clone, Default, Deserialize, utoipa::IntoParams)]
@@ -289,6 +304,8 @@ pub struct SaleFilter {
     pub q: Option<String>,
     /// Only sales with a due.
     pub due_only: Option<bool>,
+    /// Only sales with at least one item under warranty.
+    pub with_warranty: Option<bool>,
     pub limit: Option<u32>,
     pub cursor: Option<String>,
 }
@@ -344,6 +361,12 @@ fn sale_filters(q: &mut QueryBuilder<MySql>, filter: &SaleFilter, own_user: Opti
     }
     if filter.due_only.unwrap_or(false) {
         q.push(" AND s.due_total > 0 AND s.status <> 'cancelled'");
+    }
+    if filter.with_warranty.unwrap_or(false) {
+        q.push(
+            " AND EXISTS (SELECT 1 FROM sale_items wi WHERE wi.tenant_id = s.tenant_id AND wi.sale_id = s.id \
+             AND wi.warranty_expires_on IS NOT NULL)",
+        );
     }
     if let Some(text) = filter.q.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
         let escaped = text.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
@@ -441,8 +464,8 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, seller: Seller) -> AppResult<SaleD
         .await
         .map_err(map_db_error)?;
     let mut items: Vec<SaleItem> = sqlx::query_as(
-        "SELECT id, line_no, variant_id, product_name, sku, unit_short_name, track_inventory, quantity, returned_quantity, \
-         list_price, unit_price, price_overridden, gross_amount, discount_type, discount_value, line_discount, \
+        "SELECT id, line_no, variant_id, product_name, sku, unit_short_name, track_inventory, warranty_period, \
+         warranty_unit, warranty_expires_on, quantity, returned_quantity, list_price, unit_price, price_overridden, gross_amount, discount_type, discount_value, line_discount, \
          invoice_discount_alloc, taxable_amount, tax_rate_pct, tax_amount, line_total, unit_cost, cost_total \
          FROM sale_items WHERE tenant_id = ? AND sale_id = ? ORDER BY line_no",
     )
@@ -696,6 +719,8 @@ pub async fn create(
             unit_cost: None,
             reference_line_id: Some(*item_id),
             reason: None,
+            // Earliest expiry first.
+            batch: Batch::Auto,
         })
         .collect();
     let posted = post_movements(
@@ -771,7 +796,7 @@ pub async fn create(
         "INSERT INTO sale_items (tenant_id, id, sale_id, line_no, variant_id, product_name, sku, unit_id, unit_short_name, \
          track_inventory, quantity, base_quantity, list_price, unit_price, price_overridden, gross_amount, discount_type, \
          discount_value, line_discount, invoice_discount_alloc, taxable_amount, tax_rate_id, tax_rate_pct, tax_amount, \
-         line_total, unit_cost, cost_total) ",
+         line_total, unit_cost, cost_total, warranty_period, warranty_unit, warranty_expires_on) ",
     );
     let rows: Vec<_> = lines.iter().zip(&totals.lines).zip(&item_ids).zip(&line_costs).enumerate().collect();
     q.push_values(rows, |mut row, (i, (((l, t), item_id), cost))| {
@@ -801,7 +826,14 @@ pub async fn create(
             .push_bind(t.tax)
             .push_bind(t.line_total)
             .push_bind(cost.0)
-            .push_bind(cost.1);
+            .push_bind(cost.1)
+            .push_bind(l.info.warranty_period)
+            .push_bind(&l.info.warranty_unit)
+            .push_bind(warranty::expires_on(
+                ctx.business_date,
+                l.info.warranty_period,
+                l.info.warranty_unit.as_deref(),
+            ));
     });
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
 
@@ -995,6 +1027,7 @@ pub async fn cancel(
             unit_cost: Some(*cost),
             reference_line_id: Some(*item_id),
             reason: Some(reason.chars().take(255).collect()),
+            batch: Batch::Reverse(*item_id),
         })
         .collect();
     post_movements(

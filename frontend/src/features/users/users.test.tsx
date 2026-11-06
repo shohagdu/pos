@@ -33,30 +33,51 @@ function signedIn(perms = ownerPerms, isOwner = true) {
 }
 
 describe('users & roles', () => {
-  it('invites staff and shows the development link', async () => {
+  it('adds staff directly with a password, no invitation', async () => {
+    const member = {
+      id: 'm9', user_id: 'u9', full_name: 'Karim Cashier', phone: '+8801711000202', email: null, status: 'active', is_owner: false,
+      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }], joined_at: '2026-11-07T00:00:00Z', last_login_at: null,
+    }
     const calls = mockApi({
       ...signedIn(),
-      'POST /api/v1/invitations': () =>
-        Response.json(
-          {
-            invitation: { id: 'i1', destination: '+8801711000202', roles: [{ id: 'r-cashier', name: 'Cashier' }], branch_ids: [], status: 'pending', expires_at: '2026-10-24T00:00:00Z', created_at: '2026-10-17T00:00:00Z', invited_by: 'Rahim' },
-            dev_link: 'http://localhost:5173/invite#tok123',
-          },
-          { status: 201 },
-        ),
+      'POST /api/v1/members': () => Response.json({ member, existing_account: false }, { status: 201 }),
     })
     renderRoute('/users/invite')
-    await userEvent.type(await screen.findByLabelText('Mobile number or email'), '01711000202')
+    await userEvent.type(await screen.findByLabelText(/Full name/), 'Karim Cashier')
+    await userEvent.type(screen.getByLabelText(/Mobile number/), '01711000202')
+    const password = screen.getByLabelText(/^Password/)
+    await userEvent.type(password, 'Shop-pass-2026')
+    expect(password).toHaveAttribute('type', 'password')
+    await userEvent.click(screen.getByLabelText('Show password'))
+    expect(password).toHaveAttribute('type', 'text')
     expect(screen.queryByLabelText('Owner')).not.toBeInTheDocument()
     await userEvent.click(screen.getByLabelText('Cashier'))
-    await userEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
-    expect(await screen.findByText('Invitation sent')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'http://localhost:5173/invite#tok123' })).toBeInTheDocument()
-    expect(calls.find((c) => c.path === '/api/v1/invitations' && c.method === 'POST')?.body).toEqual({
-      destination: '01711000202',
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }))
+    expect(await screen.findByText('Karim Cashier was added')).toBeInTheDocument()
+    expect(screen.getByText(/They can sign in now with \+8801711000202/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View member' })).toHaveAttribute('href', '/users/members/m9')
+    expect(calls.find((c) => c.path === '/api/v1/members' && c.method === 'POST')?.body).toEqual({
+      full_name: 'Karim Cashier',
+      phone: '01711000202',
+      password: 'Shop-pass-2026',
       role_ids: ['r-cashier'],
       branch_ids: [],
     })
+    expect(calls.some((c) => c.path === '/api/v1/invitations' && c.method === 'POST')).toBe(false)
+  })
+
+  it('tells when the number already had an account', async () => {
+    const member = {
+      id: 'm8', user_id: 'u8', full_name: 'Rina', phone: '+8801711000203', email: null, status: 'active', is_owner: false,
+      roles: [], joined_at: null, last_login_at: null,
+    }
+    mockApi({ ...signedIn(), 'POST /api/v1/members': () => Response.json({ member, existing_account: true }, { status: 201 }) })
+    renderRoute('/users/invite')
+    await userEvent.type(await screen.findByLabelText(/Full name/), 'Rina')
+    await userEvent.type(screen.getByLabelText(/Mobile number/), '01711000203')
+    await userEvent.click(screen.getByLabelText('Cashier'))
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }))
+    expect(await screen.findByText(/already had an account, so they sign in with their own password/)).toBeInTheDocument()
   })
 
   it('does not offer the admin role to non-owners', async () => {
@@ -67,11 +88,13 @@ describe('users & roles', () => {
   })
 
   it('shows the plan limit with its maximum', async () => {
-    mockApi({ ...signedIn(), 'POST /api/v1/invitations': () => problem(402, 'PLAN_LIMIT_REACHED', { limit: 'users.max', max: 3 }) })
+    mockApi({ ...signedIn(), 'POST /api/v1/members': () => problem(402, 'PLAN_LIMIT_REACHED', { limit: 'users.max', max: 3 }) })
     renderRoute('/users/invite')
-    await userEvent.type(await screen.findByLabelText('Mobile number or email'), '01711000202')
+    await userEvent.type(await screen.findByLabelText(/Full name/), 'Karim Cashier')
+    await userEvent.type(screen.getByLabelText(/Mobile number/), '01711000202')
+    await userEvent.type(screen.getByLabelText(/^Password/), 'Shop-pass-2026')
     await userEvent.click(screen.getByLabelText('Cashier'))
-    await userEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }))
     expect(await screen.findByText('Your plan allows at most 3 users. Upgrade the plan or remove some first.')).toBeInTheDocument()
   })
 

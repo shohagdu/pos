@@ -9,3 +9,4 @@ pub mod pricing;
 pub mod returns;
 pub mod sales;
 pub mod shifts;
+pub mod warranties;

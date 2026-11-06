@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, NavLink } from 'react-router'
+import { Link, useLocation } from 'react-router'
 
 import { useSession } from '../../features/auth/session'
 import { BranchSwitcher } from '../../features/branches/BranchSwitcher'
@@ -21,6 +21,14 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: Props) 
   const { me, can } = useSession()
   const allowed = (p: NavItem['permission']) => p === null || (Array.isArray(p) ? p.some((x) => can(x)) : can(p))
   const groups = NAV.map((g) => ({ ...g, items: g.items.filter((i) => allowed(i.permission)) })).filter((g) => g.items.length > 0)
+  // The most specific entry wins: /sales/warranties marks "Warranty lookup",
+  // not "Sales", while /sales/123 still marks "Sales".
+  const { pathname } = useLocation()
+  const covers = (to: string) => (to === '/' ? pathname === '/' : pathname === to || pathname.startsWith(`${to}/`))
+  const activeTo = groups
+    .flatMap((g) => g.items.map((i) => i.to))
+    .filter(covers)
+    .sort((a, b) => b.length - a.length)[0]
   const multiple = (me?.memberships.length ?? 0) > 1
   const tenantName = me?.tenant?.name ?? ''
   // Labels stay in the DOM (sr-only) when collapsed so links keep their names.
@@ -84,29 +92,26 @@ export function Sidebar({ open, onClose, collapsed, onToggleCollapsed }: Props) 
               )}
               {g.section && collapsed && <div className="mx-3 mb-2 hidden border-t border-border md:block" aria-hidden="true" />}
               <ul className="flex flex-col gap-0.5">
-                {g.items.map((item) => (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      end={item.to === '/'}
-                      onClick={onClose}
-                      title={collapsed ? t(item.key) : undefined}
-                      className={({ isActive }) =>
-                        `group relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                {g.items.map((item) => {
+                  const isActive = item.to === activeTo
+                  return (
+                    <li key={item.to}>
+                      <Link
+                        to={item.to}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={onClose}
+                        title={collapsed ? t(item.key) : undefined}
+                        className={`group relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                           collapsed ? 'md:justify-center md:px-0' : ''
-                        } ${isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-muted hover:bg-canvas hover:text-ink'}`
-                      }
-                    >
-                      {({ isActive }) => (
-                        <>
-                          {isActive && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-brand-600" aria-hidden="true" />}
-                          <Icon name={item.icon} className={`size-5 ${isActive ? 'text-brand-600' : 'text-ink-muted group-hover:text-ink'}`} />
-                          <span className={`truncate ${narrow}`}>{t(item.key)}</span>
-                        </>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
+                        } ${isActive ? 'bg-brand-50 text-brand-700' : 'text-ink-muted hover:bg-canvas hover:text-ink'}`}
+                      >
+                        {isActive && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-brand-600" aria-hidden="true" />}
+                        <Icon name={item.icon} className={`size-5 ${isActive ? 'text-brand-600' : 'text-ink-muted group-hover:text-ink'}`} />
+                        <span className={`truncate ${narrow}`}>{t(item.key)}</span>
+                      </Link>
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}

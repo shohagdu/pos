@@ -29,6 +29,7 @@ process.on('uncaughtException', (err) => {
 
 const PUBLIC_DIR = path.join(ROOT, 'public')
 const LOG_DIR = path.join(ROOT, 'logs')
+const LAUNCHER_STARTED = Date.now()
 const MAX_LOG_BYTES = 10 * 1024 * 1024
 
 const env = readDotenv(path.join(ROOT, '.env'))
@@ -328,10 +329,10 @@ function serveStatic(req, res) {
 const HINTS = [
   [/Access denied for user/, 'Wrong database user/password, or the user is not added to the database. cPanel > MySQL Databases > "Add User To Database" (ALL PRIVILEGES), then check DATABASE_URL in pos-app/.env.'],
   [/Unknown database/, 'The database name in DATABASE_URL does not exist. Use the full name with your cPanel prefix (e.g. jsaebike_pos).'],
-  [/UUID_TO_BIN|You have an error in your SQL syntax|MariaDB/i, 'The host runs MariaDB; this app needs MySQL 8. Ask the hosting company to switch your account to MySQL 8.'],
+  [/JSON_TABLE|You have an error in your SQL syntax/i, 'The database server is too old. This app needs MySQL 8.0+ or MariaDB 10.6+; check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for a newer one.'],
   [/SUPER privilege|log_bin_trust_function_creators/, 'The host blocks database triggers. Ask the hosting company to set log_bin_trust_function_creators=1 for your database.'],
   [/failed to lookup address|Name does not resolve|Name or service not known/, 'The database host in DATABASE_URL is unreadable, usually because the password contains @ # $ : / ? unencoded. Use a password of letters and digits only, or encode them (@ -> %40, # -> %23, $ -> %24, : -> %3A, / -> %2F, ? -> %3F).'],
-  [/Unknown system variable 'transaction_isolation'/, 'The host runs MariaDB or MySQL older than 5.7.20; this app needs MySQL 8. Check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for MySQL 8.'],
+  [/Unknown system variable 'transaction_isolation'/, 'The database server is too old. This app needs MySQL 8.0+ or MariaDB 10.6+; check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for a newer one.'],
   [/Failed to create new Arbiter|Resource temporarily unavailable/, 'The API needs more threads than the host allows (CloudLinux process limit). Set HTTP_WORKERS=2 in pos-app/.env (or 1), then Restart the app.'],
   [/EAGAIN/, 'The host refused to start another process (CloudLinux process limit). Stop and Start the app once; if it repeats, ask the hosting company to raise the process (NPROC) limit.'],
   [/Connection refused|Can't connect|Connection timed out/i, 'Cannot reach MySQL. Keep "localhost" as the host in DATABASE_URL.'],
@@ -350,11 +351,29 @@ function redact(text) {
   return out
 }
 
+// Each distinct error line once (last 25): a crash loop repeats the same
+// lines, which would otherwise push the first, real cause off the page.
 function errorLines(log) {
-  return log
-    .split('\n')
-    .filter((l) => l.trim() && (!l.startsWith('{') || /"level":"(ERROR|WARN)"/.test(l)))
-    .slice(-15)
+  const lines = log.split('\n').filter((l) => l.trim() && (!l.startsWith('{') || /"level":"(ERROR|WARN)"/.test(l)) && !l.includes('slow statement'))
+  return [...new Set(lines)].slice(-25)
+}
+
+function fileTime(file) {
+  try {
+    return fs.statSync(file).mtimeMs
+  } catch {
+    return 0
+  }
+}
+
+// Size and date of the program on disk, to tell whether an upload replaced it.
+function binaryReport(name) {
+  try {
+    const st = fs.statSync(path.join(ROOT, 'bin', name))
+    return `bin/${name}: ${st.size} bytes, modified ${st.mtime.toISOString()}`
+  } catch (e) {
+    return `bin/${name}: missing (${e.code})`
+  }
 }
 
 function processReport() {
@@ -372,8 +391,12 @@ function processReport() {
 function status(req, res) {
   res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
   if (apiUp) return res.end('OK: the API is running.\n')
-  const apiLog = tail(path.join(LOG_DIR, 'pos-api.log'), 16384)
-  const errors = errorLines(apiLog).concat(errorLines(tail(path.join(ROOT, 'startup-error.log'), 4096)))
+  const apiLog = tail(path.join(LOG_DIR, 'pos-api.log'), 65536)
+  // startup-error.log is written by cPanel and never cleared: old entries
+  // there (e.g. an EAGAIN from weeks ago) must not drive today's hints.
+  const startupLog = path.join(ROOT, 'startup-error.log')
+  const startupErrors = fileTime(startupLog) >= LAUNCHER_STARTED ? errorLines(tail(startupLog, 4096)) : []
+  const errors = errorLines(apiLog).concat(startupErrors)
   const joined = errors.join('\n')
   const hints = HINTS.filter(([re]) => re.test(joined)).map(([, hint]) => `* ${hint}`)
   const db = redact(databaseUrl || '(not set)')
@@ -387,6 +410,8 @@ function status(req, res) {
         '',
         `Database: ${db}`,
         `API port: ${apiPort}   API process: ${children.has('pos-api') ? 'running' : 'not running'}`,
+        binaryReport('pos-api'),
+        binaryReport('pos-worker'),
         '',
         processReport(),
         '',

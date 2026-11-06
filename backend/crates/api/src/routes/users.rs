@@ -7,6 +7,7 @@ use pos_tenancy::{
     invitations::{self, AcceptedInvitation, Invitation, InvitationPreview, IssuedInvitation, NewInvitation},
     members::{self, Member, RoleAssignment},
     roles::{self, Permission, Role, RoleInput},
+    staff::{self, CreatedMember, NewMember},
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -26,6 +27,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(resend_invitation)
         .service(revoke_invitation)
         .service(list_members)
+        .service(create_member)
         .service(get_member)
         .service(set_member_roles)
         .service(suspend_member)
@@ -152,6 +154,25 @@ pub async fn accept_invitation(
 }
 
 // ---------------------------------------------------------------- members
+
+/// Adds staff directly with a mobile number and password, no invitation
+/// needed; the account can sign in at once. A number that already has an
+/// account joins with its own password. Counts against `users.max`.
+#[utoipa::path(post, path = "/api/v1/members", tag = "users", request_body = NewMember, security(("bearer" = [])),
+    responses((status = 201, body = CreatedMember), (status = 402, body = crate::error::Problem),
+              (status = 409, body = crate::error::Problem)))]
+#[post("/members")]
+pub async fn create_member(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    body: web::Json<NewMember>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("users.invite")?;
+    let mut tx = auth.begin(&state).await?;
+    let created = staff::create(&mut tx, &auth.access, &auth.ctx.meta, body.into_inner()).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Created().json(created))
+}
 
 #[utoipa::path(get, path = "/api/v1/members", tag = "users", security(("bearer" = [])),
     responses((status = 200, body = Vec<Member>)))]

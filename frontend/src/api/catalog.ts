@@ -88,6 +88,11 @@ export interface Product {
   tax_rate_id: string | null
   tax_rate_pct: string | null
   track_inventory: boolean
+  /** Stock is kept by batch with expiry dates. */
+  track_batches: boolean
+  /** Warranty length; `null` = no warranty. */
+  warranty_period: number | null
+  warranty_unit: WarrantyUnit | null
   /** `null` without `products.view_cost`. */
   purchase_price: string | null
   selling_price: string
@@ -100,6 +105,8 @@ export interface Product {
   updated_at: string
 }
 
+export type WarrantyUnit = 'day' | 'month' | 'year'
+
 export interface ProductInput {
   product_type?: ProductType
   name: string
@@ -108,18 +115,34 @@ export interface ProductInput {
   /** Blank = next automatic code (P000001); on update, blank keeps the SKU. */
   sku?: string
   barcodes: string[]
+  /** Adds a new in-store EAN-13 (`20…`) as the primary barcode. */
+  generate_barcode?: boolean
   category_id?: string
   brand_id?: string
   unit_id: string
   /** Blank = the business's default tax rate. */
   tax_rate_id?: string
   track_inventory?: boolean
+  /** Ask for batch numbers and expiry dates; blank on update keeps it. */
+  track_batches?: boolean
+  /** 1–3650 days, 1–120 months or 1–10 years; both blank = no warranty. */
+  warranty_period?: number
+  warranty_unit?: WarrantyUnit
   /** Only with `products.view_cost`; blank on update keeps the cost. */
   purchase_price?: string
   selling_price: string
   wholesale_price?: string
   min_selling_price?: string
   reorder_level?: string
+}
+
+/** Opening stock posted with an import; `row` indexes the products. */
+export interface ImportOpeningStock {
+  row: number
+  quantity: string
+  unit_cost?: string
+  batch_no?: string
+  expiry_date?: string
 }
 
 export type ProductStatusFilter = 'active' | 'archived' | 'all'
@@ -156,6 +179,20 @@ function productQuery(filter: ProductFilter, cursor: string | null): string {
   return params.toString()
 }
 
+/** Facts a barcode label shows for one variant (PROD-R05). */
+export interface LabelInfo {
+  variant_id: string
+  product_id: string
+  product_name: string
+  product_name_bn: string | null
+  variant_name: string | null
+  sku: string
+  /** Primary barcode; `null` until one is entered or generated. */
+  barcode: string | null
+  selling_price: string
+  unit_short_name: string
+}
+
 export const catalogApi = {
   taxRates: () => apiFetch<TaxRate[]>('/api/v1/tax-rates'),
   createTaxRate: (input: TaxRateInput) => apiFetch<TaxRate>('/api/v1/tax-rates', { method: 'POST', body: input }),
@@ -179,6 +216,18 @@ export const catalogApi = {
   products: (filter: ProductFilter, cursor: string | null) =>
     apiFetch<ProductPage>(`/api/v1/products?${productQuery(filter, cursor)}`),
   product: (id: string) => apiFetch<Product>(`/api/v1/products/${id}`),
+  /** The SKU a new product would get automatically and a new in-store barcode (neither reserved). */
+  nextCodes: () => apiFetch<{ sku: string | null; barcode: string }>('/api/v1/products/next-codes'),
+  /** Creates every product or none; problems come back as `products[i].<field>` errors. */
+  /** All products or none; `opening_stock` rows (indexes into `products`) are posted with them. */
+  importProducts: (products: ProductInput[], opening_stock: ImportOpeningStock[] = []) =>
+    apiFetch<Product[]>('/api/v1/products/import', {
+      method: 'POST',
+      body: opening_stock.length > 0 ? { products, opening_stock } : { products },
+    }),
+  /** Products by SKU (any case) or barcode; codes without a product are left out. */
+  lookupProducts: (codes: string[]) =>
+    apiFetch<{ code: string; product: Product }[]>('/api/v1/products/lookup', { method: 'POST', body: { codes } }),
   createProduct: (input: ProductInput) => apiFetch<Product>('/api/v1/products', { method: 'POST', body: input }),
   updateProduct: (id: string, version: number, input: ProductInput) =>
     apiFetch<Product>(`/api/v1/products/${id}`, { method: 'PUT', body: input, ifMatch: version }),
@@ -186,6 +235,11 @@ export const catalogApi = {
   restoreProduct: (id: string) => apiFetch<Product>(`/api/v1/products/${id}/restore`, { method: 'POST' }),
   deleteProduct: (id: string) => apiFetch<void>(`/api/v1/products/${id}`, { method: 'DELETE' }),
   priceHistory: (id: string) => apiFetch<PriceChange[]>(`/api/v1/products/${id}/price-history`),
+
+  labels: (variantIds: string[]) => apiFetch<LabelInfo[]>('/api/v1/labels', { method: 'POST', body: { variant_ids: variantIds } }),
+  /** In-store EAN-13 (`20…`) for each listed variant that has no barcode. */
+  generateBarcodes: (variantIds: string[]) =>
+    apiFetch<LabelInfo[]>('/api/v1/labels/generate-barcodes', { method: 'POST', body: { variant_ids: variantIds } }),
 }
 
 export const catalogKeys = {

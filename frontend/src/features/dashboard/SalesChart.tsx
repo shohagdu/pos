@@ -39,23 +39,25 @@ export function SalesChart({ days, today }: { days: { date: string; sales: strin
           </span>
         ))}
       </div>
-      <table className="sr-only">
-        <caption>{t('dashboard.chart.title')}</caption>
-        <thead>
-          <tr>
-            <th scope="col">{t('common.date')}</th>
-            <th scope="col">{t('dashboard.sales')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {days.map((d) => (
-            <tr key={d.date}>
-              <th scope="row">{formatDate(d.date, lang)}</th>
-              <td>{formatMoney(d.sales, lang)}</td>
+      <div className="sr-only">
+        <table>
+          <caption>{t('dashboard.chart.title')}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t('common.date')}</th>
+              <th scope="col">{t('dashboard.sales')}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {days.map((d) => (
+              <tr key={d.date}>
+                <th scope="row">{formatDate(d.date, lang)}</th>
+                <td>{formatMoney(d.sales, lang)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </figure>
   )
 }

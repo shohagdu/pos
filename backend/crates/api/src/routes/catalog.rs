@@ -4,10 +4,16 @@
 
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, put, web};
 use pos_catalog::{
+    labels::{self, LabelInfo, LabelRequest},
     masters::{self, Brand, BrandInput, Category, CategoryInput, TaxRate, TaxRateInput, Unit, UnitInput},
-    products::{self, PriceChange, Product, ProductFilter, ProductInput, ProductPage, Viewer},
+    products::{
+        self, CodeLookup, CodeMatch, ImportOpeningStock, PriceChange, Product, ProductFilter, ProductImport,
+        ProductInput, ProductPage, Viewer,
+    },
 };
+use pos_core::{AppError, FieldError};
 use pos_files::MAX_IMAGE_BYTES;
+use pos_inventory::adjustments::{self, AdjustmentInput, AdjustmentLineInput};
 use uuid::Uuid;
 
 use crate::{
@@ -32,6 +38,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(delete_brand)
         .service(list_products)
         .service(create_product)
+        .service(suggest_codes)
+        .service(import_products)
+        .service(lookup_products)
         .service(get_product)
         .service(update_product)
         .service(archive_product)
@@ -39,7 +48,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(delete_product)
         .service(product_price_history)
         .service(set_product_image)
-        .service(remove_product_image);
+        .service(remove_product_image)
+        .service(label_info)
+        .service(generate_barcodes);
 }
 
 fn viewer(auth: &TenantAuth) -> Viewer {
@@ -294,6 +305,134 @@ pub async fn create_product(
     Ok(HttpResponse::Created().insert_header(etag(product.version)).json(product))
 }
 
+/// Codes a product form can fill in: the SKU a new product would get when
+/// left blank and a new in-store barcode. Neither is reserved; the form sends
+/// them back blank / as `generate_barcode` so the server takes the next free one.
+#[utoipa::path(get, path = "/api/v1/products/next-codes", tag = "catalog", security(("bearer" = [])),
+    responses((status = 200, body = CodeSuggestion)))]
+#[get("/products/next-codes")]
+pub async fn suggest_codes(state: web::Data<AppState>, auth: TenantAuth) -> Result<HttpResponse, ApiError> {
+    if !auth.access.can("products.update") {
+        auth.require("products.create")?;
+    }
+    let mut tx = auth.begin(&state).await?;
+    let sku = products::suggest_sku(&mut tx).await?;
+    let barcode = labels::suggest_in_store_code(&mut tx).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(CodeSuggestion { sku, barcode }))
+}
+
+/// Creates all products of a CSV file, or none: problems come back as field
+/// errors named `products[i].<field>`. Counts against `products.max`.
+#[utoipa::path(post, path = "/api/v1/products/import", tag = "catalog", request_body = ProductImport, security(("bearer" = [])),
+    responses((status = 201, body = Vec<Product>), (status = 400, body = crate::error::Problem),
+              (status = 402, body = crate::error::Problem)))]
+#[post("/products/import")]
+pub async fn import_products(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    body: web::Json<ProductImport>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("products.create")?;
+    let ProductImport { products: inputs, opening_stock, location_id } = body.into_inner();
+    if !opening_stock.is_empty() {
+        auth.require("inventory.opening_stock")?;
+    }
+    let mut seen = std::collections::BTreeSet::new();
+    for (i, o) in opening_stock.iter().enumerate() {
+        if o.row >= inputs.len() || !seen.insert(o.row) {
+            return Err(AppError::field(
+                &format!("opening_stock[{i}].row"),
+                "INVALID_ROW",
+                "each opening stock line names one product of the file",
+            )
+            .into());
+        }
+    }
+    let mut tx = auth.begin(&state).await?;
+    let created = products::import(&mut tx, &auth.ctx.meta, viewer(&auth), inputs).await?;
+    // Opening stock goes in as adjustments of at most MAX_LINES products each,
+    // in the same transaction: a problem with it keeps the products out too.
+    for chunk in opening_stock.chunks(adjustments::MAX_LINES) {
+        let input = AdjustmentInput {
+            reason: "opening".to_owned(),
+            location_id,
+            note: Some("Opening stock from product import".to_owned()),
+            lines: chunk
+                .iter()
+                .filter_map(|o| created.get(o.row).map(|p| (o, p)))
+                .map(|(o, p)| AdjustmentLineInput {
+                    variant_id: p.variant_id,
+                    quantity: o.quantity,
+                    unit_cost: o.unit_cost,
+                    note: None,
+                    batch_id: None,
+                    batch_no: o.batch_no.clone(),
+                    expiry_date: o.expiry_date,
+                })
+                .collect(),
+        };
+        adjustments::create(&mut tx, &auth.ctx.meta, input, auth.access.can("products.view_cost"))
+            .await
+            .map_err(|e| opening_error(e, chunk))?;
+    }
+    tx.commit().await?;
+    Ok(HttpResponse::Created().json(created))
+}
+
+/// `lines[j].quantity` of an opening stock chunk → `products[row].opening_quantity`,
+/// so the import preview shows the problem on the row's cell.
+fn opening_error(err: AppError, chunk: &[ImportOpeningStock]) -> AppError {
+    let AppError::Validation { message, errors } = err else { return err };
+    let errors = errors
+        .into_iter()
+        .map(|e| {
+            let at =
+                e.field.strip_prefix("lines[").and_then(|rest| rest.split_once(']')).and_then(|(j, field)| {
+                    Some((chunk.get(j.parse::<usize>().ok()?)?.row, field.trim_start_matches('.')))
+                });
+            match at {
+                Some((row, field)) => {
+                    let name = match field {
+                        "unit_cost" => "opening_cost",
+                        "batch_no" => "opening_batch_no",
+                        "expiry_date" => "opening_expiry_date",
+                        _ => "opening_quantity",
+                    };
+                    FieldError { field: format!("products[{row}].{name}"), ..e }
+                }
+                None if e.field == "location_id" => e,
+                None => FieldError { field: format!("opening_stock.{}", e.field), ..e },
+            }
+        })
+        .collect();
+    AppError::Validation { message, errors }
+}
+
+/// Products by SKU or barcode (for files that name products by code).
+#[utoipa::path(post, path = "/api/v1/products/lookup", tag = "catalog", request_body = CodeLookup, security(("bearer" = [])),
+    responses((status = 200, body = Vec<CodeMatch>), (status = 400, body = crate::error::Problem)))]
+#[post("/products/lookup")]
+pub async fn lookup_products(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    body: web::Json<CodeLookup>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("products.view")?;
+    let mut tx = auth.begin(&state).await?;
+    let found = products::lookup(&mut tx, &body.codes, viewer(&auth)).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(found))
+}
+
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct CodeSuggestion {
+    /// `null` when no free automatic SKU was found.
+    pub sku: Option<String>,
+    /// A new in-store EAN-13 (`20…`).
+    pub barcode: String,
+}
+
 #[utoipa::path(get, path = "/api/v1/products/{id}", tag = "catalog", security(("bearer" = [])),
     params(("id" = Uuid, Path)), responses((status = 200, body = Product), (status = 404, body = crate::error::Problem)))]
 #[get("/products/{id}")]
@@ -495,4 +634,42 @@ fn percent_decode(value: &str) -> String {
         i += 1;
     }
     String::from_utf8_lossy(&out).into_owned()
+}
+
+// ------------------------------------------------------------------- labels
+
+/// Barcode label facts (name, SKU, primary barcode, price) for up to 500
+/// variants, in the order asked.
+#[utoipa::path(post, path = "/api/v1/labels", tag = "catalog", request_body = LabelRequest, security(("bearer" = [])),
+    responses((status = 200, body = Vec<LabelInfo>), (status = 400, body = crate::error::Problem)))]
+#[post("/labels")]
+pub async fn label_info(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    body: web::Json<LabelRequest>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("products.view")?;
+    let mut tx = auth.begin(&state).await?;
+    let list = labels::info(&mut tx, &body.variant_ids).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(list))
+}
+
+/// Gives each listed variant without a barcode an in-store EAN-13 (`20…`) and
+/// returns the label facts for all of them.
+#[utoipa::path(post, path = "/api/v1/labels/generate-barcodes", tag = "catalog", request_body = LabelRequest,
+    security(("bearer" = [])),
+    responses((status = 200, body = Vec<LabelInfo>), (status = 400, body = crate::error::Problem),
+              (status = 409, body = crate::error::Problem)))]
+#[post("/labels/generate-barcodes")]
+pub async fn generate_barcodes(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    body: web::Json<LabelRequest>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("products.update")?;
+    let mut tx = auth.begin(&state).await?;
+    let list = labels::generate_barcodes(&mut tx, &auth.ctx.meta, &body.variant_ids).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(list))
 }

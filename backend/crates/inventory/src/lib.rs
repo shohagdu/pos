@@ -4,9 +4,11 @@
 //! [`posting::post_movements`] is the only code that changes `stock_balances`.
 
 pub mod adjustments;
+pub mod batches;
 pub mod counts;
 pub mod posting;
 pub mod stock;
 pub mod transfers;
 
+pub use batches::Batch;
 pub use posting::{MovementLine, MovementRef, Posted, post_movements};

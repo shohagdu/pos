@@ -18,10 +18,11 @@ import { LinkButton, QueryStatus } from '../money/shared'
 import { useTenant } from '../money/utils'
 import { Balance } from './Balance'
 import { InvoicesTab, PaymentsTab, StatementTab } from './CustomerTabs'
+import { WarrantiesTab } from './WarrantiesTab'
 import { ReceivePaymentDialog } from './ReceivePaymentDialog'
 import { customerInput } from './utils'
 
-type Tab = 'statement' | 'invoices' | 'payments'
+type Tab = 'statement' | 'invoices' | 'warranties' | 'payments'
 
 /** One customer (`/customers/:id`): balance, actions, statement, invoices and payments. */
 export function CustomerDetailPage() {
@@ -144,12 +145,14 @@ function CustomerDetail({ customer: c, tenantId }: { customer: Customer; tenantI
           items={[
             { value: 'statement', label: t('customers.statement') },
             { value: 'invoices', label: t('customers.invoices') },
+            { value: 'warranties', label: t('customers.warranties') },
             { value: 'payments', label: t('customers.payments') },
           ]}
         />
       </div>
       {tab === 'statement' && <StatementTab customerId={c.id} customerName={c.name} />}
       {tab === 'invoices' && <InvoicesTab customerId={c.id} />}
+      {tab === 'warranties' && <WarrantiesTab customerId={c.id} />}
       {tab === 'payments' && <PaymentsTab customerId={c.id} />}
 
       {receiving && <ReceivePaymentDialog customer={c} tenantId={tenantId} onClose={() => setReceiving(false)} />}

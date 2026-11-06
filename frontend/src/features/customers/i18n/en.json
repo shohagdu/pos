@@ -94,6 +94,8 @@
     "void": "Void",
     "voidPaymentNo": "Void payment {{no}}",
     "voidHint": "Voiding reverses this payment of {{amount}}: the customer's balance and the account balance go back.",
-    "noPayments": "No payments from this customer."
+    "noPayments": "No payments from this customer.",
+    "warranties": "Warranties",
+    "noWarranties": "No items bought with a warranty."
   }
 }

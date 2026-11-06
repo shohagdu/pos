@@ -99,6 +99,7 @@
     "useWalkIn": "Occasionale",
     "newCustomerTitle": "Nuovo cliente",
     "customerPhoneHint": "es. 01712345678. Serve a ritrovare il cliente la prossima volta.",
-    "customerAddress": "Indirizzo"
+    "customerAddress": "Indirizzo",
+    "warranty": "Garanzia {{tenure}} · fino al {{date}}"
   }
 }

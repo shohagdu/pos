@@ -6,13 +6,16 @@ export interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: string
 }
 
+/** A red asterisk after the label (CSS only, so the accessible name stays the label). */
+const REQUIRED_MARK = "after:ml-0.5 after:text-danger after:content-['*']"
+
 export function Select({ label, options, error, id, className = '', ...props }: SelectProps) {
   const generated = useId()
   const selectId = id ?? generated
   const errorId = `${selectId}-error`
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label htmlFor={selectId} className="text-sm font-medium text-ink">
+      <label htmlFor={selectId} className={`text-sm font-medium text-ink ${props.required ? REQUIRED_MARK : ''}`}>
         {label}
       </label>
       <select

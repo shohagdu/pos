@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { type PaymentStatus, type Sale, type SaleFilter, type SaleStatus, useSales } from '../../api/sales'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
+import { Checkbox } from '../../components/ui/Checkbox'
 import { type Column, DataTable } from '../../components/ui/DataTable'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { PageHeader } from '../../components/ui/PageHeader'
@@ -19,6 +20,7 @@ import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { PAYMENT_STATUSES, SALE_STATUSES } from './constants'
 import { PaymentStatusBadge, SaleStatusBadge } from './labels'
+import { WarrantyStatus } from './WarrantyStatus'
 
 const linkButton = 'inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold'
 
@@ -69,6 +71,7 @@ export function SalesPage() {
     { key: 'due', header: t('sales.due'), align: 'right', render: (s) => money(s.due_total) },
     { key: 'status', header: t('common.status'), render: (s) => <SaleStatusBadge status={s.status} /> },
     { key: 'payment', header: t('sales.payment'), render: (s) => <PaymentStatusBadge status={s.payment_status} /> },
+    { key: 'warranty', header: t('sales.warranty'), render: (s) => <WarrantyStatus sale={s} /> },
   ]
 
   function exportCsv() {
@@ -84,6 +87,7 @@ export function SalesPage() {
       { header: t('sales.returned'), value: (s) => s.returned_total },
       { header: t('common.status'), value: (s) => t(`sales.statuses.${s.status}`) },
       { header: t('sales.payment'), value: (s) => t(`sales.paymentStatuses.${s.payment_status}`) },
+      { header: t('sales.warranty'), value: (s) => s.warranty_until },
     ])
   }
 
@@ -94,6 +98,9 @@ export function SalesPage() {
         subtitle={can('sales.view_all_users') ? undefined : t('sales.ownOnly')}
         actions={
           <>
+            <Link to="/sales/warranties" className={`${linkButton} border border-border bg-surface text-ink hover:bg-canvas`}>
+              {t('sales.warrantyLookup.title')}
+            </Link>
             <Link to="/sales/returns" className={`${linkButton} border border-border bg-surface text-ink hover:bg-canvas`}>
               {t('sales.returnsTitle')}
             </Link>
@@ -136,6 +143,11 @@ export function SalesPage() {
             <Button type="submit">{t('common.search')}</Button>
           </form>
         </div>
+        <Checkbox
+          label={t('sales.withWarranty')}
+          checked={filter.with_warranty ?? false}
+          onChange={(e) => set({ with_warranty: e.target.checked || undefined })}
+        />
       </div>
 
       {summary && (

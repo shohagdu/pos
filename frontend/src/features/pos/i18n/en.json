@@ -99,6 +99,7 @@
     "useWalkIn": "Walk-in",
     "newCustomerTitle": "New customer",
     "customerPhoneHint": "e.g. 01712345678. Used to find the customer next time.",
-    "customerAddress": "Address"
+    "customerAddress": "Address",
+    "warranty": "Warranty {{tenure}} · until {{date}}"
   }
 }

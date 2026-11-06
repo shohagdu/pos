@@ -76,6 +76,8 @@ export const sale: SaleDetail = {
   cancelled_at: null,
   cancel_reason: null,
   item_count: 1,
+  warranty_items: 0,
+  warranty_until: null,
   created_at: '2026-10-18T05:00:00Z',
   items: [
     {
@@ -86,6 +88,9 @@ export const sale: SaleDetail = {
       sku: 'P000001',
       unit_short_name: 'pcs',
       track_inventory: true,
+      warranty_period: null,
+      warranty_unit: null,
+      warranty_expires_on: null,
       quantity: '2.0000',
       returned_quantity: '0.0000',
       list_price: '450.5000',

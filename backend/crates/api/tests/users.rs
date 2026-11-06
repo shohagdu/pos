@@ -351,7 +351,7 @@ async fn custom_roles(pool: MySqlPool) {
     let tenant = create_business(&srv, &mut owner, "Rahim Store").await;
 
     let perms = call(&srv, Req::get("/api/v1/permissions").bearer(&owner.token).build()).await;
-    assert_eq!(perms.body.as_array().map(Vec::len), Some(64));
+    assert_eq!(perms.body.as_array().map(Vec::len), Some(65));
     assert_eq!(perms.body[0]["code"], "dashboard.view");
 
     let created = call(

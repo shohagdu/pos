@@ -1,7 +1,7 @@
 # Mirrors the required server settings in DB design §2.2.
 [mysqld]
 character-set-server = utf8mb4
-collation-server = utf8mb4_0900_ai_ci
+collation-server = utf8mb4_general_ci
 default-time-zone = '+00:00'
 transaction-isolation = READ-COMMITTED
 sql-mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO,ONLY_FULL_GROUP_BY,NO_ENGINE_SUBSTITUTION

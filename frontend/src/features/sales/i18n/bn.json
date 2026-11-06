@@ -133,7 +133,44 @@
       "appliedToDue": "বাকির সাথে সমন্বয়",
       "refunded": "টাকা ফেরত",
       "credited": "গ্রাহকের জমা",
-      "reason": "কারণ: {{reason}}"
+      "reason": "কারণ: {{reason}}",
+      "warranty": "ওয়ারেন্টি {{tenure}}, {{date}} পর্যন্ত"
+    },
+    "warrantyUntil": "ওয়ারেন্টি {{date}} পর্যন্ত",
+    "warrantyExpired": "ওয়ারেন্টি শেষ {{date}}",
+    "warrantyTenure": {
+      "day_one": "{{count}} দিন",
+      "day_other": "{{count}} দিন",
+      "month_one": "{{count}} মাস",
+      "month_other": "{{count}} মাস",
+      "year_one": "{{count}} বছর",
+      "year_other": "{{count}} বছর"
+    },
+    "warranty": "ওয়ারেন্টি",
+    "withWarranty": "শুধু ওয়ারেন্টিসহ বিক্রি",
+    "warrantyListUntil": "{{date}} পর্যন্ত",
+    "warrantyListExpired": "শেষ {{date}}",
+    "warrantyItems_one": "{{count}}টি পণ্য",
+    "warrantyItems_other": "{{count}}টি পণ্য",
+    "warrantyTable": {
+      "product": "পণ্য",
+      "soldOn": "বিক্রির তারিখ",
+      "tenure": "ওয়ারেন্টি",
+      "expiresOn": "শেষ হবে",
+      "active": "চালু",
+      "expired": "মেয়াদ শেষ",
+      "returned": "ফেরত",
+      "lastDay": "আজ শেষ দিন",
+      "daysLeft_one": "আর {{count}} দিন",
+      "daysLeft_other": "আর {{count}} দিন",
+      "returnedQty": "{{qty}} ফেরত"
+    },
+    "warrantyLookup": {
+      "title": "ওয়ারেন্টি খুঁজুন",
+      "subtitle": "দাবি যাচাই করুন: ইনভয়েস নম্বর, গ্রাহকের ফোন, পণ্যের নাম, SKU বা বারকোড দিয়ে পণ্য খুঁজুন।",
+      "searchHint": "ইনভয়েস, ফোন, পণ্য, SKU বা বারকোড স্ক্যান করুন",
+      "none": "এখনও ওয়ারেন্টিসহ কোনো পণ্য বিক্রি হয়নি।",
+      "noMatch": "“{{q}}” এর সাথে মেলে এমন ওয়ারেন্টি পণ্য নেই।"
     }
   }
 }

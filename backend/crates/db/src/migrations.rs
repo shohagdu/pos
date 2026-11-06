@@ -1,4 +1,4 @@
-//! The embedded migrations, runnable on MySQL 8 and MariaDB 10.6+.
+//! The embedded migrations, runnable on MySQL 8 and MariaDB 10.5+.
 
 use std::{borrow::Cow, sync::LazyLock};
 
@@ -6,10 +6,12 @@ use sqlx::migrate::Migrator;
 
 static EMBEDDED: Migrator = sqlx::migrate!("../../migrations");
 
-/// Migrations edited after release to run on MariaDB too (`UUID_TO_BIN`,
-/// `REGEXP_LIKE` and the 0900 collation are MySQL-only). The SQL has the same
-/// effect, so databases that already applied them keep their recorded
-/// SHA-384 checksum instead of failing as "previously applied but modified".
+/// Migrations edited after release to run on MariaDB 10.5+ too (`UUID_TO_BIN`,
+/// `REGEXP_LIKE`, the 0900 collation, the `ngram` full-text parser and
+/// `DROP CHECK` are MySQL-only; new databases use `utf8mb4_general_ci`).
+/// Databases that already applied them keep their recorded SHA-384 checksum
+/// instead of failing as "previously applied but modified"; they are not
+/// re-run, so existing tables keep their collation.
 const RELEASED_CHECKSUMS: &[(i64, &str)] = &[
     (1, "b768fae73f551fd099b92857e0e5324b6ff09c784af0f916bd3623e0855461fcc34cf994d2898800f98580f5a356dd74"),
     (2, "1dbe243dfdcc68df87c2ad4bad04383c8ba6d615abfaf0527999e6a15678e44f96557869d5b7d0dfd8be198f122226ca"),
@@ -23,6 +25,7 @@ const RELEASED_CHECKSUMS: &[(i64, &str)] = &[
     (103, "1eb8cfce0ce67cfc073551e40f3645c09be4b3707d44834ef1ac7621fed33fc91ef0b4bec9a6066482bb924492bec5d7"),
     (105, "4103f34bbe4e9bdcba107317b2e36ad900f7e1d6b15eb345f86326cf7894087a908a59b58c531263d6c84626c9966823"),
     (106, "080d289fca345f593ff2f7f3f6d61c45dde8dad5edd67dd9e108f839f15d9c7d660443fbfb79b728964d5b680b0b21af"),
+    (110, "cec010c74ddf813371a43ea1b586a7f50d11694caf5a38996a4ae009f31a6e3ee7800905905f513d6dff6c4a4140fe52"),
 ];
 
 /// Embedded migrations from `backend/migrations` (compiled into the binary).

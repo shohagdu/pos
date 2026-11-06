@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from './client'
+import type { WarrantyUnit } from './catalog'
 import type { PaymentDetail } from './money'
 import { PAGE_SIZE, type Page, queryString } from './query'
 
@@ -16,6 +17,9 @@ export interface PosItem {
   unit_short_name: string
   allow_fraction: boolean
   track_inventory: boolean
+  /** The product's warranty; `null` = none (missing on carts held before warranties). */
+  warranty_period?: number | null
+  warranty_unit?: WarrantyUnit | null
   selling_price: string
   min_selling_price: string | null
   tax_rate_pct: string
@@ -108,6 +112,10 @@ export interface Sale {
   cancelled_at: string | null
   cancel_reason: string | null
   item_count: number
+  /** Lines sold with a warranty. */
+  warranty_items: number
+  /** The latest day any of them runs out (`YYYY-MM-DD`). */
+  warranty_until: string | null
   created_at: string
 }
 
@@ -119,6 +127,11 @@ export interface SaleItem {
   sku: string
   unit_short_name: string
   track_inventory: boolean
+  /** The product's warranty when it was sold; `null` = none. */
+  warranty_period: number | null
+  warranty_unit: WarrantyUnit | null
+  /** The warranty's last day (`YYYY-MM-DD`): the sale's business date + tenure. */
+  warranty_expires_on: string | null
   quantity: string
   returned_quantity: string
   list_price: string
@@ -185,6 +198,42 @@ export interface SaleFilter {
   cashier_id?: string
   q?: string
   due_only?: boolean
+  /** Only sales with an item under warranty. */
+  with_warranty?: boolean
+}
+
+export interface WarrantyItem {
+  /** The sale line. */
+  id: string
+  sale_id: string
+  invoice_no: string
+  /** The day the warranty started. */
+  business_date: string
+  customer_id: string
+  customer_name: string
+  customer_phone: string | null
+  is_walk_in: boolean
+  variant_id: string
+  product_name: string
+  sku: string
+  unit_short_name: string
+  quantity: string
+  returned_quantity: string
+  warranty_period: number
+  warranty_unit: WarrantyUnit
+  warranty_expires_on: string
+}
+
+export interface WarrantyFilter {
+  customer_id?: string
+  status?: 'active' | 'expired' | ''
+  /** Invoice number, product name, SKU or customer phone. */
+  q?: string
+}
+
+export interface WarrantyPage extends Page<WarrantyItem> {
+  /** Today in the business's timezone; active while `warranty_expires_on >= today`. */
+  today: string
 }
 
 export interface SalePage extends Page<Sale> {
@@ -280,6 +329,8 @@ export const salesApi = {
   sales: (filter: SaleFilter, cursor: string | null) =>
     apiFetch<SalePage>(`/api/v1/sales${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   sale: (id: string) => apiFetch<SaleDetail>(`/api/v1/sales/${id}`),
+  warranties: (filter: WarrantyFilter, cursor: string | null) =>
+    apiFetch<WarrantyPage>(`/api/v1/sale-warranties${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   reprint: (id: string) => apiFetch<SaleDetail>(`/api/v1/sales/${id}/reprint`, { method: 'POST' }),
   cancel: (id: string, reason: string) => apiFetch<SaleDetail>(`/api/v1/sales/${id}/cancel`, { method: 'POST', body: { reason } }),
 
@@ -307,6 +358,7 @@ export const salesKeys = {
   returns: (tenantId: string, filter: ReturnFilter) => ['sales', tenantId, 'returns', filter] as const,
   saleReturn: (tenantId: string, id: string) => ['sales', tenantId, 'return', id] as const,
   heldCarts: (tenantId: string) => ['sales', tenantId, 'held-carts'] as const,
+  warranties: (tenantId: string, filter: WarrantyFilter) => ['sales', tenantId, 'warranties', filter] as const,
 }
 
 export const usePosContext = (tenantId: string) =>
@@ -331,4 +383,11 @@ export const useSaleReturns = (tenantId: string, filter: ReturnFilter) =>
   })
 export const useSaleReturn = (tenantId: string, id: string) =>
   useQuery({ queryKey: salesKeys.saleReturn(tenantId, id), queryFn: () => salesApi.saleReturn(id) })
+export const useWarranties = (tenantId: string, filter: WarrantyFilter) =>
+  useInfiniteQuery({
+    queryKey: salesKeys.warranties(tenantId, filter),
+    queryFn: ({ pageParam }) => salesApi.warranties(filter, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.next_cursor,
+  })
 export const useHeldCarts = (tenantId: string) => useQuery({ queryKey: salesKeys.heldCarts(tenantId), queryFn: salesApi.heldCarts })

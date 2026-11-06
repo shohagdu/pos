@@ -21,7 +21,7 @@ use pos_core::{
     page::{self, Keyset},
 };
 use pos_db::{TenantTx, map_db_error};
-use pos_inventory::{MovementLine, MovementRef, post_movements, stock::check_location};
+use pos_inventory::{Batch, MovementLine, MovementRef, batches, post_movements, stock::check_location};
 use pos_parties::{PartyEntry, PartyType, ledger, suppliers};
 use pos_tenancy::{context, sequences};
 use rust_decimal::Decimal;
@@ -57,6 +57,11 @@ pub struct PurchaseLineInput {
     #[serde(default)]
     #[schema(value_type = Option<String>)]
     pub tax_rate_pct: Option<Decimal>,
+    /// The batch the goods arrive as (a blank number with an expiry date uses the date).
+    #[serde(default)]
+    pub batch_no: Option<String>,
+    #[serde(default)]
+    pub expiry_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
@@ -104,6 +109,11 @@ pub struct GoodsReceiptLineInput {
     /// Quantity arriving now; 0 = none of this line.
     #[schema(value_type = String)]
     pub quantity: Decimal,
+    /// The batch arriving now; blank = the one on the order line.
+    #[serde(default)]
+    pub batch_no: Option<String>,
+    #[serde(default)]
+    pub expiry_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, utoipa::ToSchema)]
@@ -215,6 +225,8 @@ pub struct PurchaseItem {
     /// Last purchase price when the line was entered (PUR-R04).
     #[schema(value_type = Option<String>)]
     pub previous_unit_cost: Option<Decimal>,
+    pub batch_no: Option<String>,
+    pub expiry_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
@@ -405,7 +417,7 @@ pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<PurchaseDetail> {
     let items = sqlx::query_as(
         "SELECT id, line_no, variant_id, product_name, sku, unit_short_name, quantity, received_quantity, returned_quantity, \
          unit_cost, discount_type, discount_value, line_discount, bill_discount_alloc, tax_rate_pct, tax_amount, \
-         charges_alloc, line_total, landed_unit_cost, previous_unit_cost FROM purchase_items \
+         charges_alloc, line_total, landed_unit_cost, previous_unit_cost, batch_no, expiry_date FROM purchase_items \
          WHERE tenant_id = ? AND purchase_id = ? ORDER BY line_no",
     )
     .bind(tenant_id)
@@ -516,6 +528,14 @@ async fn validate(tx: &mut TenantTx, input: &PurchaseInput) -> AppResult<Valid> 
             }
         };
         let rate = percent(l.tax_rate_pct.unwrap_or_default(), &format!("lines[{i}].tax_rate_pct"))?;
+        line.batch_no = l.batch_no.as_deref().map(str::trim).filter(|b| !b.is_empty()).map(str::to_owned);
+        if line.batch_no.as_ref().is_some_and(|b| b.chars().count() > batches::MAX_BATCH_NO) {
+            return Err(AppError::field(
+                &format!("lines[{i}].batch_no"),
+                "TOO_LONG",
+                format!("a batch number has at most {} characters", batches::MAX_BATCH_NO),
+            ));
+        }
         lines.push((line, v, qty, discount, rate));
     }
     let bill = costing::cost(
@@ -570,7 +590,8 @@ async fn write_lines(tx: &mut TenantTx, purchase_id: Uuid, v: &Valid) -> AppResu
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
         "INSERT INTO purchase_items (tenant_id, id, purchase_id, line_no, variant_id, product_name, sku, unit_id, \
          unit_short_name, unit_factor, quantity, base_quantity, unit_cost, discount_type, discount_value, line_discount, \
-         bill_discount_alloc, tax_rate_pct, tax_amount, charges_alloc, line_total, landed_unit_cost, previous_unit_cost) ",
+         bill_discount_alloc, tax_rate_pct, tax_amount, charges_alloc, line_total, landed_unit_cost, previous_unit_cost, \
+         batch_no, expiry_date) ",
     );
     let rows: Vec<_> = v.lines.iter().zip(&v.bill.lines).enumerate().collect();
     // previous_unit_cost: the last purchase price at the time (PUR-R04).
@@ -613,7 +634,9 @@ async fn write_lines(tx: &mut TenantTx, purchase_id: Uuid, v: &Valid) -> AppResu
             .push_bind(c.charges)
             .push_bind(c.line_total)
             .push_bind(c.landed_unit_cost)
-            .push_bind(prev);
+            .push_bind(prev)
+            .push_bind(l.batch_no.clone())
+            .push_bind(l.expiry_date);
     });
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
     Ok(())
@@ -781,13 +804,17 @@ struct ItemRow {
     received_value: Decimal,
     received_tax: Decimal,
     allow_fraction: bool,
+    batch_no: Option<String>,
+    expiry_date: Option<NaiveDate>,
+    /// Position on the bill (0-based), for error fields.
+    line_index: i64,
 }
 
 const ITEM_SELECT: &str = "SELECT pi.id, pi.variant_id, pi.base_quantity, pi.received_quantity, pi.unit_cost, pi.landed_unit_cost, \
      pi.line_total + pi.charges_alloc AS full_value, pi.tax_amount, \
      COALESCE((SELECT SUM(gi.line_value) FROM goods_receipt_items gi WHERE gi.tenant_id = pi.tenant_id AND gi.purchase_item_id = pi.id), 0) AS received_value, \
      COALESCE((SELECT SUM(gi.tax_amount) FROM goods_receipt_items gi WHERE gi.tenant_id = pi.tenant_id AND gi.purchase_item_id = pi.id), 0) AS received_tax, \
-     COALESCE(u.allow_fraction, TRUE) AS allow_fraction \
+     COALESCE(u.allow_fraction, TRUE) AS allow_fraction, pi.batch_no, pi.expiry_date, CAST(pi.line_no - 1 AS SIGNED) AS line_index \
      FROM purchase_items pi LEFT JOIN units u ON u.tenant_id = pi.tenant_id AND u.id = pi.unit_id \
      WHERE pi.tenant_id = ? AND pi.purchase_id = ? ORDER BY pi.line_no FOR UPDATE";
 
@@ -797,6 +824,11 @@ struct Arrival<'a> {
     quantity: Decimal,
     value: Decimal,
     tax: Decimal,
+    /// The batch it arrives as (default: the order line's).
+    batch_no: Option<String>,
+    expiry_date: Option<NaiveDate>,
+    /// Error field prefix for the batch (`lines[2]`).
+    field: String,
 }
 
 impl<'a> Arrival<'a> {
@@ -811,7 +843,15 @@ impl<'a> Arrival<'a> {
                 round2(item.tax_amount * quantity / item.base_quantity),
             )
         };
-        Self { item, quantity, value, tax }
+        Self {
+            item,
+            quantity,
+            value,
+            tax,
+            batch_no: item.batch_no.clone(),
+            expiry_date: item.expiry_date,
+            field: format!("lines[{}]", item.line_index),
+        }
     }
 }
 
@@ -836,9 +876,14 @@ async fn post_receipt(tx: &mut TenantTx, r: &Receipt<'_>, arrivals: &[Arrival<'_
     let user_id = tx.user_id();
     let receipt_no = sequences::next(tx, "goods_receipt", Some(r.branch_id), r.business_date).await?;
     let receipt_id = new_id();
+    let mut batch_ids: Vec<Option<Uuid>> = Vec::with_capacity(arrivals.len());
+    for a in arrivals {
+        batch_ids.push(batches::resolve(tx, a.item.variant_id, a.batch_no.as_deref(), a.expiry_date, &a.field).await?);
+    }
     let movement_lines: Vec<MovementLine> = arrivals
         .iter()
-        .map(|a| MovementLine {
+        .zip(&batch_ids)
+        .map(|(a, batch)| MovementLine {
             location_id: r.location_id,
             variant_id: a.item.variant_id,
             movement_type: "purchase_receipt",
@@ -846,6 +891,7 @@ async fn post_receipt(tx: &mut TenantTx, r: &Receipt<'_>, arrivals: &[Arrival<'_
             unit_cost: Some(a.item.landed_unit_cost),
             reference_line_id: Some(a.item.id),
             reason: None,
+            batch: batch.map_or(Batch::Auto, Batch::Exact),
         })
         .collect();
     post_movements(
@@ -878,9 +924,9 @@ async fn post_receipt(tx: &mut TenantTx, r: &Receipt<'_>, arrivals: &[Arrival<'_
     .map_err(map_db_error)?;
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
         "INSERT INTO goods_receipt_items (tenant_id, id, receipt_id, purchase_item_id, variant_id, base_quantity, unit_cost, \
-         line_value, tax_amount) ",
+         line_value, tax_amount, batch_id) ",
     );
-    q.push_values(arrivals, |mut row, a| {
+    q.push_values(arrivals.iter().zip(&batch_ids), |mut row, (a, batch)| {
         row.push_bind(tenant_id)
             .push_bind(new_id())
             .push_bind(receipt_id)
@@ -889,7 +935,8 @@ async fn post_receipt(tx: &mut TenantTx, r: &Receipt<'_>, arrivals: &[Arrival<'_
             .push_bind(a.quantity)
             .push_bind(a.item.landed_unit_cost)
             .push_bind(a.value)
-            .push_bind(a.tax);
+            .push_bind(a.tax)
+            .push_bind(*batch);
     });
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
     for a in arrivals {
@@ -1182,7 +1229,14 @@ pub async fn receive(
                     format!("only {} is still to come", left.normalize()),
                 ));
             }
-            arrivals.push(Arrival::new(item, qty));
+            let mut arrival = Arrival::new(item, qty);
+            arrival.field = format!("lines[{i}]");
+            let batch_no = line.batch_no.as_deref().map(str::trim).filter(|b| !b.is_empty());
+            if batch_no.is_some() || line.expiry_date.is_some() {
+                arrival.batch_no = batch_no.map(str::to_owned);
+                arrival.expiry_date = line.expiry_date;
+            }
+            arrivals.push(arrival);
         }
     }
     if arrivals.is_empty() {

@@ -25,7 +25,12 @@
     "searchHint": "Nome, SKU o codice a barre",
     "allCategories": "Tutte le categorie",
     "stockStatus": "Stato giacenza",
-    "statuses": { "all": "Tutti", "in": "Disponibile", "low": "Scorta bassa", "out": "Esaurito" },
+    "statuses": {
+      "all": "Tutti",
+      "in": "Disponibile",
+      "low": "Scorta bassa",
+      "out": "Esaurito"
+    },
     "location": "Ubicazione",
     "allLocations": "Tutte le ubicazioni",
     "defaultLocation": "Ubicazione predefinita",
@@ -75,7 +80,9 @@
     "adjustmentsSubtitle": "Correzioni di giacenza e giacenze iniziali. Ognuna viene registrata subito.",
     "newAdjustment": "Nuova rettifica",
     "noAdjustments": "Nessuna rettifica.",
-    "adjustmentStatuses": { "posted": "Registrata" },
+    "adjustmentStatuses": {
+      "posted": "Registrata"
+    },
     "errors": {
       "quantity": "Inserisci una quantità maggiore di 0.",
       "whole": "Questa unità accetta solo numeri interi.",
@@ -84,7 +91,11 @@
       "cost": "Inserisci un costo pari o superiore a 0.",
       "destination": "Scegli la destinazione della merce.",
       "received": "Inserisci un valore da 0 alla quantità inviata.",
-      "counted": "Inserisci 0 o più."
+      "counted": "Inserisci 0 o più.",
+      "noQuantities": "Inserisci la quantità di almeno un prodotto.",
+      "batchNo": "Al massimo 40 caratteri.",
+      "expiry": "Inserisci una data.",
+      "sameBatch": "Questo prodotto e lotto è già in elenco."
     },
     "noPermission": "Non hai il permesso per farlo.",
     "notStocked": "{{name}} non gestisce la giacenza, quindi non può essere rettificato.",
@@ -118,7 +129,12 @@
     "directionOut": "Inviati da questa filiale",
     "directionIn": "In arrivo a questa filiale",
     "transferDirection": "Direzione",
-    "transferStatuses": { "draft": "Bozza", "dispatched": "In transito", "received": "Ricevuto", "cancelled": "Annullato" },
+    "transferStatuses": {
+      "draft": "Bozza",
+      "dispatched": "In transito",
+      "received": "Ricevuto",
+      "cancelled": "Annullato"
+    },
     "noTransfers": "Nessun trasferimento per questo filtro.",
     "transferHint": "Scegli la destinazione e le quantità. Salva una bozza da spedire più tardi, oppure spedisci subito.",
     "defaultFromLocation": "Ubicazione principale di questa filiale",
@@ -143,7 +159,11 @@
     "newCount": "Nuovo inventario",
     "countsSubtitle": "Conta ciò che c'è sugli scaffali e registra le differenze come rettifiche.",
     "countNo": "N. inventario",
-    "countStatuses": { "in_progress": "In corso", "posted": "Registrato", "cancelled": "Annullato" },
+    "countStatuses": {
+      "in_progress": "In corso",
+      "posted": "Registrato",
+      "cancelled": "Annullato"
+    },
     "noCounts": "Nessun inventario.",
     "countCategory": "Categoria",
     "counted": "Contato",
@@ -165,6 +185,69 @@
     "unsavedEntries": "Hai conteggi non salvati. Salvali prima di registrare.",
     "postNeedsAdjust": "Per registrare un inventario serve il permesso di rettifica giacenze.",
     "snapshotAt": "Quantità di sistema rilevata",
-    "postedAt": "Registrato"
+    "postedAt": "Registrato",
+    "scanHint": "Scansiona un codice a barre o scrivi un nome e premi Invio. Il cursore va alla quantità; premi di nuovo Invio per il prodotto successivo. Scansionare di nuovo un articolo aggiunge 1.",
+    "noLinesOpening": "Scansiona o cerca i prodotti qui sopra, oppure carica tutti i prodotti ancora senza giacenza.",
+    "saveOpeningCount_one": "Salva giacenza iniziale ({{count}} prodotto)",
+    "saveOpeningCount_other": "Salva giacenza iniziale ({{count}} prodotti)",
+    "bulk": {
+      "category": "Carica prodotti da",
+      "load": "Carica prodotti senza giacenza",
+      "hint": "Aggiunge tutti i prodotti a magazzino ancora senza giacenza, con il prezzo di acquisto come costo. Scrivi solo le quantità: le righe vuote vengono saltate al salvataggio.",
+      "loaded_one": "Aggiunto {{count}} prodotto.",
+      "loaded_other": "Aggiunti {{count}} prodotti.",
+      "none": "Tutti i prodotti qui hanno già una giacenza.",
+      "more": "Restano altri prodotti: salva prima questi ({{max}} alla volta), poi carica di nuovo.",
+      "full": "L'elenco è pieno ({{max}} prodotti). Salvalo e iniziane un altro.",
+      "filled": "{{filled}} di {{total}} con quantità",
+      "filter": "Cerca nell'elenco",
+      "removeBlank": "Rimuovi righe senza quantità"
+    },
+    "draft": {
+      "restored_one": "La tua bozza non salvata ({{count}} prodotto) è stata ripristinata.",
+      "restored_other": "La tua bozza non salvata ({{count}} prodotti) è stata ripristinata.",
+      "discard": "Ricomincia",
+      "autosaved": "Salvato su questo dispositivo mentre scrivi."
+    },
+    "batch": "Lotto e scadenza",
+    "batchNo": "N. lotto",
+    "expiry": "Scadenza",
+    "expires": "scad. {{date}}",
+    "addBatch": "+ Lotto e scadenza",
+    "anotherBatch": "+ Altro lotto",
+    "batchFor": "Numero di lotto per {{name}}",
+    "expiryFor": "Data di scadenza per {{name}}",
+    "batchPick": "Lotto per {{name}}",
+    "batchAuto": "Prima la scadenza più vicina",
+    "noBatch": "Senza lotto",
+    "expiryReport": {
+      "nav": "Scadenze",
+      "title": "Scadenze",
+      "subtitle": "Lotti in giacenza per data di scadenza: vendi prima i più vicini, elimina quelli scaduti.",
+      "expiredCount": "Lotti scaduti",
+      "expiringCount": "In scadenza entro {{days}} giorni",
+      "expiredValue": "Valore della merce scaduta",
+      "searchHint": "Prodotto, SKU o numero di lotto",
+      "window": "In scadenza entro",
+      "days_one": "{{count}} giorno",
+      "days_other": "{{count}} giorni",
+      "statuses": {
+        "all": "Tutti i lotti",
+        "expired": "Scaduti",
+        "expiring": "In scadenza entro {{days}} giorni",
+        "ok": "Più avanti"
+      },
+      "expiredAgo_one": "Scaduto da 1 giorno",
+      "expiredAgo_other": "Scaduto da {{count}} giorni",
+      "today": "Scade oggi",
+      "daysLeft_one": "1 giorno",
+      "daysLeft_other": "{{count}} giorni",
+      "daysLeftColumn": "Giorni rimasti",
+      "writeOff": "Elimina",
+      "writeOffOne": "Elimina {{name}} lotto {{batch}}",
+      "writeOffExpired_one": "Elimina 1 lotto scaduto",
+      "writeOffExpired_other": "Elimina {{count}} lotti scaduti",
+      "empty": "Nessun lotto. I lotti nascono da giacenze iniziali e acquisti con data di scadenza."
+    }
   }
 }

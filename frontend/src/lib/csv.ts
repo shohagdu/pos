@@ -19,7 +19,16 @@ export function toCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
 
 /** Downloads `rows` as a UTF-8 CSV file (with BOM so Excel shows Bengali). */
 export function downloadCsv<T>(filename: string, rows: T[], columns: CsvColumn<T>[]) {
-  const blob = new Blob(['﻿', toCsv(rows, columns)], { type: 'text/csv;charset=utf-8' })
+  downloadCsvText(filename, toCsv(rows, columns))
+}
+
+/** Downloads plain rows of cells (the first is the header) as a CSV file. */
+export function downloadCsvRows(filename: string, rows: (string | number | null | undefined)[][]) {
+  downloadCsvText(filename, rows.map((r) => r.map(cell).join(',')).join('\r\n'))
+}
+
+function downloadCsvText(filename: string, text: string) {
+  const blob = new Blob(['\uFEFF', text], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -28,4 +37,79 @@ export function downloadCsv<T>(filename: string, rows: T[], columns: CsvColumn<T
   a.click()
   a.remove()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Parses CSV text (RFC 4180: quoted cells, doubled quotes, CRLF or LF, a
+ * leading BOM). Also reads `;`-separated files as Excel saves them in some
+ * locales. Blank lines are dropped.
+ */
+export function parseCsv(text: string): string[][] {
+  const src = text.replace(/^\uFEFF/, '')
+  const firstLine = src.slice(0, src.search(/\r?\n|$/))
+  const sep = firstLine.split(';').length > firstLine.split(',').length ? ';' : ','
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let quoted = false
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i]
+    if (quoted) {
+      if (c === '"' && src[i + 1] === '"') {
+        field += '"'
+        i++
+      } else if (c === '"') quoted = false
+      else field += c
+    } else if (c === '"' && field === '') quoted = true
+    else if (c === sep) {
+      row.push(field)
+      field = ''
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && src[i + 1] === '\n') i++
+      row.push(field)
+      rows.push(row)
+      row = []
+      field = ''
+    } else field += c
+  }
+  if (field !== '' || row.length > 0) {
+    row.push(field)
+    rows.push(row)
+  }
+  return rows.filter((r) => r.some((cellText) => cellText.trim() !== ''))
+}
+
+/** Lower-case, words joined by `_`: `Selling Price` → `selling_price`. */
+export const headerKey = (header: string) =>
+  header
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+
+/**
+ * CSV rows as records keyed by header (see {@link headerKey}), each with its
+ * line number in the file (the header is line 1).
+ */
+export function csvRecords(text: string): { headers: string[]; records: { line: number; values: Record<string, string> }[] } {
+  const [head, ...body] = parseCsv(text)
+  const headers = (head ?? []).map(headerKey)
+  return {
+    headers,
+    records: body.map((cells, i) => ({
+      line: i + 2,
+      values: Object.fromEntries(headers.map((h, j) => [h, (cells[j] ?? '').trim()])),
+    })),
+  }
+}
+
+/** The text of a file the user picked. */
+export function readText(file: Blob): Promise<string> {
+  if (typeof file.text === 'function') return file.text()
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result ?? ''))
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'))
+    reader.readAsText(file)
+  })
 }

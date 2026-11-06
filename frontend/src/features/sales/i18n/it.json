@@ -133,7 +133,44 @@
       "appliedToDue": "Detratto dal dovuto",
       "refunded": "Rimborsato",
       "credited": "Credito cliente",
-      "reason": "Motivo: {{reason}}"
+      "reason": "Motivo: {{reason}}",
+      "warranty": "Garanzia {{tenure}}, fino al {{date}}"
+    },
+    "warrantyUntil": "Garanzia fino al {{date}}",
+    "warrantyExpired": "Garanzia scaduta il {{date}}",
+    "warrantyTenure": {
+      "day_one": "{{count}} giorno",
+      "day_other": "{{count}} giorni",
+      "month_one": "{{count}} mese",
+      "month_other": "{{count}} mesi",
+      "year_one": "{{count}} anno",
+      "year_other": "{{count}} anni"
+    },
+    "warranty": "Garanzia",
+    "withWarranty": "Solo vendite con garanzia",
+    "warrantyListUntil": "Fino al {{date}}",
+    "warrantyListExpired": "Scaduta il {{date}}",
+    "warrantyItems_one": "{{count}} articolo",
+    "warrantyItems_other": "{{count}} articoli",
+    "warrantyTable": {
+      "product": "Prodotto",
+      "soldOn": "Venduto il",
+      "tenure": "Garanzia",
+      "expiresOn": "Scade il",
+      "active": "Attiva",
+      "expired": "Scaduta",
+      "returned": "Reso",
+      "lastDay": "Ultimo giorno oggi",
+      "daysLeft_one": "{{count}} giorno rimasto",
+      "daysLeft_other": "{{count}} giorni rimasti",
+      "returnedQty": "{{qty}} reso"
+    },
+    "warrantyLookup": {
+      "title": "Ricerca garanzie",
+      "subtitle": "Verifica un reclamo: trova l'articolo per numero fattura, telefono del cliente, nome prodotto, SKU o codice a barre.",
+      "searchHint": "Fattura, telefono, prodotto, SKU o scansiona un codice",
+      "none": "Nessun articolo venduto con garanzia.",
+      "noMatch": "Nessun articolo in garanzia corrisponde a “{{q}}”."
     }
   }
 }

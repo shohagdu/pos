@@ -7,6 +7,9 @@ export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string
 }
 
+/** A red asterisk after the label (CSS only, so the accessible name stays the label). */
+const REQUIRED_MARK = "after:ml-0.5 after:text-danger after:content-['*']"
+
 export function TextField({ label, error, hint, id, className = '', ...props }: TextFieldProps) {
   const generated = useId()
   const inputId = id ?? generated
@@ -15,7 +18,7 @@ export function TextField({ label, error, hint, id, className = '', ...props }: 
   const describedBy = error ? errorId : hint ? hintId : undefined
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      <label htmlFor={inputId} className="text-sm font-medium text-ink">
+      <label htmlFor={inputId} className={`text-sm font-medium text-ink ${props.required ? REQUIRED_MARK : ''}`}>
         {label}
       </label>
       <input

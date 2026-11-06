@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next'
 
 import type { ReceiptInfo, SaleDetail, SaleReturnDetail } from '../../api/sales'
 import { ZERO, dec, toFixed } from '../../lib/decimal'
-import { formatDateTime } from '../../lib/dates'
+import { formatDate, formatDateTime } from '../../lib/dates'
 import { formatMoney, formatQuantity } from '../../lib/format'
+import { warrantyTenure } from './warranty'
 
 // Printable receipt (Requirement Analysis §7.6.5). The width follows the
 // receipt paper: 80 mm rolls print ~72 mm, 58 mm rolls ~48 mm.
@@ -86,6 +87,9 @@ export function SaleReceipt({ sale }: { sale: SaleDetail }) {
             value={money(item.line_total)}
           />
           {nonZero(item.line_discount) && <Row label={t('sales.receipt.lineDiscount')} value={`−${money(item.line_discount)}`} />}
+          {item.warranty_expires_on && (
+            <div>{t('sales.receipt.warranty', { tenure: warrantyTenure(item, t) ?? '', date: formatDate(item.warranty_expires_on, lang) })}</div>
+          )}
         </div>
       ))}
       <Rule />

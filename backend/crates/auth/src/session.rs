@@ -20,6 +20,7 @@ pub const REASON_LOGOUT: &str = "logout";
 pub const REASON_REUSE: &str = "reuse_detected";
 pub const REASON_USER_REVOKED: &str = "user_revoked";
 pub const REASON_PASSWORD_RESET: &str = "password_reset";
+pub const REASON_PASSWORD_CHANGED: &str = "password_changed";
 pub const REASON_ACCOUNT_DISABLED: &str = "account_disabled";
 
 /// A stored session and the plain refresh token for the cookie.
@@ -121,6 +122,30 @@ pub async fn revoke_all_for_user(conn: &mut MySqlConnection, user_id: Uuid, reas
         "UPDATE user_sessions SET revoked_at = NOW(6), revoked_reason = ? WHERE user_id = ? AND revoked_at IS NULL \
          /* tenant-lint: allow global identity table, scoped to the user */",
     )
+    .bind(reason)
+    .bind(user_id)
+    .execute(conn)
+    .await
+    .map_err(map_db_error)?;
+    Ok(done.rows_affected())
+}
+
+/// Revokes all of a user's sessions except the device behind `keep_session`
+/// (a session row id, i.e. `AccessClaims::sid`): its whole family survives.
+pub async fn revoke_others(
+    conn: &mut MySqlConnection,
+    user_id: Uuid,
+    keep_session: Uuid,
+    reason: &'static str,
+) -> AppResult<u64> {
+    let done = sqlx::query(
+        "UPDATE user_sessions s \
+         LEFT JOIN user_sessions k ON k.id = ? AND k.user_id = s.user_id \
+         SET s.revoked_at = NOW(6), s.revoked_reason = ? \
+         WHERE s.user_id = ? AND s.revoked_at IS NULL AND (k.family_id IS NULL OR s.family_id <> k.family_id) \
+         /* tenant-lint: allow global identity table, scoped to the user */",
+    )
+    .bind(keep_session)
     .bind(reason)
     .bind(user_id)
     .execute(conn)

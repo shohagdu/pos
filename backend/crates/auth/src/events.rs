@@ -13,6 +13,9 @@ pub const LOGOUT: &str = "logout";
 pub const REGISTERED: &str = "user.registered";
 pub const PHONE_VERIFIED: &str = "phone.verified";
 pub const PASSWORD_RESET: &str = "password.reset";
+pub const PASSWORD_CHANGED: &str = "password.changed";
+/// A wrong current password when changing it (counts towards a lockout).
+pub const PASSWORD_CHANGE_FAILURE: &str = "password.change_failure";
 pub const REFRESH_REUSE: &str = "refresh.reuse_detected";
 pub const SESSION_REVOKED: &str = "session.revoked";
 pub const TENANT_SWITCHED: &str = "tenant.switched";

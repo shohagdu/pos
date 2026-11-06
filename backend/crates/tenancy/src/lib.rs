@@ -16,5 +16,6 @@ pub mod roles;
 pub mod sequences;
 pub mod settings;
 pub mod slug;
+pub mod staff;
 
 pub use provisioning::{NewBusiness, ProvisionedTenant, provision};

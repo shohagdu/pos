@@ -39,9 +39,17 @@ export function ProductsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">{t('products.title')}</h1>
         {can('products.create') && (
-          <Link to="/products/new" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
-            {t('products.new')}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/products/import"
+              className="inline-flex min-h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-canvas"
+            >
+              {t('imports.products.nav')}
+            </Link>
+            <Link to="/products/new" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
+              {t('products.new')}
+            </Link>
+          </div>
         )}
       </div>
       <CatalogNav />
@@ -97,6 +105,9 @@ export function ProductsPage() {
                 <th scope="col" className="px-4 py-3">{t('products.category')}</th>
                 <th scope="col" className="px-4 py-3 text-right">{t('products.sellingPrice')}</th>
                 <th scope="col" className="px-4 py-3">{t('products.status')}</th>
+                <th scope="col" className="px-4 py-3">
+                  <span className="sr-only">{t('common.actions')}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -118,6 +129,15 @@ export function ProductsPage() {
                     <span className={`rounded px-2 py-0.5 text-xs font-semibold ${p.status === 'active' ? 'bg-brand-50 text-brand-700' : 'bg-canvas text-ink-muted'}`}>
                       {t(`products.statuses.${p.status}`)}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    <Link
+                      to={`/labels?variants=${p.variant_id}`}
+                      aria-label={t('labels.printBarcodeOf', { name: p.name })}
+                      className="text-sm font-medium text-brand-700 hover:underline"
+                    >
+                      {t('labels.printBarcode')}
+                    </Link>
                   </td>
                 </tr>
               ))}

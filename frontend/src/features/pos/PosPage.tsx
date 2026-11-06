@@ -262,6 +262,7 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
                 onSelect={setSelected}
                 dispatch={dispatch}
                 canOverridePrice={can('pos.price_override')}
+                businessDate={ctx.business_date}
               />
             </div>
           </section>

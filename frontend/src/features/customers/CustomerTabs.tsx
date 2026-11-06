@@ -14,6 +14,7 @@ import { dec } from '../../lib/decimal'
 import { formatDate, formatDateTime, startOfMonth, today } from '../../lib/dates'
 import { formatMoney } from '../../lib/format'
 import { ReasonDialog } from '../money/ReasonDialog'
+import { WarrantyStatus } from '../sales/WarrantyStatus'
 import { LoadMore, QueryStatus, TextLink } from '../money/shared'
 import { isPositive, stamp, useTenant, referencePath } from '../money/utils'
 
@@ -156,6 +157,7 @@ export function InvoicesTab({ customerId }: { customerId: string }) {
       render: (s) => <Badge tone={PAYMENT_TONE[s.payment_status]}>{t(`customers.paymentStatuses.${s.payment_status}`)}</Badge>,
     },
     { key: 'status', header: t('common.status'), render: (s) => t(`customers.saleStatuses.${s.status}`, { defaultValue: s.status }) },
+    { key: 'warranty', header: t('sales.warranty'), render: (s) => <WarrantyStatus sale={s} /> },
   ]
   if (!sales.isSuccess) return <QueryStatus query={sales} />
   return (

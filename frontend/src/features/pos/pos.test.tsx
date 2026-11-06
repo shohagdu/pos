@@ -67,6 +67,16 @@ describe('POS', () => {
     expect(await screen.findByText(/Scan a barcode or search/)).toBeInTheDocument()
   })
 
+  it('shows the warranty of a cart line and when it would run out', async () => {
+    const powerBank = { ...rice, warranty_period: 3, warranty_unit: 'month' as const }
+    mockApi(routes({ 'GET /api/v1/pos/products': [powerBank] }))
+    renderRoute('/pos')
+    await userEvent.type(await screen.findByRole('combobox', { name: 'Search products' }), '4006381333931{Enter}')
+    const cart = await screen.findByRole('table', { name: 'Cart' })
+    // The POS business date is 18 Oct 2026.
+    expect(within(cart).getByText('Warranty 3 months · until 18 Jan 2027')).toBeInTheDocument()
+  })
+
   it('confirms the sale from the keyboard with F8', async () => {
     const calls = mockApi(routes({ 'POST /api/v1/sales': () => Response.json(sale, { status: 201 }) }))
     renderRoute('/pos')

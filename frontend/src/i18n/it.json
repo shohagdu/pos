@@ -9,6 +9,7 @@
     "pos": "Cassa",
     "products": "Prodotti",
     "sales": "Vendite",
+    "warranties": "Ricerca garanzie",
     "settings": "Impostazioni",
     "users": "Utenti",
     "plan": "Piano e utilizzo",
@@ -214,6 +215,18 @@
     "lastActive": "Ultima attività {{when}}",
     "signedIn": "Accesso effettuato {{when}}",
     "revoke": "Disconnetti"
+  },
+  "password": {
+    "title": "Cambia password",
+    "intro": "Inserisci la password attuale e poi quella nuova. Gli altri dispositivi vengono disconnessi; questo resta connesso.",
+    "current": "Password attuale",
+    "new": "Nuova password",
+    "confirm": "Ripeti la nuova password",
+    "show": "Mostra password",
+    "submit": "Cambia password",
+    "done": "La password è stata cambiata.",
+    "doneSignedOut_one": "La password è stata cambiata e {{count}} altro dispositivo è stato disconnesso.",
+    "doneSignedOut_other": "La password è stata cambiata e {{count}} altri dispositivi sono stati disconnessi."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -439,7 +452,10 @@
     "PAST_DATE": "La data deve essere nel futuro.",
     "INVALID_LIMIT": "Un limite non può essere negativo.",
     "INVALID_DAYS": "Usa da 1 a 365 giorni.",
-    "CURRENCY_LOCKED": "La valuta non può essere cambiata dopo che sono state registrate vendite, acquisti o pagamenti."
+    "CURRENCY_LOCKED": "La valuta non può essere cambiata dopo che sono state registrate vendite, acquisti o pagamenti.",
+    "WRONG_PASSWORD": "La password attuale è sbagliata.",
+    "SAME_PASSWORD": "Scegli una password diversa da quella attuale.",
+    "PASSWORD_MISMATCH": "Le due nuove password non coincidono."
   },
   "users": {
     "title": "Utenti e ruoli",
@@ -474,7 +490,8 @@
     "noSessions": "Nessun dispositivo connesso.",
     "signedOut_one": "Disconnesso da {{count}} dispositivo.",
     "signedOut_other": "Disconnesso da {{count}} dispositivi.",
-    "noPermission": "Non hai l'autorizzazione per invitare utenti."
+    "noPermission": "Non hai l'autorizzazione per invitare utenti.",
+    "addMember": "Aggiungi personale"
   },
   "invitations": {
     "title": "Invita personale",
@@ -494,6 +511,25 @@
     "viewAll": "Vedi tutti gli inviti",
     "seats": "{{used}} di {{max}} posti utente usati (contano anche gli inviti aperti).",
     "seatsFull": "Rimuovi qualcuno o passa a un piano superiore per invitare altre persone."
+  },
+  "addMember": {
+    "title": "Aggiungi personale",
+    "intro": "Crea qui l'account e comunica numero di cellulare e password. Può accedere subito, senza invito.",
+    "fullName": "Nome completo",
+    "phone": "Numero di cellulare",
+    "phoneHint": "Accede con questo numero.",
+    "email": "Email (facoltativa)",
+    "password": "Password",
+    "passwordHint": "Almeno 8 caratteri. Potrà cambiarla in seguito da Cambia password nel menu dell'account. Se il numero ha già un account, resta la sua password.",
+    "showPassword": "Mostra password",
+    "submit": "Aggiungi",
+    "doneTitle": "{{name}} è stato aggiunto",
+    "doneNew": "Può accedere ora con {{phone}} e la password che hai scelto. Comunicala di persona.",
+    "doneExisting": "{{phone}} aveva già un account: accede con la propria password. Questa attività ora è nel suo elenco.",
+    "another": "Aggiungi un'altra persona",
+    "viewMember": "Vedi membro",
+    "seats": "{{used}} di {{max}} posti utente usati.",
+    "seatsFull": "Rimuovi qualcuno o passa a un piano superiore per aggiungerne altri."
   },
   "invitation": {
     "title": "Unisciti a {{business}}",
@@ -722,9 +758,10 @@
     "name": "Nome",
     "nameBn": "Nome in bengalese (facoltativo)",
     "sku": "SKU",
-    "skuHint": "Lascia vuoto per la numerazione automatica (P000001).",
+    "skuHint": "Compilato con il prossimo codice automatico; scrivi il tuo per sostituirlo.",
     "barcodes": "Codici a barre",
     "barcodesHint": "Scansiona o digita; separa più codici con virgole.",
+    "barcodeGenerated": "È compilato un nuovo codice a barre del negozio; scansiona quello del produttore per usarlo al suo posto.",
     "status": "Stato",
     "statuses": {
       "active": "Attivo",
@@ -741,6 +778,7 @@
     "noCategory": "Nessuna categoria",
     "noBrand": "Nessuna marca",
     "unit": "Unità",
+    "chooseUnit": "Scegli un'unità",
     "taxRate": "Aliquota IVA",
     "defaultTax": "Predefinita dell'attività",
     "description": "Descrizione (facoltativa)",
@@ -774,6 +812,17 @@
       "brands": "Marche",
       "units": "Unità",
       "taxRates": "Aliquote IVA"
+    },
+    "trackBatches": "Gestisci lotti e scadenze",
+    "trackBatchesHint": "Chiedi lotto e data di scadenza quando arriva la merce; le vendite usano prima la scadenza più vicina.",
+    "hasWarranty": "Con garanzia",
+    "hasWarrantyHint": "Le vendite mostrano su fattura e scontrino la data di fine garanzia.",
+    "warrantyPeriod": "Durata garanzia",
+    "warrantyUnit": "Garanzia in",
+    "warrantyUnits": {
+      "day": "Giorni",
+      "month": "Mesi",
+      "year": "Anni"
     }
   },
   "catalog": {

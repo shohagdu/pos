@@ -25,6 +25,7 @@ use sqlx::{MySql, QueryBuilder};
 use uuid::Uuid;
 
 use crate::{
+    batches::{self, Batch, LineBatch},
     posting::{MovementLine, MovementRef, balances_at, post_movements},
     stock::check_location,
 };
@@ -47,6 +48,15 @@ pub struct AdjustmentLineInput {
     pub unit_cost: Option<Decimal>,
     #[serde(default)]
     pub note: Option<String>,
+    /// An existing batch of the product to add to or take from.
+    #[serde(default)]
+    pub batch_id: Option<Uuid>,
+    /// Increases only: the batch the stock arrives as (found or created by
+    /// number; a blank number with an expiry date uses the date).
+    #[serde(default)]
+    pub batch_no: Option<String>,
+    #[serde(default)]
+    pub expiry_date: Option<NaiveDate>,
 }
 
 #[derive(Debug, Clone, Deserialize, utoipa::ToSchema)]
@@ -76,6 +86,14 @@ pub struct AdjustmentItem {
     #[schema(value_type = Option<String>)]
     pub unit_cost: Option<Decimal>,
     pub note: Option<String>,
+    /// The batch the line named, if any.
+    pub batch_id: Option<Uuid>,
+    pub batch_no: Option<String>,
+    pub expiry_date: Option<NaiveDate>,
+    /// The batches the line actually moved (a decrease without a batch takes
+    /// the earliest expiry first).
+    #[sqlx(skip)]
+    pub batches: Vec<LineBatch>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
@@ -170,8 +188,9 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, can_view_cost: bool) -> AppResult<
         q.build_query_as().fetch_optional(&mut **tx).await.map_err(map_db_error)?.ok_or(AppError::NotFound)?;
     let mut items: Vec<AdjustmentItem> = sqlx::query_as(
         "SELECT i.id, i.variant_id, p.name AS product_name, v.sku, u.short_name AS unit_short_name, i.quantity, \
-         i.unit_cost, i.note FROM stock_adjustment_items i \
+         i.unit_cost, i.note, i.batch_id, pb.batch_no, pb.expiry_date FROM stock_adjustment_items i \
          JOIN product_variants v ON v.tenant_id = i.tenant_id AND v.id = i.variant_id \
+         LEFT JOIN product_batches pb ON pb.tenant_id = i.tenant_id AND pb.id = i.batch_id \
          JOIN products p ON p.tenant_id = v.tenant_id AND p.id = v.product_id \
          JOIN units u ON u.tenant_id = p.tenant_id AND u.id = p.base_unit_id \
          WHERE i.tenant_id = ? AND i.adjustment_id = ? ORDER BY p.name",
@@ -181,6 +200,10 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, can_view_cost: bool) -> AppResult<
     .fetch_all(&mut **tx)
     .await
     .map_err(map_db_error)?;
+    let mut moved = batches::of_document(tx, "stock_adjustment", id).await?;
+    for item in &mut items {
+        item.batches = moved.remove(&item.id).unwrap_or_default();
+    }
     if !can_view_cost {
         summary.total_value = None;
         for item in &mut items {
@@ -195,6 +218,9 @@ struct Line {
     quantity: Decimal,
     unit_cost: Option<Decimal>,
     note: Option<String>,
+    batch_id: Option<Uuid>,
+    batch_no: Option<String>,
+    expiry_date: Option<NaiveDate>,
 }
 
 fn validate(input: &AdjustmentInput, can_view_cost: bool) -> AppResult<Vec<Line>> {
@@ -208,11 +234,17 @@ fn validate(input: &AdjustmentInput, can_view_cost: bool) -> AppResult<Vec<Line>
     let mut seen = BTreeSet::new();
     let mut out = Vec::with_capacity(input.lines.len());
     for (i, line) in input.lines.iter().enumerate() {
-        if !seen.insert(line.variant_id) {
+        // A product may appear once per batch (opening stock of several batches).
+        let batch_key = (
+            line.batch_id,
+            line.batch_no.as_deref().map(|b| b.trim().to_lowercase()).filter(|b| !b.is_empty()),
+            line.expiry_date,
+        );
+        if !seen.insert((line.variant_id, batch_key)) {
             return Err(AppError::field(
                 &format!("lines[{i}].variant_id"),
                 "DUPLICATE",
-                "each product may appear once",
+                "each product may appear once per batch",
             ));
         }
         let quantity = round3(line.quantity);
@@ -236,7 +268,31 @@ fn validate(input: &AdjustmentInput, can_view_cost: bool) -> AppResult<Vec<Line>
         }
         let unit_cost = line.unit_cost.map(|c| price(c, &format!("lines[{i}].unit_cost"))).transpose()?;
         let note = line.note.as_deref().map(str::trim).filter(|n| !n.is_empty()).map(|n| n.chars().take(255).collect());
-        out.push(Line { variant_id: line.variant_id, quantity, unit_cost, note });
+        let batch_no = line.batch_no.as_deref().map(str::trim).filter(|b| !b.is_empty()).map(str::to_owned);
+        let names_batch = batch_no.is_some() || line.expiry_date.is_some();
+        if names_batch && line.batch_id.is_some() {
+            return Err(AppError::field(
+                &format!("lines[{i}].batch_id"),
+                "BATCH_TWICE",
+                "choose a batch or enter a batch number, not both",
+            ));
+        }
+        if names_batch && quantity < Decimal::ZERO {
+            return Err(AppError::field(
+                &format!("lines[{i}].batch_no"),
+                "BATCH_ON_DECREASE",
+                "choose one of the product's batches to take stock from",
+            ));
+        }
+        out.push(Line {
+            variant_id: line.variant_id,
+            quantity,
+            unit_cost,
+            note,
+            batch_id: line.batch_id,
+            batch_no,
+            expiry_date: line.expiry_date,
+        });
     }
     Ok(out)
 }
@@ -270,6 +326,18 @@ pub async fn create(
                 "this unit takes whole numbers only",
             ));
         }
+    }
+    let mut batch_ids: Vec<Option<Uuid>> = Vec::with_capacity(lines.len());
+    for (i, line) in lines.iter().enumerate() {
+        let field = format!("lines[{i}]");
+        let batch = match line.batch_id {
+            Some(b) => {
+                batches::require_of_variant(tx, b, line.variant_id, &format!("{field}.batch_id")).await?;
+                Some(b)
+            }
+            None => batches::resolve(tx, line.variant_id, line.batch_no.as_deref(), line.expiry_date, &field).await?,
+        };
+        batch_ids.push(batch);
     }
     let note = input
         .note
@@ -318,8 +386,8 @@ pub async fn create(
     let movement_lines: Vec<MovementLine> = lines
         .iter()
         .zip(&costs)
-        .zip(&item_ids)
-        .map(|((l, cost), item_id)| MovementLine {
+        .zip(item_ids.iter().zip(&batch_ids))
+        .map(|((l, cost), (item_id, batch))| MovementLine {
             location_id,
             variant_id: l.variant_id,
             movement_type,
@@ -327,6 +395,7 @@ pub async fn create(
             unit_cost: *cost,
             reference_line_id: Some(*item_id),
             reason: Some(input.reason.clone()),
+            batch: batch.map_or(Batch::Auto, Batch::Exact),
         })
         .collect();
 
@@ -341,17 +410,21 @@ pub async fn create(
     let posted = post_movements(tx, &reference, &movement_lines, ctx.allow_negative_stock).await?;
 
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
-        "INSERT INTO stock_adjustment_items (tenant_id, id, adjustment_id, variant_id, quantity, unit_cost, note) ",
+        "INSERT INTO stock_adjustment_items (tenant_id, id, adjustment_id, variant_id, quantity, unit_cost, note, batch_id) ",
     );
-    q.push_values(lines.iter().zip(&posted).zip(&item_ids), |mut row, ((l, p), item_id)| {
-        row.push_bind(tenant_id)
-            .push_bind(*item_id)
-            .push_bind(id)
-            .push_bind(l.variant_id)
-            .push_bind(l.quantity)
-            .push_bind(p.unit_cost)
-            .push_bind(l.note.as_deref());
-    });
+    q.push_values(
+        lines.iter().zip(&posted).zip(item_ids.iter().zip(&batch_ids)),
+        |mut row, ((l, p), (item_id, batch))| {
+            row.push_bind(tenant_id)
+                .push_bind(*item_id)
+                .push_bind(id)
+                .push_bind(l.variant_id)
+                .push_bind(l.quantity)
+                .push_bind(p.unit_cost)
+                .push_bind(l.note.as_deref())
+                .push_bind(*batch);
+        },
+    );
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
 
     let total_value: Decimal = posted.iter().map(|p| p.total_cost).sum();

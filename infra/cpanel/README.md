@@ -9,9 +9,10 @@ to pos-api on `127.0.0.1:API_INTERNAL_PORT`. Logs go to `logs/`.
 
 ## Host requirements (check first)
 
-- **MySQL 8.0+**, not MariaDB. The migrations use `UUID_TO_BIN` and expression
-  defaults. cPanel > General Information (right column) or phpMyAdmin's home
-  page shows the server version.
+- **MySQL 8.0+ or MariaDB 10.6+** (creating a business uses `JSON_TABLE`).
+  cPanel > General Information (right column) or phpMyAdmin's home page shows
+  the server version. Start with an empty database: the app creates the tables
+  itself, so do not import a dump from another server.
 - **Triggers**: the migrations create tenant-guard triggers. If the log shows
   `You do not have the SUPER privilege and binary logging is enabled`, ask the
   host to set `log_bin_trust_function_creators=1` or to grant TRIGGER for your

@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { currentTenant, membership, mockApi, token, user } from '../../test/api'
 import { renderRoute } from '../../test/render'
 
-afterEach(() => vi.restoreAllMocks())
+afterEach(() => {
+  vi.restoreAllMocks()
+  localStorage.clear()
+})
 
 const perms = ['dashboard.view', 'inventory.view', 'inventory.adjust', 'inventory.opening_stock', 'products.view', 'products.view_cost']
 
@@ -62,19 +65,73 @@ describe('inventory', () => {
       'GET /api/v1/stock-adjustments/adj1': created,
     })
     const { router } = renderRoute('/inventory/adjustments/new?reason=opening')
-    await userEvent.type(await screen.findByLabelText('Search products'), 'rice')
-    await userEvent.click(screen.getByRole('button', { name: 'Search' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Add Delivery charge' }))
-    expect(screen.getByText(/Delivery charge does not track stock/)).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Add Miniket Rice 5kg' }))
+    // Typing a name and Enter adds it; the cursor lands on its quantity.
+    await userEvent.type(await screen.findByRole('combobox', { name: 'Add product' }), 'rice')
+    await screen.findByRole('option', { name: /Miniket Rice 5kg/ })
+    await userEvent.keyboard('{Enter}')
+    const qty = await screen.findByLabelText('Quantity for Miniket Rice 5kg')
+    await waitFor(() => expect(qty).toHaveFocus())
     expect(screen.getByLabelText('Unit cost for Miniket Rice 5kg')).toHaveValue('400')
-    await userEvent.type(screen.getByLabelText('Quantity for Miniket Rice 5kg'), '10')
-    await userEvent.click(screen.getByRole('button', { name: 'Save opening stock' }))
+    await userEvent.keyboard('9{Enter}')
+    // Enter on the last row goes back to the search box; the same item again adds 1.
+    const search = screen.getByRole('combobox', { name: 'Add product' })
+    expect(search).toHaveFocus()
+    await userEvent.type(search, 'rice')
+    await screen.findByRole('option', { name: /Miniket Rice 5kg/ })
+    await userEvent.keyboard('{Enter}')
+    await waitFor(() => expect(qty).toHaveValue('10'))
+    await userEvent.click(screen.getByRole('button', { name: 'Save opening stock (1 product)' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/inventory/adjustments/adj1'))
     const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/stock-adjustments')
     expect(post?.body).toEqual({ reason: 'opening', lines: [{ variant_id: 'v1', quantity: '10', unit_cost: '400' }] })
     expect(post?.headers.get('Idempotency-Key')).toBeTruthy()
     expect(await screen.findByText('ADJ-0001', { exact: false })).toBeInTheDocument()
+  })
+
+  it('loads products without stock; blank rows are skipped and the entry survives a reload', async () => {
+    const out = (id: string, name: string, cost: string | null) => ({ ...stockRow, variant_id: id, name, sku: id, quantity: '0.000', is_low: false, purchase_price: cost })
+    const created = {
+      id: 'adj2', adjustment_no: 'ADJ-0002', business_date: '2026-11-06', reason: 'opening', note: null, status: 'posted', location_id: 'loc1',
+      location_name: 'Shop floor', total_value: '0', item_count: 1, created_by_name: 'Rahim Uddin', created_at: '2026-11-06T04:00:00Z', items: [],
+    }
+    const calls = mockApi({
+      ...signedIn(),
+      'GET /api/v1/stock': { data: [out('v1', 'Rice', '400.0000'), out('v2', 'Sugar', '120.0000'), out('v3', 'Salt', null)], next_cursor: null, summary: {} },
+      'POST /api/v1/stock-adjustments': () => Response.json(created, { status: 201 }),
+      'GET /api/v1/stock-adjustments/adj2': created,
+    })
+    const first = renderRoute('/inventory/adjustments/new?reason=opening')
+    await userEvent.click(await screen.findByRole('button', { name: 'Load products without stock' }))
+    expect(await screen.findByText('Added 3 products.')).toBeInTheDocument()
+    expect(calls.find((c) => c.path === '/api/v1/stock')?.search).toContain('status=out')
+    await waitFor(() => expect(screen.getByLabelText('Quantity for Rice')).toHaveFocus())
+    expect(screen.getByLabelText('Unit cost for Sugar')).toHaveValue('120')
+    await userEvent.keyboard('{Enter}')
+    expect(screen.getByLabelText('Quantity for Sugar')).toHaveFocus()
+    await userEvent.keyboard('25')
+    expect(screen.getByText('1 of 3 with a quantity')).toBeInTheDocument()
+    first.unmount()
+
+    // Leaving the page keeps the entry on this device.
+    const { router } = renderRoute('/inventory/adjustments/new?reason=opening')
+    expect(await screen.findByText('Your unsaved entry (3 products) was restored.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Quantity for Sugar')).toHaveValue('25')
+    await userEvent.click(screen.getByRole('button', { name: 'Save opening stock (1 product)' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/inventory/adjustments/adj2'))
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/stock-adjustments')
+    expect(post?.body).toEqual({ reason: 'opening', lines: [{ variant_id: 'v2', quantity: '25', unit_cost: '120' }] })
+    expect(localStorage.length).toBe(0)
+  })
+
+  it('asks for a quantity when every loaded row is blank', async () => {
+    mockApi({
+      ...signedIn(),
+      'GET /api/v1/stock': { data: [{ ...stockRow, quantity: '0.000', purchase_price: '1.0000' }], next_cursor: null, summary: {} },
+    })
+    renderRoute('/inventory/adjustments/new?reason=opening')
+    await userEvent.click(await screen.findByRole('button', { name: 'Load products without stock' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Save opening stock (0 products)' }))
+    expect(screen.getByText('Enter a quantity for at least one product.')).toBeInTheDocument()
   })
 })

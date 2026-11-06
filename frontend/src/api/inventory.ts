@@ -33,6 +33,8 @@ export interface StockRow {
   sku: string
   unit_short_name: string
   allow_fraction: boolean
+  /** Stock is kept by batch with expiry dates. */
+  track_batches: boolean
   category_name: string | null
   brand_name: string | null
   quantity: string
@@ -40,6 +42,8 @@ export interface StockRow {
   avg_cost: string | null
   value: string | null
   selling_price: string
+  /** Default cost for opening stock; `null` without `products.view_cost`. */
+  purchase_price?: string | null
   reorder_level: string | null
   is_low: boolean
   last_movement_at: string | null
@@ -125,6 +129,11 @@ export interface AdjustmentLineInput {
   quantity: string
   unit_cost?: string
   note?: string
+  /** An existing batch to add to or take from. */
+  batch_id?: string
+  /** Increases only: the batch the stock arrives as (blank number + expiry = the date). */
+  batch_no?: string
+  expiry_date?: string
 }
 
 export interface AdjustmentInput {
@@ -158,6 +167,60 @@ export interface AdjustmentItem {
   quantity: string
   unit_cost: string | null
   note: string | null
+  batch_id: string | null
+  batch_no: string | null
+  expiry_date: string | null
+  /** The batches the line actually moved (signed). */
+  batches: LineBatch[]
+}
+
+export interface LineBatch {
+  line_id: string
+  batch_id: string
+  batch_no: string
+  expiry_date: string | null
+  quantity: string
+}
+
+export interface BatchStock {
+  batch_id: string
+  batch_no: string
+  expiry_date: string | null
+  /** Negative = expired; `null` without a date. */
+  days_left: number | null
+  variant_id: string
+  product_id: string
+  name: string
+  sku: string
+  unit_short_name: string
+  location_id: string
+  location_name: string
+  quantity: string
+  value: string | null
+}
+
+export const BATCH_STATUSES = ['all', 'expired', 'expiring', 'ok'] as const
+
+export interface BatchFilter {
+  location_id?: string
+  variant_id?: string
+  q?: string
+  status?: (typeof BATCH_STATUSES)[number]
+  days?: number
+}
+
+export interface BatchPage {
+  data: BatchStock[]
+  next_cursor: string | null
+  summary: { expired: number; expiring: number; expired_value: string | null }
+}
+
+export interface BatchOption {
+  batch_id: string
+  variant_id: string
+  batch_no: string
+  expiry_date: string | null
+  quantity: string
 }
 
 export interface Adjustment extends AdjustmentSummary {
@@ -298,6 +361,10 @@ export const inventoryApi = {
   stock: (filter: StockFilter, cursor: string | null, limit = PAGE_SIZE) =>
     apiFetch<StockPage>(`/api/v1/stock${queryString({ ...filter, limit, cursor })}`),
   valuation: (locationId?: string) => apiFetch<Valuation>(`/api/v1/stock/valuation${queryString({ location_id: locationId })}`),
+  batches: (filter: BatchFilter, cursor: string | null) =>
+    apiFetch<BatchPage>(`/api/v1/stock/batches${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
+  batchOptions: (variantIds: string[], locationId?: string) =>
+    apiFetch<BatchOption[]>(`/api/v1/stock/batch-options${queryString({ location_id: locationId, variant_ids: variantIds.join(',') })}`),
   movements: (filter: MovementFilter, cursor: string | null) =>
     apiFetch<Page<Movement>>(`/api/v1/stock/movements${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   adjustments: (filter: AdjustmentFilter, cursor: string | null) =>
@@ -333,6 +400,9 @@ export const inventoryKeys = {
   stock: (tenantId: string, filter: StockFilter) => ['inventory', tenantId, 'stock', filter] as const,
   valuation: (tenantId: string, locationId?: string) => ['inventory', tenantId, 'valuation', locationId ?? ''] as const,
   movements: (tenantId: string, filter: MovementFilter) => ['inventory', tenantId, 'movements', filter] as const,
+  batches: (tenantId: string, filter: BatchFilter) => ['inventory', tenantId, 'batches', filter] as const,
+  batchOptions: (tenantId: string, variantIds: string[], locationId?: string) =>
+    ['inventory', tenantId, 'batch-options', locationId ?? '', variantIds] as const,
   adjustments: (tenantId: string, filter: AdjustmentFilter) => ['inventory', tenantId, 'adjustments', filter] as const,
   adjustment: (tenantId: string, id: string) => ['inventory', tenantId, 'adjustment', id] as const,
   transfers: (tenantId: string, filter: TransferFilter) => ['inventory', tenantId, 'transfers', filter] as const,
@@ -354,6 +424,23 @@ export const useStock = (tenantId: string, filter: StockFilter) =>
 
 export const useValuation = (tenantId: string, locationId?: string, enabled = true) =>
   useQuery({ queryKey: inventoryKeys.valuation(tenantId, locationId), queryFn: () => inventoryApi.valuation(locationId), enabled })
+
+export const useBatches = (tenantId: string, filter: BatchFilter, enabled = true) =>
+  useInfiniteQuery({
+    queryKey: inventoryKeys.batches(tenantId, filter),
+    queryFn: ({ pageParam }) => inventoryApi.batches(filter, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.next_cursor,
+    enabled,
+  })
+
+/** Batches in stock of some products, earliest expiry first (for picking one). */
+export const useBatchOptions = (tenantId: string, variantIds: string[], locationId?: string) =>
+  useQuery({
+    queryKey: inventoryKeys.batchOptions(tenantId, variantIds, locationId),
+    queryFn: () => inventoryApi.batchOptions(variantIds, locationId),
+    enabled: variantIds.length > 0,
+  })
 
 export const useMovements = (tenantId: string, filter: MovementFilter) =>
   useInfiniteQuery({

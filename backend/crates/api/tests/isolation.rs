@@ -87,6 +87,8 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/stock-locations"
             | "/api/v1/stock"
             | "/api/v1/stock/valuation"
+            | "/api/v1/stock/batches"
+            | "/api/v1/stock/batch-options"
             | "/api/v1/stock/movements"
             | "/api/v1/stock-adjustments"
             | "/api/v1/customers"
@@ -904,12 +906,13 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
     if smuggled.status.is_server_error() {
         failures.push(format!("POST /roles with tenant_id: {} {}", smuggled.status, smuggled.body));
     }
-    let in_a: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM roles WHERE tenant_id = UNHEX(REPLACE(?, '-', '')) AND name = 'Smuggled'")
-            .bind(&victim.tenant_id)
-            .fetch_one(&pool)
-            .await
-            .expect("count");
+    let in_a: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM roles WHERE tenant_id = UNHEX(REPLACE(?, '-', '')) AND name = 'Smuggled'",
+    )
+    .bind(&victim.tenant_id)
+    .fetch_one(&pool)
+    .await
+    .expect("count");
     assert_eq!(in_a, 0, "role created in A");
 
     assert!(failures.is_empty(), "cross-tenant failures:\n{}", failures.join("\n"));

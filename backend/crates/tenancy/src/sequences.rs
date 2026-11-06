@@ -57,6 +57,37 @@ pub async fn next(
     Ok(format_number(&seq.prefix, seq.include_period.then_some(business_date), seq.padding, value))
 }
 
+/// The next `count` numbers of `doc_type` without taking them (no lock, no
+/// update): a suggestion for a form. The real number comes from [`next`].
+pub async fn preview(
+    tx: &mut TenantTx,
+    doc_type: &str,
+    branch_id: Option<Uuid>,
+    business_date: NaiveDate,
+    count: i64,
+) -> AppResult<Vec<String>> {
+    let tenant_id = tx.tenant_id();
+    let seq: Sequence = sqlx::query_as(
+        "SELECT id, prefix, include_period, reset_period, period_key, padding, next_value FROM document_sequences \
+         WHERE tenant_id = ? AND branch_key = COALESCE(?, 0x00000000000000000000000000000000) AND doc_type = ?",
+    )
+    .bind(tenant_id)
+    .bind(branch_id)
+    .bind(doc_type)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(map_db_error)?
+    .ok_or_else(|| AppError::internal(format!("no document sequence for {doc_type}")))?;
+    let period = match seq.reset_period.as_str() {
+        "yearly" => Some(business_date.format("%Y").to_string()),
+        "monthly" => Some(business_date.format("%Y-%m").to_string()),
+        _ => None,
+    };
+    let first = if period.is_some() && period != seq.period_key { 1 } else { seq.next_value };
+    let date = seq.include_period.then_some(business_date);
+    Ok((first..first + count.max(0)).map(|v| format_number(&seq.prefix, date, seq.padding, v)).collect())
+}
+
 fn format_number(prefix: &str, period: Option<NaiveDate>, padding: i8, value: i64) -> String {
     let width = usize::try_from(padding).unwrap_or(5);
     match period {

@@ -83,6 +83,8 @@ pub struct StockRow {
     pub sku: String,
     pub unit_short_name: String,
     pub allow_fraction: bool,
+    /// Stock is kept by batch with expiry dates.
+    pub track_batches: bool,
     pub category_name: Option<String>,
     pub brand_name: Option<String>,
     #[schema(value_type = String)]
@@ -95,6 +97,10 @@ pub struct StockRow {
     pub value: Option<Decimal>,
     #[schema(value_type = String)]
     pub selling_price: Decimal,
+    /// The product's purchase price (default cost for opening stock); `null`
+    /// without `products.view_cost`.
+    #[schema(value_type = Option<String>)]
+    pub purchase_price: Option<Decimal>,
     #[schema(value_type = Option<String>)]
     pub reorder_level: Option<Decimal>,
     /// At or below the reorder level (STK-R06).
@@ -210,9 +216,9 @@ pub async fn list(tx: &mut TenantTx, filter: &StockFilter, can_view_cost: bool) 
 
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
         "SELECT v.id AS variant_id, p.id AS product_id, p.name, p.name_bn, v.sku, u.short_name AS unit_short_name, \
-         u.allow_fraction, c.name AS category_name, b.name AS brand_name, COALESCE(sb.qty, 0) AS quantity, \
+         u.allow_fraction, p.track_batches, c.name AS category_name, b.name AS brand_name, COALESCE(sb.qty, 0) AS quantity, \
          CASE WHEN COALESCE(sb.qty, 0) > 0 THEN ROUND(sb.val / sb.qty, 4) ELSE COALESCE(sb.max_avg, 0) END AS avg_cost, \
-         ROUND(COALESCE(sb.val, 0), 2) AS value, v.selling_price, v.reorder_level, \
+         ROUND(COALESCE(sb.val, 0), 2) AS value, v.selling_price, v.purchase_price, v.reorder_level, \
          COALESCE(v.reorder_level > 0 AND COALESCE(sb.qty, 0) <= v.reorder_level, FALSE) AS is_low, sb.last_at AS last_movement_at",
     );
     stock_base(&mut q, tenant_id, tx.branch_id(), filter)?;
@@ -224,6 +230,7 @@ pub async fn list(tx: &mut TenantTx, filter: &StockFilter, can_view_cost: bool) 
         for row in &mut rows {
             row.avg_cost = None;
             row.value = None;
+            row.purchase_price = None;
         }
     }
 

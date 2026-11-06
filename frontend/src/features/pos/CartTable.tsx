@@ -2,9 +2,11 @@ import type { Dispatch } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DiscountType } from '../../api/sales'
+import { formatDate } from '../../lib/dates'
 import { dec, toFixed } from '../../lib/decimal'
 import { currencySymbol, formatMoney, formatQuantity } from '../../lib/format'
 import type { LineResult } from '../../lib/pricing'
+import { warrantyExpiresOn, warrantyTenure } from '../sales/warranty'
 import type { CartAction, CartLine, LineProblem } from './cart'
 
 const input =
@@ -20,6 +22,7 @@ export function CartTable({
   onSelect,
   dispatch,
   canOverridePrice,
+  businessDate,
 }: {
   lines: CartLine[]
   /** Priced lines in cart order; `null` while an input is invalid. */
@@ -29,6 +32,8 @@ export function CartTable({
   onSelect: (variantId: string) => void
   dispatch: Dispatch<CartAction>
   canOverridePrice: boolean
+  /** Warranties sold now start on this day (`YYYY-MM-DD`). */
+  businessDate: string
 }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
@@ -65,6 +70,8 @@ export function CartTable({
             const problem = problems[id]
             const overStock = item.track_inventory && item.stock !== null && dec(line.quantity) > dec(item.stock)
             const result = results?.[i]
+            const tenure = warrantyTenure(item, t)
+            const warrantyEnd = warrantyExpiresOn(businessDate, item)
             return (
               <tr
                 key={id}
@@ -80,6 +87,11 @@ export function CartTable({
                     {item.stock !== null &&
                       ` · ${t('pos.stock', { qty: formatQuantity(item.stock, lang, item.allow_fraction), unit: item.unit_short_name })}`}
                   </span>
+                  {tenure && warrantyEnd && (
+                    <span className="mt-0.5 block text-xs text-brand-700">
+                      {t('pos.warranty', { tenure, date: formatDate(warrantyEnd, lang) })}
+                    </span>
+                  )}
                   {overStock && <span className="mt-0.5 block text-xs font-medium text-warning">{t('pos.overStock')}</span>}
                   {problem && (
                     <span role="alert" className="mt-0.5 block text-xs text-danger">

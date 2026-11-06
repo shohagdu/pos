@@ -14,6 +14,7 @@ export function InventoryNav() {
         items={[
           { to: '/inventory', label: t('inventory.stock') },
           { to: '/inventory/movements', label: t('inventory.movements') },
+          { to: '/inventory/expiry', label: t('inventory.expiryReport.nav') },
           { to: '/inventory/adjustments', label: t('inventory.adjustments'), end: false },
           { to: '/inventory/transfers', label: t('inventory.transfers'), end: false },
           ...(can('inventory.count') ? [{ to: '/inventory/counts', label: t('inventory.counts'), end: false }] : []),

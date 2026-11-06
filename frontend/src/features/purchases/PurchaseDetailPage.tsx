@@ -191,6 +191,11 @@ export function PurchaseDetailPage() {
                 {t('purchases.returnItems')}
               </Link>
             )}
+            {p.status !== 'cancelled' && p.items.length > 0 && can('products.view') && (
+              <Link to={`/labels?purchase=${p.id}`} className={SECONDARY_LINK}>
+                {t('labels.printLabels')}
+              </Link>
+            )}
             <Button variant="secondary" onClick={() => window.print()}>
               {t('common.print')}
             </Button>

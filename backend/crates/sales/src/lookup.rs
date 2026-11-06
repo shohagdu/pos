@@ -30,6 +30,9 @@ pub struct PosItem {
     pub unit_short_name: String,
     pub allow_fraction: bool,
     pub track_inventory: bool,
+    /// The product's warranty (`day`/`month`/`year`); `null` = none.
+    pub warranty_period: Option<i16>,
+    pub warranty_unit: Option<String>,
     #[schema(value_type = String)]
     pub selling_price: Decimal,
     #[schema(value_type = Option<String>)]
@@ -57,7 +60,8 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
         "SELECT v.id AS variant_id, p.id AS product_id, p.name, p.name_bn, v.sku, \
          (SELECT pb.barcode FROM product_barcodes pb WHERE pb.tenant_id = v.tenant_id AND pb.variant_id = v.id \
             ORDER BY pb.is_primary DESC LIMIT 1) AS barcode, \
-         u.short_name AS unit_short_name, u.allow_fraction, p.track_inventory, v.selling_price, v.min_selling_price, \
+         u.short_name AS unit_short_name, u.allow_fraction, p.track_inventory, p.warranty_period, p.warranty_unit, \
+         v.selling_price, v.min_selling_price, \
          COALESCE(t.rate_pct, 0) AS tax_rate_pct, \
          IF(p.track_inventory, COALESCE(sb.quantity, 0), NULL) AS stock, ",
     );

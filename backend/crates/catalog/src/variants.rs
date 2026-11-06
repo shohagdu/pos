@@ -25,6 +25,8 @@ pub struct VariantInfo {
     pub selling_price: Decimal,
     pub min_selling_price: Option<Decimal>,
     pub reorder_level: Option<Decimal>,
+    pub warranty_period: Option<i16>,
+    pub warranty_unit: Option<String>,
     /// `active` or `archived`.
     pub status: String,
 }
@@ -39,7 +41,7 @@ pub async fn load(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<BTreeMap<Uuid, V
         "SELECT v.id AS variant_id, p.id AS product_id, p.name AS product_name, v.sku, u.id AS unit_id, \
          u.short_name AS unit_short_name, u.allow_fraction, p.track_inventory, p.tax_rate_id, \
          COALESCE(t.rate_pct, 0) AS tax_rate_pct, v.purchase_price, v.selling_price, v.min_selling_price, \
-         v.reorder_level, p.status \
+         v.reorder_level, p.warranty_period, p.warranty_unit, p.status \
          FROM product_variants v \
          JOIN products p ON p.tenant_id = v.tenant_id AND p.id = v.product_id \
          JOIN units u ON u.tenant_id = p.tenant_id AND u.id = p.base_unit_id \

@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router'
 
+import { ChangePasswordPage } from '../features/account/ChangePasswordPage'
 import { SessionsPage } from '../features/account/SessionsPage'
 import { AdminClaimsPage } from '../features/admin/AdminClaimsPage'
 import { AdminDashboardPage } from '../features/admin/AdminDashboardPage'
@@ -19,16 +20,19 @@ import { ExpenseCategoriesPage } from '../features/expenses/ExpenseCategoriesPag
 import { ExpensesPage } from '../features/expenses/ExpensesPage'
 import { IncomeCategoriesPage } from '../features/income/IncomeCategoriesPage'
 import { IncomesPage } from '../features/income/IncomesPage'
+import { ProductImportPage } from '../features/imports/ProductImportPage'
 import { AdjustmentDetailPage } from '../features/inventory/AdjustmentDetailPage'
 import { AdjustmentFormPage } from '../features/inventory/AdjustmentFormPage'
 import { AdjustmentsPage } from '../features/inventory/AdjustmentsPage'
 import { CountDetailPage } from '../features/inventory/CountDetailPage'
 import { CountsPage } from '../features/inventory/CountsPage'
+import { ExpiryPage } from '../features/inventory/ExpiryPage'
 import { MovementsPage } from '../features/inventory/MovementsPage'
 import { StockPage } from '../features/inventory/StockPage'
 import { TransferDetailPage } from '../features/inventory/TransferDetailPage'
 import { TransferFormPage } from '../features/inventory/TransferFormPage'
 import { TransfersPage } from '../features/inventory/TransfersPage'
+import { LabelPrintPage } from '../features/labels/LabelPrintPage'
 import { AccountBookPage } from '../features/money/AccountBookPage'
 import { AccountsPage } from '../features/money/AccountsPage'
 import { NotificationSettingsPage } from '../features/notifications/NotificationSettingsPage'
@@ -64,6 +68,7 @@ import { SaleReturnDetailPage } from '../features/sales/SaleReturnDetailPage'
 import { SaleReturnPage } from '../features/sales/SaleReturnPage'
 import { SaleReturnsPage } from '../features/sales/SaleReturnsPage'
 import { SalesPage } from '../features/sales/SalesPage'
+import { WarrantyLookupPage } from '../features/sales/WarrantyLookupPage'
 import { SupplierDetailPage } from '../features/suppliers/SupplierDetailPage'
 import { SupplierFormPage } from '../features/suppliers/SupplierFormPage'
 import { SuppliersPage } from '../features/suppliers/SuppliersPage'
@@ -149,6 +154,7 @@ export const routes: RouteObject[] = [
                   { path: '/settings', element: <SettingsPage /> },
                   { path: '/settings/:section', element: <SettingsPage /> },
                   { path: '/account/sessions', element: <SessionsPage /> },
+                  { path: '/account/password', element: <ChangePasswordPage /> },
                   { path: '/account/notifications', element: <NotificationSettingsPage /> },
                   { path: '/notifications', element: <NotificationsPage /> },
                   { path: '/plan', element: <PlanPage /> },
@@ -160,11 +166,14 @@ export const routes: RouteObject[] = [
                   { path: '/users/roles/:id', element: <RoleEditorPage /> },
                   { path: '/products', element: <ProductsPage /> },
                   { path: '/products/new', element: <ProductFormPage /> },
+                  { path: '/products/import', element: <ProductImportPage /> },
                   { path: '/products/:id', element: <ProductFormPage /> },
                   { path: '/products/setup/:section', element: <CatalogSetupPage /> },
+                  { path: '/labels', element: <LabelPrintPage /> },
                   { path: '/sales', element: <SalesPage /> },
                   { path: '/sales/returns', element: <SaleReturnsPage /> },
                   { path: '/sales/returns/:id', element: <SaleReturnDetailPage /> },
+                  { path: '/sales/warranties', element: <WarrantyLookupPage /> },
                   { path: '/sales/:id', element: <SaleDetailPage /> },
                   { path: '/sales/:id/return', element: <SaleReturnPage /> },
                   { path: '/purchases', element: <PurchasesPage /> },
@@ -184,6 +193,7 @@ export const routes: RouteObject[] = [
                   { path: '/customers/:id/edit', element: <CustomerFormPage /> },
                   { path: '/inventory', element: <StockPage /> },
                   { path: '/inventory/movements', element: <MovementsPage /> },
+                  { path: '/inventory/expiry', element: <ExpiryPage /> },
                   { path: '/inventory/adjustments', element: <AdjustmentsPage /> },
                   { path: '/inventory/adjustments/new', element: <AdjustmentFormPage /> },
                   { path: '/inventory/adjustments/:id', element: <AdjustmentDetailPage /> },

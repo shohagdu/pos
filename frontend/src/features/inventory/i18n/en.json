@@ -25,7 +25,12 @@
     "searchHint": "Name, SKU or barcode",
     "allCategories": "All categories",
     "stockStatus": "Stock status",
-    "statuses": { "all": "All", "in": "In stock", "low": "Low stock", "out": "Out of stock" },
+    "statuses": {
+      "all": "All",
+      "in": "In stock",
+      "low": "Low stock",
+      "out": "Out of stock"
+    },
     "location": "Location",
     "allLocations": "All locations",
     "defaultLocation": "Default location",
@@ -75,7 +80,9 @@
     "adjustmentsSubtitle": "Stock corrections and opening stock entries. Each one is posted immediately.",
     "newAdjustment": "New adjustment",
     "noAdjustments": "No adjustments yet.",
-    "adjustmentStatuses": { "posted": "Posted" },
+    "adjustmentStatuses": {
+      "posted": "Posted"
+    },
     "errors": {
       "quantity": "Enter a quantity greater than 0.",
       "whole": "This unit takes whole numbers only.",
@@ -84,7 +91,11 @@
       "cost": "Enter a cost of 0 or more.",
       "destination": "Choose where the stock goes.",
       "received": "Enter 0 up to the quantity sent.",
-      "counted": "Enter 0 or more."
+      "counted": "Enter 0 or more.",
+      "noQuantities": "Enter a quantity for at least one product.",
+      "batchNo": "At most 40 characters.",
+      "expiry": "Enter a date.",
+      "sameBatch": "This product and batch is already listed."
     },
     "noPermission": "You do not have permission to do this.",
     "notStocked": "{{name}} does not track stock, so it cannot be adjusted.",
@@ -118,7 +129,12 @@
     "directionOut": "Sent from this branch",
     "directionIn": "Coming to this branch",
     "transferDirection": "Direction",
-    "transferStatuses": { "draft": "Draft", "dispatched": "In transit", "received": "Received", "cancelled": "Cancelled" },
+    "transferStatuses": {
+      "draft": "Draft",
+      "dispatched": "In transit",
+      "received": "Received",
+      "cancelled": "Cancelled"
+    },
     "noTransfers": "No transfers for this filter.",
     "transferHint": "Choose where the stock goes and how much. Save a draft to dispatch later, or dispatch now.",
     "defaultFromLocation": "This branch's main location",
@@ -143,7 +159,11 @@
     "newCount": "New count",
     "countsSubtitle": "Count what is on the shelf and post the differences as adjustments.",
     "countNo": "Count no.",
-    "countStatuses": { "in_progress": "In progress", "posted": "Posted", "cancelled": "Cancelled" },
+    "countStatuses": {
+      "in_progress": "In progress",
+      "posted": "Posted",
+      "cancelled": "Cancelled"
+    },
     "noCounts": "No stock counts yet.",
     "countCategory": "Category",
     "counted": "Counted",
@@ -165,6 +185,69 @@
     "unsavedEntries": "You have unsaved entries. Save them before posting.",
     "postNeedsAdjust": "Posting a count needs the stock adjustment permission.",
     "snapshotAt": "System quantity taken",
-    "postedAt": "Posted"
+    "postedAt": "Posted",
+    "scanHint": "Scan a barcode or type a name and press Enter. The cursor jumps to the quantity; press Enter again for the next product. Scanning an item again adds 1.",
+    "noLinesOpening": "Scan or search products above, or load every product that has no stock yet.",
+    "saveOpeningCount_one": "Save opening stock ({{count}} product)",
+    "saveOpeningCount_other": "Save opening stock ({{count}} products)",
+    "bulk": {
+      "category": "Load products from",
+      "load": "Load products without stock",
+      "hint": "Adds every stocked product that has no stock yet, with its purchase price as cost. Type only the quantities: rows left blank are skipped when you save.",
+      "loaded_one": "Added {{count}} product.",
+      "loaded_other": "Added {{count}} products.",
+      "none": "Every product here already has stock.",
+      "more": "More products remain: save these first ({{max}} at a time), then load again.",
+      "full": "The list is full ({{max}} products). Save it, then start another.",
+      "filled": "{{filled}} of {{total}} with a quantity",
+      "filter": "Find in list",
+      "removeBlank": "Remove rows without quantity"
+    },
+    "draft": {
+      "restored_one": "Your unsaved entry ({{count}} product) was restored.",
+      "restored_other": "Your unsaved entry ({{count}} products) was restored.",
+      "discard": "Start over",
+      "autosaved": "Saved on this device as you type."
+    },
+    "batch": "Batch & expiry",
+    "batchNo": "Batch no.",
+    "expiry": "Expiry",
+    "expires": "exp. {{date}}",
+    "addBatch": "+ Batch & expiry",
+    "anotherBatch": "+ Another batch",
+    "batchFor": "Batch number for {{name}}",
+    "expiryFor": "Expiry date for {{name}}",
+    "batchPick": "Batch for {{name}}",
+    "batchAuto": "Earliest expiry first",
+    "noBatch": "No batch",
+    "expiryReport": {
+      "nav": "Expiry",
+      "title": "Expiry dates",
+      "subtitle": "Batches in stock by expiry date: sell the earliest first, write off what has expired.",
+      "expiredCount": "Expired batches",
+      "expiringCount": "Expiring within {{days}} days",
+      "expiredValue": "Value of expired stock",
+      "searchHint": "Product, SKU or batch number",
+      "window": "Expiring within",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "statuses": {
+        "all": "All batches",
+        "expired": "Expired",
+        "expiring": "Expiring within {{days}} days",
+        "ok": "Later"
+      },
+      "expiredAgo_one": "Expired 1 day ago",
+      "expiredAgo_other": "Expired {{count}} days ago",
+      "today": "Expires today",
+      "daysLeft_one": "1 day left",
+      "daysLeft_other": "{{count}} days left",
+      "daysLeftColumn": "Days left",
+      "writeOff": "Write off",
+      "writeOffOne": "Write off {{name}} batch {{batch}}",
+      "writeOffExpired_one": "Write off 1 expired batch",
+      "writeOffExpired_other": "Write off {{count}} expired batches",
+      "empty": "No batches here. Batches come from opening stock and purchases with an expiry date."
+    }
   }
 }

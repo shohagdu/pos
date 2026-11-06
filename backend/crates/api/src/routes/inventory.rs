@@ -5,6 +5,7 @@ use actix_web::{HttpRequest, HttpResponse, get, http::StatusCode, post, put, web
 use pos_core::AppError;
 use pos_inventory::{
     adjustments::{self, Adjustment, AdjustmentFilter, AdjustmentInput, AdjustmentPage},
+    batches::{self, BatchFilter, BatchOption, BatchPage},
     counts::{self, CountEntries, CountFilter, CountInput, CountPage, StockCount},
     stock::{self, MovementFilter, MovementPage, StockFilter, StockLocation, StockPage, Valuation, ValuationFilter},
     transfers::{self, ReceiveInput, Transfer, TransferFilter, TransferInput, TransferPage},
@@ -21,6 +22,8 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(list_locations)
         .service(list_stock)
         .service(stock_valuation)
+        .service(list_batches)
+        .service(batch_options)
         .service(list_movements)
         .service(list_adjustments)
         .service(create_adjustment)
@@ -68,6 +71,64 @@ pub async fn list_stock(
     let page = stock::list(&mut tx, &filter, can_view_cost(&auth)).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(page))
+}
+
+/// Batches in stock with their expiry dates, earliest first (the expiry report).
+#[utoipa::path(get, path = "/api/v1/stock/batches", tag = "inventory", params(BatchFilter), security(("bearer" = [])),
+    responses((status = 200, body = BatchPage)))]
+#[get("/stock/batches")]
+pub async fn list_batches(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    filter: web::Query<BatchFilter>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("inventory.view")?;
+    let mut tx = auth.begin(&state).await?;
+    let page = batches::list(&mut tx, &filter, can_view_cost(&auth)).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(page))
+}
+
+#[derive(Debug, serde::Deserialize, utoipa::IntoParams)]
+#[serde(deny_unknown_fields)]
+#[into_params(parameter_in = Query)]
+pub struct BatchOptionsQuery {
+    /// Blank = the branch's default location.
+    pub location_id: Option<Uuid>,
+    /// Comma-separated variant ids (at most 500).
+    pub variant_ids: String,
+}
+
+/// The batches of some products in stock at a location, earliest expiry
+/// first: the choices when a write-off or adjustment names a batch.
+#[utoipa::path(get, path = "/api/v1/stock/batch-options", tag = "inventory", params(BatchOptionsQuery), security(("bearer" = [])),
+    responses((status = 200, body = Vec<BatchOption>), (status = 400, body = crate::error::Problem)))]
+#[get("/stock/batch-options")]
+pub async fn batch_options(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    query: web::Query<BatchOptionsQuery>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("inventory.view")?;
+    let ids: Vec<Uuid> = query
+        .variant_ids
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(Uuid::try_parse)
+        .collect::<Result<_, _>>()
+        .map_err(|_| AppError::field("variant_ids", "INVALID", "list product variant ids separated by commas"))?;
+    if ids.len() > adjustments::MAX_LINES {
+        return Err(AppError::field("variant_ids", "TOO_MANY", "ask for at most 500 products").into());
+    }
+    let mut tx = auth.begin(&state).await?;
+    let location_id = match query.location_id {
+        Some(l) => l,
+        None => pos_tenancy::context::load(&mut tx).await?.location_id,
+    };
+    let list = batches::at_location(&mut tx, location_id, &ids).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(list))
 }
 
 /// Stock value by category (R-12). Needs `products.view_cost`.

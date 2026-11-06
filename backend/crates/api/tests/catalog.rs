@@ -47,12 +47,13 @@ async fn new_business_has_tax_rates_and_units(pool: MySqlPool) {
     let no_vat = find(&taxes.body, "name", "No VAT");
     assert_eq!(no_vat["is_default"], true);
     assert_eq!(find(&taxes.body, "name", "VAT 15%")["rate_pct"], "15.0000");
-    let setting: Option<Uuid> =
-        sqlx::query_scalar("SELECT default_tax_rate_id FROM tenant_settings WHERE tenant_id = UNHEX(REPLACE(?, '-', ''))")
-            .bind(&tenant)
-            .fetch_one(&pool)
-            .await
-            .expect("settings");
+    let setting: Option<Uuid> = sqlx::query_scalar(
+        "SELECT default_tax_rate_id FROM tenant_settings WHERE tenant_id = UNHEX(REPLACE(?, '-', ''))",
+    )
+    .bind(&tenant)
+    .fetch_one(&pool)
+    .await
+    .expect("settings");
     assert_eq!(setting.map(|u| u.to_string()).as_deref(), no_vat["id"].as_str());
 
     let units = call(&srv, Req::get("/api/v1/units").bearer(&owner.token).build()).await;
@@ -111,6 +112,28 @@ async fn product_lifecycle(pool: MySqlPool) {
         call(&srv, post("/api/v1/products", json!({ "name": "Soybean Oil", "unit_id": pcs, "selling_price": "190" })))
             .await;
     assert_eq!(oil.body["sku"], "P000002");
+
+    // The form's suggestions skip codes typed by hand and reserve nothing.
+    let next_codes = |srv, token: &str| {
+        let req = Req::get("/api/v1/products/next-codes").bearer(token).build();
+        async move { call(srv, req).await.body }
+    };
+    assert_eq!(next_codes(&srv, &owner.token).await, json!({ "sku": "P000003", "barcode": "2000000000015" }));
+    let typed = call(
+        &srv,
+        post(
+            "/api/v1/products",
+            json!({ "name": "Free sample", "unit_id": pcs, "selling_price": "0.00", "sku": "P000003",
+                    "barcodes": ["SAMPLE"], "generate_barcode": true }),
+        ),
+    )
+    .await;
+    assert_eq!(typed.status, StatusCode::CREATED, "a zero price is allowed: {}", typed.body);
+    assert_eq!(typed.body["selling_price"], "0.0000");
+    assert_eq!(typed.body["barcodes"], json!(["2000000000015", "SAMPLE"]), "the generated code is the primary");
+    let suggested = next_codes(&srv, &owner.token).await;
+    assert_eq!(suggested, json!({ "sku": "P000004", "barcode": "2000000000022" }));
+    assert_eq!(next_codes(&srv, &owner.token).await, suggested);
     let service = call(
         &srv,
         post(
@@ -144,7 +167,7 @@ async fn product_lifecycle(pool: MySqlPool) {
         json!({ "name": "Bad", "unit_id": pcs, "selling_price": "1.12345" }),
         json!({ "name": "Bad", "unit_id": pcs, "selling_price": "1", "sku": "has space" }),
         json!({ "name": "Bad", "unit_id": pcs, "selling_price": "1", "reorder_level": "1.5" }),
-        json!({ "name": "Bad", "unit_id": Uuid::now_v7(), "selling_price": "1" }),
+        json!({ "name": "Bad", "unit_id": Uuid::from_u128(1), "selling_price": "1" }),
         json!({ "name": "", "unit_id": pcs, "selling_price": "1" }),
         json!({ "name": "Bad", "unit_id": pcs, "selling_price": "1", "product_type": "combo" }),
     ] {
@@ -235,7 +258,7 @@ async fn product_lifecycle(pool: MySqlPool) {
             None => break,
         }
     }
-    assert_eq!(seen.len(), 4, "{seen:?}");
+    assert_eq!(seen.len(), 5, "{seen:?}");
 
     // Photo: the type comes from the bytes; a new photo replaces the old one.
     let soap =
@@ -245,7 +268,7 @@ async fn product_lifecycle(pool: MySqlPool) {
     // A photo for a product that is not there is refused before anything is stored.
     let photos = std::path::Path::new(&common::config().storage_dir).join(format!("tenants/{tenant}/product_image"));
     let stored = || std::fs::read_dir(&photos).map_or(0, Iterator::count);
-    let missing = format!("/api/v1/products/{}/image", Uuid::now_v7());
+    let missing = format!("/api/v1/products/{}/image", Uuid::from_u128(1));
     let nowhere = call(&srv, Req::put_bytes(&missing, png, "image/png").bearer(&owner.token).build()).await;
     assert_eq!(nowhere.status, StatusCode::NOT_FOUND, "{}", nowhere.body);
     assert_eq!(stored(), 0, "no bytes kept for a missing product");
@@ -404,6 +427,65 @@ async fn cost_is_hidden_and_writes_need_permission(pool: MySqlPool) {
     assert_eq!(create.status, StatusCode::FORBIDDEN);
     let brand = call(&srv, Req::post("/api/v1/brands", json!({ "name": "X" })).bearer(&cashier.token).build()).await;
     assert_eq!(brand.status, StatusCode::FORBIDDEN);
+
+    // Barcode labels (PROD-R05): facts for anyone who sees products, in the
+    // order asked; generating barcodes needs products.update.
+    let tea = created.body["variant_id"].as_str().expect("variant").to_owned();
+    let milk = call(
+        &srv,
+        Req::post(
+            "/api/v1/products",
+            json!({ "name": "Milk", "unit_id": pcs, "selling_price": "90", "barcodes": ["4006381333931"] }),
+        )
+        .bearer(&owner.token)
+        .build(),
+    )
+    .await;
+    let milk_variant = milk.body["variant_id"].as_str().expect("variant").to_owned();
+    let sugar = call(
+        &srv,
+        Req::post("/api/v1/products", json!({ "name": "Sugar", "unit_id": pcs, "selling_price": "140" }))
+            .bearer(&owner.token)
+            .build(),
+    )
+    .await;
+    let sugar_variant = sugar.body["variant_id"].as_str().expect("variant").to_owned();
+    let ask = json!({ "variant_ids": [milk_variant, tea, Uuid::from_u128(1), tea] });
+    let labels = call(&srv, Req::post("/api/v1/labels", ask.clone()).bearer(&cashier.token).build()).await;
+    assert_eq!(labels.status, StatusCode::OK, "{}", labels.body);
+    assert_eq!(labels.body.as_array().map(Vec::len), Some(2), "unknown and repeated ids are dropped: {}", labels.body);
+    assert_eq!(labels.body[0]["barcode"], "4006381333931");
+    assert_eq!(labels.body[0]["selling_price"], "90.0000");
+    assert_eq!(
+        (labels.body[1]["product_name"].clone(), labels.body[1]["barcode"].clone()),
+        (json!("Tea"), Value::Null)
+    );
+    let empty =
+        call(&srv, Req::post("/api/v1/labels", json!({ "variant_ids": [] })).bearer(&cashier.token).build()).await;
+    assert_eq!(empty.status, StatusCode::BAD_REQUEST);
+
+    let gen_uri = "/api/v1/labels/generate-barcodes";
+    let denied = call(&srv, Req::post(gen_uri, ask.clone()).bearer(&cashier.token).build()).await;
+    assert_eq!(denied.status, StatusCode::FORBIDDEN);
+    let generated = call(&srv, Req::post(gen_uri, ask.clone()).bearer(&owner.token).build()).await;
+    assert_eq!(generated.status, StatusCode::OK, "{}", generated.body);
+    assert_eq!(generated.body[0]["barcode"], "4006381333931", "existing barcodes are kept");
+    assert_eq!(generated.body[1]["barcode"], "2000000000015", "first in-store EAN-13");
+    let again = call(&srv, Req::post(gen_uri, ask).bearer(&owner.token).build()).await;
+    assert_eq!(again.body[1]["barcode"], "2000000000015", "generating twice changes nothing");
+    let next =
+        call(&srv, Req::post(gen_uri, json!({ "variant_ids": [sugar_variant] })).bearer(&owner.token).build()).await;
+    assert_eq!(next.body[0]["barcode"], "2000000000022", "numbers continue");
+
+    let tea_now =
+        call(&srv, Req::get(&format!("/api/v1/products/{}", id(&created.body))).bearer(&owner.token).build()).await;
+    assert_eq!(tea_now.body["barcodes"], json!(["2000000000015"]));
+    assert_eq!(tea_now.body["version"], 2, "open edit forms see the change");
+    let found = call(&srv, Req::get("/api/v1/products?q=2000000000015").bearer(&owner.token).build()).await;
+    assert_eq!(names(&found.body), ["Tea"], "the POS search finds the new barcode");
+    let audit =
+        call(&srv, Req::get("/api/v1/audit-logs?action=product.barcode_generated").bearer(&owner.token).build()).await;
+    assert_eq!(audit.body["data"].as_array().map(Vec::len), Some(2), "{}", audit.body);
 }
 
 #[sqlx::test(migrator = "pos_db::MIGRATOR")]
@@ -451,4 +533,98 @@ async fn plan_product_limit(pool: MySqlPool) {
     let usage = call(&srv, Req::get("/api/v1/subscription").bearer(&owner.token).build()).await;
     let meter = find(&usage.body["usage"], "feature", "products.max");
     assert_eq!((meter["used"].as_i64(), meter["limit"].as_i64()), (Some(2), Some(2)));
+}
+
+#[sqlx::test(migrator = "pos_db::MIGRATOR")]
+async fn csv_import_is_all_or_nothing(pool: MySqlPool) {
+    let srv = test::init_service(app(AppState::new(pool, common::config()))).await;
+    let mut owner = sign_up(&srv, "Owner", "01711000531").await;
+    create_business(&srv, &mut owner, "Import Store").await;
+    let pcs = pcs(&srv, &owner).await;
+    let post = |uri: &str, body: Value| Req::post(uri, body).bearer(&owner.token).build();
+    let count = |page: &Value| page["data"].as_array().map_or(0, Vec::len);
+
+    // A bad price and a SKU repeated inside the file: every problem names its row, nothing is kept.
+    let bad = call(
+        &srv,
+        post(
+            "/api/v1/products/import",
+            json!({ "products": [
+                { "name": "Tea", "unit_id": pcs, "selling_price": "20", "sku": "TEA", "generate_barcode": true },
+                { "name": "Sugar", "unit_id": pcs, "selling_price": "-1" },
+                { "name": "Tea again", "unit_id": pcs, "selling_price": "20", "sku": "tea" },
+            ] }),
+        ),
+    )
+    .await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST, "{}", bad.body);
+    let fields: Vec<&str> =
+        bad.body["errors"].as_array().into_iter().flatten().filter_map(|e| e["field"].as_str()).collect();
+    assert_eq!(fields, ["products[1].selling_price", "products[2].sku"], "{}", bad.body);
+    let list = call(&srv, Req::get("/api/v1/products?status=all").bearer(&owner.token).build()).await;
+    assert_eq!(count(&list.body), 0, "nothing kept: {}", list.body);
+
+    let ok = call(
+        &srv,
+        post(
+            "/api/v1/products/import",
+            json!({ "products": [
+                { "name": "Tea", "unit_id": pcs, "selling_price": "20", "sku": "TEA", "generate_barcode": true },
+                { "name": "Sugar", "unit_id": pcs, "selling_price": "0", "barcodes": ["8901030865275"] },
+                { "name": "Salt", "unit_id": pcs, "selling_price": "35", "generate_barcode": true },
+            ] }),
+        ),
+    )
+    .await;
+    assert_eq!(ok.status, StatusCode::CREATED, "{}", ok.body);
+    assert_eq!(ok.body[0]["barcodes"], json!(["2000000000015"]));
+    assert_eq!(ok.body[1]["sku"], "P000001");
+    assert_eq!(ok.body[2]["barcodes"], json!(["2000000000022"]), "each row gets its own code");
+
+    // Opening stock files name products by SKU (any case) or barcode.
+    let found =
+        call(&srv, post("/api/v1/products/lookup", json!({ "codes": ["tea", "8901030865275", "NOPE", ""] }))).await;
+    assert_eq!(found.status, StatusCode::OK, "{}", found.body);
+    let pairs: Vec<(&str, &str)> = found
+        .body
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|m| (m["code"].as_str().unwrap_or_default(), m["product"]["name"].as_str().unwrap_or_default()))
+        .collect();
+    assert_eq!(pairs, [("8901030865275", "Sugar"), ("tea", "Tea")]);
+
+    // Opening stock in the file is posted with the products, or neither is kept.
+    let rows = json!([
+        { "name": "Rice", "unit_id": pcs, "selling_price": "450", "purchase_price": "400", "generate_barcode": true },
+        { "name": "Oil", "unit_id": pcs, "selling_price": "190", "generate_barcode": true },
+    ]);
+    let bad = call(
+        &srv,
+        post(
+            "/api/v1/products/import",
+            json!({ "products": rows, "opening_stock": [{ "row": 0, "quantity": "12" }, { "row": 1, "quantity": "1.5" }] }),
+        ),
+    )
+    .await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST, "{}", bad.body);
+    assert_eq!(bad.body["errors"][0]["field"], "products[1].opening_quantity", "{}", bad.body);
+    let list = call(&srv, Req::get("/api/v1/products?status=all").bearer(&owner.token).build()).await;
+    assert_eq!(count(&list.body), 3, "the file's products were not kept: {}", list.body);
+
+    let ok = call(
+        &srv,
+        post(
+            "/api/v1/products/import",
+            json!({ "products": rows, "opening_stock": [{ "row": 0, "quantity": "12" }, { "row": 1, "quantity": "4", "unit_cost": "170" }] }),
+        ),
+    )
+    .await;
+    assert_eq!(ok.status, StatusCode::CREATED, "{}", ok.body);
+    let stock = call(&srv, Req::get("/api/v1/stock?q=Rice").bearer(&owner.token).build()).await;
+    assert_eq!(stock.body["data"][0]["quantity"], "12.000", "{}", stock.body);
+    assert_eq!(stock.body["data"][0]["avg_cost"], "400.0000", "{}", stock.body);
+    let stock = call(&srv, Req::get("/api/v1/stock?q=Oil").bearer(&owner.token).build()).await;
+    assert_eq!(stock.body["data"][0]["quantity"], "4.000", "{}", stock.body);
+    assert_eq!(stock.body["data"][0]["avg_cost"], "170.0000", "{}", stock.body);
 }

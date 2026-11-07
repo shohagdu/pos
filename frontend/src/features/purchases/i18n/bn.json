@@ -76,7 +76,7 @@
       "results": "অনুসন্ধানের ফলাফল",
       "currentCost": "বর্তমান খরচ",
       "serviceNotStocked": "সেবা — স্টক রাখা হয় না",
-      "lastPrice": "সর্বশেষ: {{price}}, {{date}} ({{qty}}), {{supplier}} থেকে",
+      "lastPrice": "সর্বশেষ: {{price}} × {{qty}} {{unit}} · {{date}} · {{supplier}}",
       "variance": "{{amount}} ({{pct}}%)",
       "firstPurchase": "এই পণ্যের প্রথম ক্রয়",
       "inclVat": "ভ্যাট {{amount}} সহ",
@@ -112,7 +112,8 @@
         "removeLine": "লাইন সরান",
         "post": "সংরক্ষণ ও পোস্ট"
       },
-      "saveAndPost": "সংরক্ষণ ও পোস্ট"
+      "saveAndPost": "সংরক্ষণ ও পোস্ট",
+      "landedEach": "প্রকৃত খরচ {{amount}} / একক"
     },
     "post": {
       "button": "বিল পোস্ট করুন",

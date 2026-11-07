@@ -270,7 +270,7 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
 
 /// A Partita IVA: 11 digits with a Luhn-style check digit; spaces and an
 /// `IT` prefix are dropped.
-fn partita_iva(raw: &str) -> AppResult<String> {
+pub(crate) fn partita_iva(raw: &str) -> AppResult<String> {
     let invalid = || AppError::field("bin_number", "INVALID_VAT_NUMBER", "enter the 11-digit Partita IVA");
     let compact: String = raw.chars().filter(|c| !c.is_whitespace()).collect::<String>().to_uppercase();
     let digits = compact.strip_prefix("IT").unwrap_or(&compact);

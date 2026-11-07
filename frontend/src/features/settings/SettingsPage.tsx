@@ -4,7 +4,15 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, NavLink, useParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
-import { BUSINESS_TYPES, type BusinessSettings, type BusinessType, tenancyApi, tenancyKeys, useSettings } from '../../api/tenancy'
+import {
+  BUSINESS_TYPES,
+  type BusinessSettings,
+  type BusinessType,
+  type CountryCode,
+  tenancyApi,
+  tenancyKeys,
+  useSettings,
+} from '../../api/tenancy'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -17,6 +25,7 @@ import { useSession } from '../auth/session'
 import { BranchesSection } from '../branches/BranchesSection'
 import { RegistersSection } from '../branches/RegistersSection'
 import { BranchStep, SettingsStep } from '../onboarding/WizardStepPage'
+import { countryOptions, profileLabels } from '../onboarding/country'
 
 const SECTIONS = ['profile', 'regional', 'branch', 'invoice', 'branches', 'registers'] as const
 type Section = (typeof SECTIONS)[number]
@@ -83,11 +92,21 @@ function ProfileForm({ settings, tenantId }: { settings: BusinessSettings; tenan
     email: settings.email ?? '',
     address: settings.address ?? '',
     district: settings.district ?? '',
+    country_code: settings.country_code as string,
     bin_number: settings.bin_number ?? '',
     trade_license_no: settings.trade_license_no ?? '',
+    tax_code: settings.tax_code ?? '',
+    rea_number: settings.rea_number ?? '',
+    registry_office: settings.registry_office ?? '',
   })
+  const labels = profileLabels(t, values.country_code)
   const save = useMutation({
-    mutationFn: () => tenancyApi.updateSettings(settings.version, { ...values, business_type: values.business_type as BusinessType }),
+    mutationFn: () =>
+      tenancyApi.updateSettings(settings.version, {
+        ...values,
+        business_type: values.business_type as BusinessType,
+        country_code: values.country_code as CountryCode,
+      }),
     onSuccess: async (saved) => {
       queryClient.setQueryData(tenancyKeys.settings(tenantId), saved)
       // The business name is shown in the shell.
@@ -115,12 +134,22 @@ function ProfileForm({ settings, tenantId }: { settings: BusinessSettings; tenan
           error={errors.business_type}
           {...bind('business_type')}
         />
+        <Select label={t('onboarding.business.country')} options={countryOptions(t)} error={errors.country_code} {...bind('country_code')} />
+        {values.country_code !== settings.country_code && <p className="-mt-2 text-sm text-ink-muted">{t('settings.countryHint')}</p>}
         <TextField label={t('onboarding.business.address')} error={errors.address} {...bind('address')} />
-        <TextField label={t('onboarding.business.district')} error={errors.district} {...bind('district')} />
+        <TextField label={labels.district} error={errors.district} {...bind('district')} />
         <TextField label={t('onboarding.business.phone')} type="tel" error={errors.phone} {...bind('phone')} />
         <TextField label={t('onboarding.business.email')} type="email" error={errors.email} {...bind('email')} />
-        <TextField label={t('onboarding.business.bin')} error={errors.bin_number} {...bind('bin_number')} />
-        <TextField label={t('onboarding.business.tradeLicense')} error={errors.trade_license_no} {...bind('trade_license_no')} />
+        <TextField label={labels.bin} error={errors.bin_number} {...bind('bin_number')} />
+        {labels.italy ? (
+          <>
+            <TextField label={t('onboarding.business.taxCode')} error={errors.tax_code} {...bind('tax_code')} />
+            <TextField label={t('onboarding.business.reaNumber')} error={errors.rea_number} {...bind('rea_number')} />
+            <TextField label={t('onboarding.business.registryOffice')} error={errors.registry_office} {...bind('registry_office')} />
+          </>
+        ) : (
+          <TextField label={t('onboarding.business.tradeLicense')} error={errors.trade_license_no} {...bind('trade_license_no')} />
+        )}
         <p className="text-sm text-ink-muted">{t('settings.address', { slug: settings.slug })}</p>
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
         {save.isSuccess && <Alert tone="success">{t('settings.saved')}</Alert>}

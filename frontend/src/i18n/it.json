@@ -112,7 +112,14 @@
       "creating": "Configurazione della tua attività in corso…",
       "skip": "Salta per ora",
       "skipHint": "Creiamo la tua attività con un nome provvisorio. Puoi cambiarlo quando vuoi in Impostazioni.",
-      "defaultName": "Negozio di {{name}}"
+      "defaultName": "Negozio di {{name}}",
+      "country": "Paese",
+      "province": "Provincia",
+      "partitaIva": "Partita IVA (facoltativa)",
+      "taxCode": "Codice fiscale (facoltativo)",
+      "reaNumber": "Numero R.E.A. (facoltativo)",
+      "registryOffice": "Ufficio del Registro Imprese (facoltativo)",
+      "countryHint": "In Italia si parte con euro, ora di Roma e aliquote IVA (22% predefinita, prezzi IVA inclusa)."
     },
     "regional": {
       "title": "Impostazioni locali",
@@ -190,7 +197,8 @@
     },
     "legalName": "Ragione sociale (facoltativa)",
     "address": "Indirizzo dell'attività: {{slug}}",
-    "saved": "Salvato."
+    "saved": "Salvato.",
+    "countryHint": "Valuta e fuso orario sono nelle Impostazioni regionali."
   },
   "subscription": {
     "seePlan": "Vedi piano",
@@ -455,7 +463,19 @@
     "CURRENCY_LOCKED": "La valuta non può essere cambiata dopo che sono state registrate vendite, acquisti o pagamenti.",
     "WRONG_PASSWORD": "La password attuale è sbagliata.",
     "SAME_PASSWORD": "Scegli una password diversa da quella attuale.",
-    "PASSWORD_MISMATCH": "Le due nuove password non coincidono."
+    "PASSWORD_MISMATCH": "Le due nuove password non coincidono.",
+    "IMPERSONATING": "Non disponibile mentre sei collegato come membro dello staff. Torna prima al tuo account.",
+    "OWNER_ONLY": "Solo il titolare dell'attività può farlo.",
+    "CANNOT_IMPERSONATE": "Non puoi accedere come te stesso o come un titolare.",
+    "MEMBER_NOT_ACTIVE": "Questo membro dello staff non è attivo. Riattivalo prima.",
+    "NOT_IMPERSONATING": "Stai già usando il tuo account.",
+    "UNSUPPORTED_TYPE": "Usa un'immagine JPG, PNG o WebP.",
+    "INVALID_IMAGE": "Il file è danneggiato o non è una vera immagine.",
+    "UNSAFE_FILE": "L'immagine contiene codice nascosto ed è stata rifiutata.",
+    "FILE_TOO_LARGE": "L'immagine deve essere al massimo di 2 MB.",
+    "CLAIM_AMOUNT_SHORT": "L'importo pagato è inferiore al totale della fattura. Rifiuta la richiesta o chiedi il resto.",
+    "ACCOUNT_CHOICE_NOT_ALLOWED": "Il denaro va sul conto del metodo di pagamento. Solo chi gestisce i conti può sceglierne un altro.",
+    "BRANCH_NOT_ALLOWED": "Appartiene a una filiale in cui non puoi lavorare."
   },
   "users": {
     "title": "Utenti e ruoli",
@@ -491,7 +511,16 @@
     "signedOut_one": "Disconnesso da {{count}} dispositivo.",
     "signedOut_other": "Disconnesso da {{count}} dispositivi.",
     "noPermission": "Non hai l'autorizzazione per invitare utenti.",
-    "addMember": "Aggiungi personale"
+    "addMember": "Aggiungi personale",
+    "impersonate": "Accedi come questo utente",
+    "impersonateShort": "Accedi come",
+    "impersonateHint": "Vedi e usa l'app esattamente come {{name}}. Le tue azioni vengono registrate a suo nome insieme al tuo. Puoi tornare al tuo account in qualsiasi momento.",
+    "impersonating": "Hai effettuato l'accesso come {{name}}",
+    "impersonatingBy": "{{owner}}, stai usando l'app come {{name}}. Ciò che fai viene registrato con il tuo nome.",
+    "stopImpersonating": "Torna al mio account",
+    "supportSession": "Sessione di assistenza: {{business}}",
+    "supportSessionBy": "{{staff}}, stai usando questa attività come il titolare {{name}}. Tutto ciò che fai viene registrato con il tuo nome.",
+    "returnToAdmin": "Torna alla console di amministrazione"
   },
   "invitations": {
     "title": "Invita personale",
@@ -823,7 +852,25 @@
       "day": "Giorni",
       "month": "Mesi",
       "year": "Anni"
-    }
+    },
+    "image": {
+      "label": "Immagine del prodotto",
+      "none": "Nessuna immagine",
+      "preview": "Immagine del prodotto",
+      "choose": "Scegli immagine",
+      "change": "Cambia immagine",
+      "remove": "Rimuovi immagine",
+      "hint": "JPG, PNG o WebP, fino a 2 MB.",
+      "wrongType": "Scegli un'immagine JPG, PNG o WebP.",
+      "tooLarge": "L'immagine deve essere al massimo di 2 MB.",
+      "uploadFailed": "Il prodotto è stato salvato, ma l'immagine non è stata caricata: {{reason}} Sceglila di nuovo qui sotto.",
+      "notImage": "Questo file non è una vera immagine JPG, PNG o WebP.",
+      "unsafe": "Questo file contiene codice nascosto e non può essere usato. Scegli un'altra immagine.",
+      "dropHint": "Clicca o trascina qui un'immagine"
+    },
+    "codes": "Codici",
+    "classification": "Classificazione",
+    "stockWarranty": "Magazzino e garanzia"
   },
   "catalog": {
     "name": "Nome",
@@ -850,5 +897,9 @@
     "makeDefault": "Imposta come predefinita",
     "default": "Predefinita",
     "taxHint": "I nuovi prodotti ricevono l'aliquota predefinita. La modifica di un'aliquota vale solo per le nuove vendite."
+  },
+  "countries": {
+    "BD": "Bangladesh",
+    "IT": "Italia"
   }
 }

@@ -75,19 +75,21 @@ describe('plan and subscription state', () => {
     }
   }
 
-  it('blocks inviting when every seat is used', async () => {
+  it('blocks adding staff when every seat is used', async () => {
     mockApi(inviteSession(3))
     renderRoute('/users/invite')
     expect(await screen.findByText(/3 of 3 user seats used/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Send invitation' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add staff' })).toBeDisabled()
   })
 
   it('explains read-only errors from the API', async () => {
-    mockApi({ ...inviteSession(1), 'POST /api/v1/invitations': () => problem(402, 'SUBSCRIPTION_READ_ONLY') })
+    mockApi({ ...inviteSession(1), 'POST /api/v1/members': () => problem(402, 'SUBSCRIPTION_READ_ONLY') })
     renderRoute('/users/invite')
-    await userEvent.type(await screen.findByLabelText('Mobile number or email'), '01711000202')
+    await userEvent.type(await screen.findByLabelText(/Full name/), 'Karim Cashier')
+    await userEvent.type(screen.getByLabelText(/Mobile number/), '01711000202')
+    await userEvent.type(screen.getByLabelText(/^Password/), 'Shop-pass-2026')
     await userEvent.click(screen.getByLabelText('Cashier'))
-    await userEvent.click(screen.getByRole('button', { name: 'Send invitation' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Add staff' }))
     expect(await screen.findByText('The subscription has ended, so the business is read-only. Renew to make changes.')).toBeInTheDocument()
   })
 })

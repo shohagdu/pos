@@ -22,6 +22,10 @@ pub const REASON_USER_REVOKED: &str = "user_revoked";
 pub const REASON_PASSWORD_RESET: &str = "password_reset";
 pub const REASON_PASSWORD_CHANGED: &str = "password_changed";
 pub const REASON_ACCOUNT_DISABLED: &str = "account_disabled";
+/// The owner left their session to sign in as a staff member.
+pub const REASON_IMPERSONATION_STARTED: &str = "impersonation_started";
+/// The owner went back to their own account.
+pub const REASON_IMPERSONATION_ENDED: &str = "impersonation_ended";
 
 /// A stored session and the plain refresh token for the cookie.
 pub struct IssuedSession {
@@ -35,19 +39,21 @@ pub async fn create(
     user_id: Uuid,
     tenant_id: Option<Uuid>,
     family_id: Uuid,
+    impersonator_id: Option<Uuid>,
     meta: &RequestMeta,
     ttl_days: u64,
 ) -> AppResult<IssuedSession> {
     let id = new_id();
     let (token, hash) = new_refresh_token()?;
     sqlx::query(
-        "INSERT INTO user_sessions (id, user_id, tenant_id, family_id, refresh_token_hash, ip_address, user_agent, \
-         expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(6) + INTERVAL ? DAY)",
+        "INSERT INTO user_sessions (id, user_id, tenant_id, family_id, impersonator_id, refresh_token_hash, \
+         ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(6) + INTERVAL ? DAY)",
     )
     .bind(id)
     .bind(user_id)
     .bind(tenant_id)
     .bind(family_id)
+    .bind(impersonator_id)
     .bind(hash.as_slice())
     .bind(meta.ip_bytes())
     .bind(meta.user_agent_truncated())
@@ -64,6 +70,7 @@ pub struct SessionRow {
     pub user_id: Uuid,
     pub tenant_id: Option<Uuid>,
     pub family_id: Uuid,
+    pub impersonator_id: Option<Uuid>,
     pub revoked_reason: Option<String>,
     pub revoked: bool,
     pub expired: bool,
@@ -72,7 +79,7 @@ pub struct SessionRow {
 /// Finds the session for a refresh token and locks it for rotation.
 pub async fn lock_by_token(conn: &mut MySqlConnection, token: &str) -> AppResult<Option<SessionRow>> {
     sqlx::query_as(
-        "SELECT id, user_id, tenant_id, family_id, revoked_reason, revoked_at IS NOT NULL AS revoked, \
+        "SELECT id, user_id, tenant_id, family_id, impersonator_id, revoked_reason, revoked_at IS NOT NULL AS revoked, \
          expires_at <= NOW(6) AS expired FROM user_sessions WHERE refresh_token_hash = ? FOR UPDATE",
     )
     .bind(hash_refresh_token(token).as_slice())
@@ -124,10 +131,44 @@ pub async fn revoke_all_for_user(conn: &mut MySqlConnection, user_id: Uuid, reas
     )
     .bind(reason)
     .bind(user_id)
+    .execute(&mut *conn)
+    .await
+    .map_err(map_db_error)?;
+    Ok(done.rows_affected() + revoke_impersonations_by(conn, user_id, reason).await?)
+}
+
+/// Ends every live "signed in as staff" session the user started. They are
+/// stored under the staff member's id, so the user's own revocations (password
+/// reset or change, sign out elsewhere, account disabled) must end them too:
+/// otherwise one would outlive the reset and lead back into the owner account.
+pub async fn revoke_impersonations_by(
+    conn: &mut MySqlConnection,
+    impersonator_id: Uuid,
+    reason: &'static str,
+) -> AppResult<u64> {
+    let done = sqlx::query(
+        "UPDATE user_sessions SET revoked_at = NOW(6), revoked_reason = ? \
+         WHERE impersonator_id = ? AND revoked_at IS NULL \
+         /* tenant-lint: allow global identity table, scoped to the impersonating user */",
+    )
+    .bind(reason)
+    .bind(impersonator_id)
     .execute(conn)
     .await
     .map_err(map_db_error)?;
     Ok(done.rows_affected())
+}
+
+/// When the first session of a family was created (the sign-in it continues).
+pub async fn family_started_at(conn: &mut MySqlConnection, family_id: Uuid) -> AppResult<Option<DateTime<Utc>>> {
+    sqlx::query_scalar(
+        "SELECT MIN(created_at) FROM user_sessions WHERE family_id = ? \
+         /* tenant-lint: allow global identity table, one session family */",
+    )
+    .bind(family_id)
+    .fetch_one(conn)
+    .await
+    .map_err(map_db_error)
 }
 
 /// Revokes all of a user's sessions except the device behind `keep_session`
@@ -148,10 +189,10 @@ pub async fn revoke_others(
     .bind(keep_session)
     .bind(reason)
     .bind(user_id)
-    .execute(conn)
+    .execute(&mut *conn)
     .await
     .map_err(map_db_error)?;
-    Ok(done.rows_affected())
+    Ok(done.rows_affected() + revoke_impersonations_by(conn, user_id, reason).await?)
 }
 
 /// Revokes a user's sessions that are signed in to one tenant (AUTH-R08).

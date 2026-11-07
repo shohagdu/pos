@@ -128,10 +128,23 @@ describe('sign-up and onboarding', () => {
     expect(await screen.findByRole('heading', { name: 'Tell us about your business' })).toBeInTheDocument()
     await userEvent.type(screen.getByLabelText('Business name'), 'Rahim Store')
     await userEvent.selectOptions(screen.getByLabelText('Business type'), 'grocery')
+    // Italy: provinces and the Partita IVA instead of districts and the BIN.
+    expect(screen.getByLabelText('Country')).toHaveValue('BD')
+    expect(screen.getByLabelText('District')).toBeInTheDocument()
+    await userEvent.selectOptions(screen.getByLabelText('Country'), 'IT')
+    expect(screen.getByLabelText('Province')).toBeInTheDocument()
+    expect(screen.getByText(/Italy starts with euro/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Add phone, email/ }))
+    expect(screen.getByLabelText('Partita IVA (optional)')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Trade licence no. (optional)')).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Create business' }))
 
     expect(await screen.findByRole('heading', { name: 'Regional settings' })).toBeInTheDocument()
-    expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toMatchObject({ name: 'Rahim Store', business_type: 'grocery' })
+    expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toMatchObject({
+      name: 'Rahim Store',
+      business_type: 'grocery',
+      country_code: 'IT',
+    })
     const currency = screen.getByLabelText('Currency')
     expect(within(currency).getByRole('option', { name: 'Euro (EUR) — €' })).toBeInTheDocument()
     await userEvent.selectOptions(currency, 'EUR')
@@ -170,7 +183,7 @@ describe('sign-up and onboarding', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Skip for now' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
-    expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toEqual({ name: `${user.full_name}'s Shop`, business_type: 'retail', locale: 'en' })
+    expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toEqual({ name: `${user.full_name}'s Shop`, business_type: 'retail', country_code: 'BD', locale: 'en' })
   })
 
   it('shows field errors from the API next to the field', async () => {

@@ -181,6 +181,7 @@ pub async fn list(tx: &mut TenantTx, filter: &AdjustmentFilter, can_view_cost: b
 }
 
 pub async fn get(tx: &mut TenantTx, id: Uuid, can_view_cost: bool) -> AppResult<Adjustment> {
+    tx.ensure_row_branch("stock_adjustments", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SUMMARY_SELECT);
     q.push_bind(tenant_id).push(" AND a.id = ").push_bind(id);

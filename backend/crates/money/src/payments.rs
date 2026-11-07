@@ -242,6 +242,7 @@ pub async fn void(
     .map_err(map_db_error)?;
     let Locked { payment_no, direction, source, status, party_type, party_id, amount, account_id, branch_id } =
         row.ok_or(AppError::NotFound)?;
+    tx.ensure_branch(branch_id)?;
     if status != "posted" {
         return Err(AppError::Unprocessable {
             code: "ALREADY_VOIDED",
@@ -453,6 +454,7 @@ pub async fn list(tx: &mut TenantTx, filter: &PaymentFilter) -> AppResult<Paymen
 }
 
 pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<PaymentDetail> {
+    tx.ensure_row_branch("payments", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SELECT);
     q.push_bind(tenant_id).push(" AND p.id = ").push_bind(id);

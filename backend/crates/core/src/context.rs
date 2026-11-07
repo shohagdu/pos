@@ -8,6 +8,8 @@ pub struct RequestMeta {
     pub request_id: String,
     pub ip: Option<IpAddr>,
     pub user_agent: Option<String>,
+    /// The owner acting as this user (impersonation), recorded with audit entries.
+    pub impersonator_id: Option<Uuid>,
 }
 
 impl RequestMeta {

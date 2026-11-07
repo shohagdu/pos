@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { currentTenant, membership, mockApi, problem, token, user } from '../../test/api'
 import { renderRoute } from '../../test/render'
@@ -84,8 +84,103 @@ describe('products', () => {
       category_id: 'c-rice',
       unit_id: 'u-pcs',
       track_inventory: true,
+      track_batches: false,
       purchase_price: '170',
       selling_price: '190',
+    })
+  })
+
+  describe('product image', () => {
+    // jsdom has no object URLs.
+    beforeEach(() => {
+      Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:preview'), revokeObjectURL: vi.fn() })
+    })
+    const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+    const png = (size = 1000, extra = '') => {
+      const bytes = new Uint8Array(size)
+      bytes.set(PNG_SIGNATURE)
+      bytes.set(new TextEncoder().encode(extra), 100)
+      return new File([bytes], 'oil.png', { type: 'image/png' })
+    }
+
+    it('uploads the optional image right after creating the product', async () => {
+      const calls = mockApi({
+        ...signedIn(),
+        'POST /api/v1/products': (call) => Response.json({ ...rice, id: 'p2', ...(call.body as object), image_file_id: null }, { status: 201 }),
+        'PUT /api/v1/products/p2/image': () => Response.json({ ...rice, id: 'p2', name: 'Soybean Oil', image_file_id: 'f1', version: 2 }),
+        'GET /api/v1/products/p2': { ...rice, id: 'p2', name: 'Soybean Oil', image_file_id: 'f1', version: 2 },
+        'GET /api/v1/products/p2/price-history': [],
+        'GET /api/v1/files/f1': () => new Response(new Blob(['png'], { type: 'image/png' })),
+      })
+      const { router } = renderRoute('/products/new')
+      await userEvent.type(await screen.findByLabelText('Name'), 'Soybean Oil')
+      expect(screen.getByText('No image')).toBeInTheDocument()
+      // Wrong kinds and big files are refused before any upload.
+      await userEvent.upload(screen.getByLabelText(/Product image/), png(3 * 1024 * 1024))
+      expect(await screen.findByText('The image must be 2 MB or smaller.')).toBeInTheDocument()
+      // A file named .png that is not one, or a real one with a script hidden inside, is refused too.
+      await userEvent.upload(screen.getByLabelText(/Product image/), new File(['<html>hi</html>'], 'oil.png', { type: 'image/png' }))
+      expect(await screen.findByText('This file is not a real JPG, PNG or WebP image.')).toBeInTheDocument()
+      await userEvent.upload(screen.getByLabelText(/Product image/), png(1000, '<script>alert(1)</script>'))
+      expect(await screen.findByText(/contains hidden code and cannot be used/)).toBeInTheDocument()
+      expect(screen.queryByRole('img', { name: 'Product image' })).not.toBeInTheDocument()
+      await userEvent.upload(screen.getByLabelText(/Product image/), png())
+      expect(await screen.findByRole('img', { name: 'Product image' })).toHaveAttribute('src', 'blob:preview')
+      await userEvent.type(screen.getByLabelText('Selling price'), '190')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+
+      await waitFor(() => expect(router.state.location.pathname).toBe('/products/p2'))
+      const upload = calls.find((c) => c.method === 'PUT' && c.path === '/api/v1/products/p2/image')
+      expect(upload?.headers.get('Content-Type')).toBe('image/png')
+      expect(upload?.body).toBeInstanceOf(File)
+      expect(upload?.headers.get('X-File-Name')).toBe('oil.png')
+      // The saved photo is fetched with the access token for the preview.
+      await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/files/f1')).toBe(true))
+      expect(calls.find((c) => c.path === '/api/v1/files/f1')?.headers.get('Authorization')).toBe('Bearer token-t1')
+      expect(await screen.findByRole('button', { name: 'Remove image' })).toBeInTheDocument()
+    })
+
+    it('keeps the product when the image upload fails and says so', async () => {
+      mockApi({
+        ...signedIn(),
+        'POST /api/v1/products': (call) => Response.json({ ...rice, id: 'p2', ...(call.body as object), image_file_id: null }, { status: 201 }),
+        'PUT /api/v1/products/p2/image': () => problem(400, 'VALIDATION_FAILED', { errors: [{ field: 'file', code: 'UNSAFE_FILE', message: '' }] }),
+        'GET /api/v1/products/p2': { ...rice, id: 'p2', name: 'Soybean Oil', image_file_id: null },
+        'GET /api/v1/products/p2/price-history': [],
+      })
+      const { router } = renderRoute('/products/new')
+      await userEvent.type(await screen.findByLabelText('Name'), 'Soybean Oil')
+      await userEvent.upload(screen.getByLabelText(/Product image/), png())
+      await screen.findByRole('img', { name: 'Product image' })
+      await userEvent.type(screen.getByLabelText('Selling price'), '190')
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(router.state.location.pathname).toBe('/products/p2'))
+      expect(await screen.findByText(/The product was saved, but the image could not be uploaded: The image contains hidden code/)).toBeInTheDocument()
+    })
+
+    it('removes the photo of a saved product at once', async () => {
+      let saved = { ...rice, image_file_id: 'f1' as string | null }
+      const calls = mockApi({
+        ...signedIn(),
+        'GET /api/v1/products/p1': () => Response.json(saved),
+        'GET /api/v1/products/p1/price-history': [],
+        'GET /api/v1/files/f1': () => new Response(new Blob(['png'], { type: 'image/png' })),
+        'DELETE /api/v1/products/p1/image': () => {
+          saved = { ...rice, image_file_id: null, version: 2 }
+          return Response.json(saved)
+        },
+      })
+      renderRoute('/products/p1')
+      await userEvent.click(await screen.findByRole('button', { name: 'Remove image' }))
+      expect(await screen.findByText('No image')).toBeInTheDocument()
+      expect(calls.some((c) => c.method === 'DELETE' && c.path === '/api/v1/products/p1/image')).toBe(true)
+    })
+
+    it('has no image picker without permission to change products', async () => {
+      mockApi(signedIn(['dashboard.view', 'products.view', 'products.create']))
+      renderRoute('/products/new')
+      expect(await screen.findByLabelText('Name')).toBeInTheDocument()
+      expect(screen.queryByText('No image')).not.toBeInTheDocument()
     })
   })
 

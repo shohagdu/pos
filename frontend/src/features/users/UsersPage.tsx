@@ -10,6 +10,7 @@ import { Spinner } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
 import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
+import { ImpersonateButton } from './Impersonation'
 import { roleName } from './labels'
 import { dateLocale } from '../../lib/dates'
 
@@ -85,8 +86,8 @@ function MembersList({ tenantId }: { tenantId: string }) {
   return (
     <ul className="flex flex-col gap-2">
       {members.data.map((m) => (
-        <li key={m.id}>
-          <Link to={`/users/members/${m.id}`} className="block rounded-xl border border-border bg-surface p-4 hover:border-brand-500">
+        <li key={m.id} className="relative">
+          <Link to={`/users/members/${m.id}`} className="block rounded-xl border border-border bg-surface p-4 pr-32 hover:border-brand-500 max-sm:pr-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold">
                 {m.full_name}
@@ -103,6 +104,10 @@ function MembersList({ tenantId }: { tenantId: string }) {
               ))}
             </div>
           </Link>
+          {/* Outside the link: a button cannot sit inside an anchor. */}
+          <div className="absolute right-4 bottom-4 max-sm:static max-sm:mt-2">
+            <ImpersonateButton member={m} compact />
+          </div>
         </li>
       ))}
     </ul>

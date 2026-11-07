@@ -29,5 +29,9 @@ pub async fn get_file(
         .content_type(file.content_type)
         .insert_header((header::CACHE_CONTROL, "private, max-age=86400, immutable"))
         .insert_header((header::CONTENT_DISPOSITION, "inline"))
+        // Even if a file were not what its type says, it can never run as a
+        // page: no scripts, no plugins, no frames, and only this site may load it.
+        .insert_header((header::CONTENT_SECURITY_POLICY, "default-src 'none'; img-src 'self' data:; sandbox"))
+        .insert_header(("Cross-Origin-Resource-Policy", "same-origin"))
         .body(bytes))
 }

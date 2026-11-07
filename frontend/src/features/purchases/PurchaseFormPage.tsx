@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams } from 'react-router'
 
@@ -26,6 +26,7 @@ import { LINK, trimDecimal } from './helpers'
 import { PurchaseProductSearch } from './PurchaseProductSearch'
 import { PostDialog } from './shared'
 import { type BillSupplier, SupplierPanel } from './SupplierPanel'
+import { ProductThumb } from '../products/ProductThumb'
 
 /** `/purchases/new` and `/purchases/:id/edit` (drafts only). */
 export function PurchaseFormPage() {
@@ -58,6 +59,7 @@ interface Line extends CostLineInput {
   sku: string
   unit_short_name: string
   allow_fraction: boolean
+  image_file_id?: string | null
 }
 
 let lineSeq = 0
@@ -72,6 +74,7 @@ function fromItems(purchase: PurchaseDetail): Line[] {
     sku: i.sku,
     unit_short_name: i.unit_short_name,
     allow_fraction: true,
+    image_file_id: i.image_file_id,
     quantity: trimDecimal(i.quantity),
     unit_cost: trimDecimal(i.unit_cost),
     discount_type: i.discount_type ?? 'amount',
@@ -86,8 +89,9 @@ function focusField(id: string) {
   el?.select()
 }
 
-const INPUT =
-  'min-h-10 w-full rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
+const FIELD =
+  'min-h-10 rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
+const INPUT = `${FIELD} w-full`
 
 const SHORTCUTS = [
   ['F2', 'search'],
@@ -168,6 +172,7 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
         sku: p.sku,
         unit_short_name: p.unit_short_name,
         allow_fraction: p.allow_fraction,
+        image_file_id: p.image_file_id,
         quantity: '1',
         unit_cost: trimDecimal(p.purchase_price),
         discount_type: 'amount',
@@ -331,120 +336,152 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
           </div>
           {errors.lines && <p className="text-sm text-danger">{errors.lines}</p>}
 
-          <Card className="flex flex-col gap-2 p-0">
-            <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
-              <h2 className="font-semibold">{t('purchases.form.items')}</h2>
-              {lines.length > 0 && <span className="text-sm text-ink-muted">{t('purchases.form.lineCount', { count: lines.length })}</span>}
+          <Card className="flex flex-col overflow-hidden p-0">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <h2 className="flex items-center gap-2 font-semibold">
+                {t('purchases.form.items')}
+                {lines.length > 0 && (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 tabular-nums">
+                    {t('purchases.form.lineCount', { count: lines.length })}
+                  </span>
+                )}
+              </h2>
+              {lines.length > 0 && <span className="text-sm font-semibold tabular-nums">{m(bill.subtotal)}</span>}
             </div>
             {lines.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-ink-muted">{t('purchases.form.noItems')}</p>
+              <div className="flex flex-col items-center gap-2 px-4 py-12 text-center text-sm text-ink-muted">
+                <svg viewBox="0 0 24 24" className="size-10 text-ink-muted/60" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                  <path d="M3 7h2v10H3zM7 7h1v10H7zM10 7h2v10h-2zM14 7h1v10h-1zM17 7h1v10h-1zM20 7h1v10h-1z" />
+                </svg>
+                <p>{t('purchases.form.noItems')}</p>
+              </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[820px] text-sm">
-                  <caption className="sr-only">{t('purchases.form.items')}</caption>
-                  <thead className="border-b border-border text-xs text-ink-muted uppercase">
-                    <tr>
-                      <th scope="col" className="w-8 px-2 py-2 text-left">#</th>
-                      <th scope="col" className="px-2 py-2 text-left">{t('purchases.product')}</th>
-                      <th scope="col" className="w-28 px-2 py-2 text-left">{t('common.quantity')}</th>
-                      <th scope="col" className="w-28 px-2 py-2 text-left">{t('purchases.unitCost')}</th>
-                      <th scope="col" className="w-40 px-2 py-2 text-left">{t('purchases.discount')}</th>
-                      <th scope="col" className="w-20 px-2 py-2 text-left">{t('purchases.vatPct')}</th>
-                      <th scope="col" className="px-2 py-2 text-right">{t('purchases.lineTotal')}</th>
-                      <th scope="col" className="px-2 py-2 text-right">{t('purchases.landedCost')}</th>
-                      <th scope="col" className="px-2 py-2"><span className="sr-only">{t('common.actions')}</span></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((l, i) => {
-                      const costed = bill.lines[i]
-                      if (!costed) return null
-                      const last = lastByVariant.get(l.variant_id)
-                      const v = variance(l.unit_cost, last?.last_purchase_price)
-                      return (
-                        <tr key={l.key} className="border-b border-border align-top last:border-b-0 focus-within:bg-brand-50/40" onKeyDown={(e) => onLineKey(e, l)}>
-                          <td className="px-2 py-3 text-ink-muted tabular-nums">{i + 1}</td>
-                          <td className="px-2 py-2">
-                            <span className="font-medium">{l.product_name}</span>
-                            <span className="block font-mono text-xs text-ink-muted">{l.sku}</span>
-                            {last?.last_purchase_price ? (
-                              <span className="mt-1 block text-xs text-ink-muted">
-                                {t('purchases.form.lastPrice', {
-                                  price: formatMoney(last.last_purchase_price, lang),
-                                  date: formatDate(last.last_purchase_date, lang),
-                                  qty: formatQuantity(last.last_purchase_qty ?? '0', lang, true),
-                                  supplier: last.last_supplier_name ?? '—',
-                                })}
-                                {v && v.sign !== 0 && (
-                                  <span className={`ml-1 font-semibold ${v.sign > 0 ? 'text-danger' : 'text-brand-700'}`}>
-                                    {t('purchases.form.variance', { amount: formatMoney(v.amount, lang), pct: `${v.sign > 0 ? '+' : ''}${v.pct}` })}
-                                  </span>
-                                )}
-                              </span>
-                            ) : (
-                              last && <span className="mt-1 block text-xs text-ink-muted">{t('purchases.form.firstPurchase')}</span>
-                            )}
-                          </td>
-                          <td className="px-2 py-2">
-                            <LineInput
-                              id={fieldId(l.key, 'qty')}
-                              label={`${t('common.quantity')} ${l.product_name}`}
-                              value={l.quantity}
-                              error={lineError(i, 'quantity')}
-                              onChange={(v) => updateLine(l.key, { quantity: v })}
-                              onKeyDown={(e) => {
-                                e.stopPropagation()
-                                onLineKey(e, l, 'qty')
-                              }}
-                              suffix={l.unit_short_name}
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <LineInput
-                              id={fieldId(l.key, 'cost')}
-                              label={`${t('purchases.unitCost')} ${l.product_name}`}
-                              value={l.unit_cost}
-                              error={lineError(i, 'unit_cost')}
-                              onChange={(v) => updateLine(l.key, { unit_cost: v })}
-                              onKeyDown={(e) => {
-                                e.stopPropagation()
-                                onLineKey(e, l, 'cost')
-                              }}
-                            />
-                          </td>
-                          <td className="px-2 py-2">
-                            <div className="flex gap-1">
-                              <select
-                                aria-label={`${t('purchases.discountType')} ${l.product_name}`}
-                                value={l.discount_type}
-                                onChange={(e) => updateLine(l.key, { discount_type: e.target.value as Line['discount_type'] })}
-                                className={`${INPUT} w-14`}
-                              >
-                                <option value="amount">{currencySymbol()}</option>
-                                <option value="percent">%</option>
-                              </select>
+              // A list, not a table: each item rearranges to fit the column, so there is never a sideways scrollbar.
+              <ol className="@container flex flex-col text-sm" aria-label={t('purchases.form.items')}>
+                {lines.map((l, i) => {
+                  const costed = bill.lines[i]
+                  if (!costed) return null
+                  const last = lastByVariant.get(l.variant_id)
+                  const v = variance(l.unit_cost, last?.last_purchase_price)
+                  const lastText = last?.last_purchase_price
+                    ? t('purchases.form.lastPrice', {
+                        price: formatMoney(last.last_purchase_price, lang),
+                        date: formatDate(last.last_purchase_date, lang),
+                        qty: formatQuantity(last.last_purchase_qty ?? '0', lang, true),
+                        unit: l.unit_short_name,
+                        supplier: last.last_supplier_name ?? '—',
+                      })
+                    : null
+                  return (
+                    <li
+                      key={l.key}
+                      className="flex flex-col gap-3 border-t border-border px-4 py-3 transition-colors first:border-t-0 hover:bg-canvas/60 focus-within:bg-brand-50/40"
+                      onKeyDown={(e) => onLineKey(e, l)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-canvas text-xs font-semibold text-ink-muted tabular-nums">
+                          {i + 1}
+                        </span>
+                        <ProductThumb fileId={l.image_file_id} size="md" />
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate font-medium" title={l.product_name}>
+                            {l.product_name}
+                          </span>
+                          <span className="block truncate font-mono text-xs text-ink-muted">{l.sku}</span>
+                        </div>
+                        <div className="shrink-0 text-right whitespace-nowrap tabular-nums">
+                          <span className="block font-semibold">{m(costed.line_total)}</span>
+                          {costed.tax !== 0n && <span className="block text-xs text-ink-muted">{t('purchases.form.inclVat', { amount: m(costed.tax) })}</span>}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          className="min-h-9 shrink-0 px-2 text-ink-muted hover:text-danger"
+                          onClick={() => removeLine(l.key)}
+                          aria-label={`${t('common.remove')} ${l.product_name}`}
+                        >
+                          ✕
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-2 @xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,0.7fr)] @xl:pl-9">
+                        <LineField label={t('common.quantity')}>
+                          <LineInput
+                            id={fieldId(l.key, 'qty')}
+                            label={`${t('common.quantity')} ${l.product_name}`}
+                            value={l.quantity}
+                            error={lineError(i, 'quantity')}
+                            onChange={(v) => updateLine(l.key, { quantity: v })}
+                            onKeyDown={(e) => {
+                              e.stopPropagation()
+                              onLineKey(e, l, 'qty')
+                            }}
+                            suffix={l.unit_short_name}
+                          />
+                        </LineField>
+                        <LineField label={t('purchases.unitCost')}>
+                          <LineInput
+                            id={fieldId(l.key, 'cost')}
+                            label={`${t('purchases.unitCost')} ${l.product_name}`}
+                            value={l.unit_cost}
+                            error={lineError(i, 'unit_cost')}
+                            onChange={(v) => updateLine(l.key, { unit_cost: v })}
+                            onKeyDown={(e) => {
+                              e.stopPropagation()
+                              onLineKey(e, l, 'cost')
+                            }}
+                          />
+                        </LineField>
+                        <LineField label={t('purchases.discount')}>
+                          <div className="flex gap-1">
+                            <select
+                              aria-label={`${t('purchases.discountType')} ${l.product_name}`}
+                              value={l.discount_type}
+                              onChange={(e) => updateLine(l.key, { discount_type: e.target.value as Line['discount_type'] })}
+                              className={`${FIELD} w-14 shrink-0`}
+                            >
+                              <option value="amount">{currencySymbol()}</option>
+                              <option value="percent">%</option>
+                            </select>
+                            <div className="min-w-0 flex-1">
                               <LineInput label={`${t('purchases.discount')} ${l.product_name}`} value={l.discount_value} error={lineError(i, 'discount_value')} onChange={(v) => updateLine(l.key, { discount_value: v })} />
                             </div>
-                          </td>
-                          <td className="px-2 py-2">
-                            <LineInput label={`${t('purchases.vatPct')} ${l.product_name}`} value={l.tax_rate_pct} error={lineError(i, 'tax_rate_pct')} onChange={(v) => updateLine(l.key, { tax_rate_pct: v })} />
-                          </td>
-                          <td className="px-2 py-3 text-right font-semibold tabular-nums whitespace-nowrap">
-                            {m(costed.line_total)}
-                            {costed.tax !== 0n && <span className="block text-xs font-normal text-ink-muted">{t('purchases.form.inclVat', { amount: m(costed.tax) })}</span>}
-                          </td>
-                          <td className="px-2 py-3 text-right tabular-nums whitespace-nowrap text-ink-muted">{m(costed.landed_unit_cost)}</td>
-                          <td className="px-2 py-2 text-right">
-                            <Button variant="ghost" className="min-h-9 px-2" onClick={() => removeLine(l.key)} aria-label={`${t('common.remove')} ${l.product_name}`}>
-                              ✕
-                            </Button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                        </LineField>
+                        <LineField label={t('purchases.vatPct')}>
+                          <LineInput label={`${t('purchases.vatPct')} ${l.product_name}`} value={l.tax_rate_pct} error={lineError(i, 'tax_rate_pct')} onChange={(v) => updateLine(l.key, { tax_rate_pct: v })} />
+                        </LineField>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs @xl:pl-9">
+                        {lastText ? (
+                          <span className="flex max-w-full min-w-0 items-center gap-1.5 text-ink-muted" title={lastText}>
+                            <svg viewBox="0 0 24 24" className="size-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                              <circle cx="12" cy="12" r="9" />
+                              <path d="M12 7v5l3 2" />
+                            </svg>
+                            <span className="truncate whitespace-nowrap">{lastText}</span>
+                            {v && v.sign !== 0 && (
+                              <span
+                                className={`shrink-0 rounded-full px-1.5 py-0.5 font-semibold whitespace-nowrap tabular-nums ${
+                                  v.sign > 0 ? 'bg-danger/10 text-danger' : 'bg-brand-50 text-brand-700'
+                                }`}
+                              >
+                                {v.sign > 0 ? '▲ ' : '▼ '}
+                                {t('purchases.form.variance', { amount: formatMoney(v.amount, lang), pct: `${v.sign > 0 ? '+' : ''}${v.pct}` })}
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          last && <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium whitespace-nowrap text-brand-700">{t('purchases.form.firstPurchase')}</span>
+                        )}
+                        <span className="ml-auto shrink-0 whitespace-nowrap text-ink-muted tabular-nums">
+                          {t('purchases.form.landedEach', { amount: m(costed.landed_unit_cost) })}
+                        </span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ol>
             )}
           </Card>
 
@@ -579,6 +616,18 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
   )
 }
 
+/** A small visible caption over a line input (the input keeps its own per-product name for screen readers). */
+function LineField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1">
+      <span className="text-xs font-medium text-ink-muted" aria-hidden="true">
+        {label}
+      </span>
+      {children}
+    </div>
+  )
+}
+
 function LineInput({
   id,
   label,
@@ -609,7 +658,7 @@ function LineInput({
           onFocus={(e) => e.target.select()}
           onKeyDown={onKeyDown}
           aria-invalid={error ? true : undefined}
-          className={`${INPUT} tabular-nums`}
+          className={`${INPUT} min-w-0 tabular-nums`}
         />
         {suffix && <span className="text-xs text-ink-muted">{suffix}</span>}
       </div>

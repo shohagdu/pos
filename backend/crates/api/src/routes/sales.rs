@@ -40,6 +40,21 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(collect_payment);
 }
 
+/// Money taken goes to the payment method's own account (the branch's cash
+/// drawer for cash). Sending it to another account is for those who manage
+/// accounts: otherwise a cashier could post cash to the bank account, keep
+/// the cash, and the drawer would still balance at the Z report.
+fn require_account_choice(auth: &TenantAuth) -> Result<(), ApiError> {
+    if auth.access.can("accounts.manage") {
+        return Ok(());
+    }
+    Err(AppError::Denied {
+        code: "ACCOUNT_CHOICE_NOT_ALLOWED",
+        message: "the money goes to the payment method's account; only account managers can choose another".into(),
+    }
+    .into())
+}
+
 fn seller(auth: &TenantAuth) -> Seller {
     let can = |p| auth.access.can(p);
     Seller {
@@ -105,6 +120,9 @@ pub async fn create_sale(
     auth.require("pos.sell")?;
     let key = idempotency_key(&req, true)?;
     let input = body.into_inner();
+    if input.payments.iter().any(|p| p.account_id.is_some()) {
+        require_account_choice(&auth)?;
+    }
     let request = serde_json::to_value(&input).map_err(AppError::internal)?;
     let (meta, input, seller) = (&auth.ctx.meta, &input, seller(&auth));
     let p = Posting { key, endpoint: "POST /sales", resource: "sale", status: StatusCode::CREATED, request: &request };
@@ -334,6 +352,9 @@ pub async fn collect_payment(
     auth.require("customers.collect_payment")?;
     let key = idempotency_key(&req, false)?;
     let input = body.into_inner();
+    if input.account_id.is_some() {
+        require_account_choice(&auth)?;
+    }
     let request = serde_json::to_value(&input).map_err(AppError::internal)?;
     let (meta, input) = (&auth.ctx.meta, &input);
     let p = Posting {

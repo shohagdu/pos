@@ -134,7 +134,10 @@
       "refunded": "Rimborsato",
       "credited": "Credito cliente",
       "reason": "Motivo: {{reason}}",
-      "warranty": "Garanzia {{tenure}}, fino al {{date}}"
+      "warranty": "Garanzia {{tenure}}, fino al {{date}}",
+      "partitaIva": "P.IVA {{value}}",
+      "taxCode": "C.F. {{value}}",
+      "rea": "REA {{office}} {{number}}"
     },
     "warrantyUntil": "Garanzia fino al {{date}}",
     "warrantyExpired": "Garanzia scaduta il {{date}}",

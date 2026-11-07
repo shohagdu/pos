@@ -2,9 +2,10 @@
 //! and the user's own sessions (Requirement Analysis §7.1).
 
 use actix_web::{HttpRequest, HttpResponse, delete, get, post, web};
+use pos_audit::AuditEntry;
 use pos_auth::{MembershipSummary, OtpChallenge, RegisterInput, UserProfile, session::SessionInfo};
 use pos_billing::SubscriptionSummary;
-use pos_core::AppError;
+use pos_core::{AppError, RequestMeta};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -12,8 +13,8 @@ use uuid::Uuid;
 use crate::{
     ApiError, AppState,
     auth::{
-        Authenticated, ClientMeta, TenantAuth, TokenResponse, clear_refresh_cookie, refresh_cookie, removal_cookie,
-        set_refresh_cookie,
+        AnySession, Authenticated, ClientMeta, PlatformAuth, TenantAuth, TokenResponse, bearer_claims,
+        clear_refresh_cookie, refresh_cookie, removal_cookie, set_refresh_cookie,
     },
 };
 
@@ -27,6 +28,9 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(refresh)
             .service(logout)
             .service(switch_tenant)
+            .service(impersonate)
+            .service(stop_impersonation)
+            .service(open_business)
             .service(forgot_password)
             .service(reset_password)
             .service(change_password)
@@ -186,6 +190,142 @@ pub async fn switch_tenant(
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ImpersonateRequest {
+    /// The staff member's membership id (`Member.id`).
+    pub membership_id: Uuid,
+}
+
+/// The owner signs in as a staff member of the active business, to see and
+/// do exactly what they can. This device's owner session is replaced; return
+/// with `POST /auth/impersonate/stop`. Owner only; other owners and
+/// inactive members cannot be chosen. While impersonating, switching
+/// business and account actions (password, sessions) are refused
+/// (`IMPERSONATING`), and audit entries name the owner.
+#[utoipa::path(post, path = "/api/v1/auth/impersonate", tag = "auth", request_body = ImpersonateRequest,
+    security(("bearer" = [])),
+    responses((status = 200, body = TokenResponse), (status = 403, body = crate::error::Problem),
+              (status = 404, body = crate::error::Problem), (status = 409, body = crate::error::Problem)))]
+#[post("/impersonate")]
+pub async fn impersonate(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    auth: TenantAuth,
+    body: web::Json<ImpersonateRequest>,
+) -> Result<HttpResponse, ApiError> {
+    if auth.claims.imp.is_some() {
+        return Err(pos_auth::service::impersonating().into());
+    }
+    if !auth.access.is_owner {
+        return Err(AppError::Denied {
+            code: "OWNER_ONLY",
+            message: "only the business owner can sign in as a staff member".into(),
+        }
+        .into());
+    }
+    let token = refresh_cookie(&req)?;
+    let membership_id = body.membership_id;
+    let tokens = state.auth.impersonate(&state.pool, &token, &auth.claims, membership_id, &auth.ctx.meta).await?;
+    let mut tx = auth.begin(&state).await?;
+    pos_audit::record(
+        &mut tx,
+        &auth.ctx.meta,
+        AuditEntry::new("member.impersonated").entity("membership", membership_id),
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(signed_in(&state, &tokens))
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct OpenBusinessRequest {
+    pub tenant_id: Uuid,
+    /// Why (kept in the platform audit log), up to 500 characters.
+    pub reason: String,
+}
+
+/// Platform support opens a business (platform owner or support staff): this
+/// device is signed in as the business's owner, with every audit entry naming
+/// the staff member, until `POST /auth/impersonate/stop` (back to the admin
+/// console) or 8 hours. Lives under `/auth` because it needs the refresh cookie.
+#[utoipa::path(post, path = "/api/v1/auth/open-business", tag = "auth", request_body = OpenBusinessRequest,
+    security(("bearer" = [])),
+    responses((status = 200, body = TokenResponse), (status = 403, body = crate::error::Problem),
+              (status = 404, body = crate::error::Problem), (status = 409, body = crate::error::Problem)))]
+#[post("/open-business")]
+pub async fn open_business(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    auth: PlatformAuth,
+    body: web::Json<OpenBusinessRequest>,
+) -> Result<HttpResponse, ApiError> {
+    auth.staff.require_support()?;
+    let reason = body.reason.trim();
+    if reason.is_empty() || reason.chars().count() > 500 {
+        return Err(AppError::field("reason", "REQUIRED", "enter a reason of up to 500 characters").into());
+    }
+    let claims = bearer_claims(&req, &state)?;
+    let token = refresh_cookie(&req)?;
+    let tenant_id = body.tenant_id;
+    let tokens = state.auth.open_business(&state.pool, &token, &claims, tenant_id, &auth.meta).await?;
+    let mut tx = auth.begin(&state, "open business").await?;
+    pos_audit::record_platform(
+        &mut tx,
+        Some(tenant_id),
+        Some(auth.staff.user_id),
+        &auth.meta,
+        AuditEntry::new("tenant.opened").entity("tenant", tenant_id).reason(reason),
+    )
+    .await?;
+    tx.commit().await?;
+    Ok(signed_in(&state, &tokens))
+}
+
+/// Ends an impersonation: the owner is signed back in to the same business.
+#[utoipa::path(post, path = "/api/v1/auth/impersonate/stop", tag = "auth", security(("bearer" = [])),
+    responses((status = 200, body = TokenResponse), (status = 409, body = crate::error::Problem)))]
+#[post("/impersonate/stop")]
+pub async fn stop_impersonation(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    auth: AnySession,
+) -> Result<HttpResponse, ApiError> {
+    let token = refresh_cookie(&req)?;
+    let tokens = state.auth.stop_impersonation(&state.pool, &token, &auth.claims, &auth.meta).await?;
+    if let (None, Some(staff_id), Some(tenant_id)) = (tokens.tenant_id, auth.claims.imp, auth.claims.tid) {
+        // Platform support leaving a business it opened (or an owner no longer owning it).
+        let ctx = pos_core::PlatformCtx {
+            actor_id: Some(staff_id),
+            reason: "close business".into(),
+            meta: RequestMeta { impersonator_id: None, ..auth.meta.clone() },
+        };
+        let mut tx = pos_db::begin_platform(&state.pool, &ctx).await?;
+        pos_audit::record_platform(
+            &mut tx,
+            Some(tenant_id),
+            Some(staff_id),
+            &ctx.meta,
+            AuditEntry::new("tenant.closed").entity("tenant", tenant_id),
+        )
+        .await?;
+        tx.commit().await?;
+    }
+    if let (Some(tenant_id), Some(owner_id)) = (tokens.tenant_id, auth.claims.imp) {
+        let ctx = pos_core::TenantCtx { tenant_id, user_id: owner_id, meta: auth.meta.clone() };
+        let mut tx = pos_db::begin_tenant(&state.pool, &ctx).await?;
+        let entry = AuditEntry::new("member.impersonation_ended");
+        let entry = match auth.claims.mid {
+            Some(mid) => entry.entity("membership", mid),
+            None => entry,
+        };
+        pos_audit::record(&mut tx, &RequestMeta { impersonator_id: None, ..auth.meta }, entry).await?;
+        tx.commit().await?;
+    }
+    Ok(signed_in(&state, &tokens))
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct ForgotPasswordRequest {
     pub identifier: String,
 }
@@ -282,15 +422,44 @@ pub struct MeResponse {
     pub memberships: Vec<MembershipSummary>,
     /// The business the token is scoped to, with the member's permissions.
     pub tenant: Option<CurrentTenant>,
+    /// Set while the owner is signed in as this user (impersonation).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub impersonator: Option<Impersonator>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct Impersonator {
+    pub user_id: Uuid,
+    pub full_name: String,
+    /// Platform staff who opened this business for support (not its owner);
+    /// returning goes back to the admin console.
+    pub platform_support: bool,
 }
 
 /// The signed-in user, their businesses and, if one is active, its permissions.
 #[utoipa::path(get, path = "/api/v1/auth/me", tag = "auth", security(("bearer" = [])),
     responses((status = 200, body = MeResponse), (status = 401, body = crate::error::Problem)))]
 #[get("/me")]
-pub async fn me(state: web::Data<AppState>, req: HttpRequest, auth: Authenticated) -> Result<HttpResponse, ApiError> {
+pub async fn me(state: web::Data<AppState>, req: HttpRequest, auth: AnySession) -> Result<HttpResponse, ApiError> {
     let user = pos_auth::service::user_profile(&state.pool, auth.claims.sub).await?;
-    let memberships = pos_auth::service::memberships(&state.pool, auth.claims.sub).await?;
+    let mut memberships = pos_auth::service::memberships(&state.pool, auth.claims.sub).await?;
+    let impersonator = match auth.claims.imp {
+        Some(user_id) => {
+            // The staff member's other businesses are none of the owner's concern.
+            memberships.retain(|m| Some(m.tenant_id) == auth.claims.tid);
+            let full_name = pos_auth::service::user_profile(&state.pool, user_id).await?.full_name;
+            let owner_here: Option<i64> = sqlx::query_scalar(
+                "SELECT 1 FROM tenant_memberships WHERE tenant_id = ? AND user_id = ? AND is_owner AND status = 'active'",
+            )
+            .bind(auth.claims.tid)
+            .bind(user_id)
+            .fetch_optional(&state.pool)
+            .await
+            .map_err(pos_db::map_db_error)?;
+            Some(Impersonator { user_id, full_name, platform_support: owner_here.is_none() })
+        }
+        None => None,
+    };
     let tenant = if auth.claims.tid.is_some() {
         // Unchecked: a suspended business still needs its status shown.
         let member = TenantAuth::load_unchecked(&req).await?;
@@ -317,7 +486,7 @@ pub async fn me(state: web::Data<AppState>, req: HttpRequest, auth: Authenticate
     } else {
         None
     };
-    Ok(HttpResponse::Ok().json(MeResponse { user, memberships, tenant }))
+    Ok(HttpResponse::Ok().json(MeResponse { user, memberships, tenant, impersonator }))
 }
 
 /// The user's signed-in devices.

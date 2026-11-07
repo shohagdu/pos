@@ -6,8 +6,19 @@ export interface CsvColumn<T> {
   value: (row: T) => string | number | null | undefined
 }
 
+/**
+ * A text cell that starts like a formula (`=`, `+`, `-`, `@`, tab, CR) would run
+ * when opened in Excel (e.g. a customer named `=HYPERLINK(...)`), so it gets a
+ * leading `'`. Numbers, and text that is just a number such as "-12.50", stay as they are.
+ */
+function neutralise(text: string): string {
+  if (/^[=@\t\r]/.test(text)) return `'${text}`
+  if (/^[+-]/.test(text) && !/^[+-]?\d+(\.\d+)?$/.test(text)) return `'${text}`
+  return text
+}
+
 function cell(value: string | number | null | undefined): string {
-  const text = value === null || value === undefined ? '' : String(value)
+  const text = value === null || value === undefined ? '' : typeof value === 'number' ? String(value) : neutralise(value)
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 

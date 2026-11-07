@@ -282,6 +282,7 @@ pub async fn reactivate(
             message: "only suspended members can be reactivated".into(),
         });
     }
+    entitlements::lock_limits(tx).await?;
     let used = entitlements::seats_used(tx, None).await?;
     entitlements::ensure_within(tx, "users.max", used, 1).await?;
     bump(tx, membership_id, Some("active")).await?;

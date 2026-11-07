@@ -139,6 +139,15 @@ impl Req {
 
 pub const PASSWORD: &str = "correct horse battery";
 
+/// A real 2×2 PNG (uploads are checked from start to end, not just the first bytes).
+pub const PNG: &[u8] = b"\x89\x50\x4e\x47\x0d\x0a\x1a\x0a\x00\x00\x00\x0d\x49\x48\x44\x52\x00\x00\x00\x02\x00\x00\x00\x02\x08\x02\x00\x00\x00\xfd\xd4\x9a\x73\x00\x00\x00\x16\x49\x44\x41\x54\x78\x9c\x63\x3c\x21\x27\xc7\xc0\xc0\xc0\xc4\xc0\xc0\xc0\xc0\xc0\x00\x00\x0d\x04\x01\x08\x7d\x71\xca\x66\x00\x00\x00\x00\x49\x45\x4e\x44\xae\x42\x60\x82";
+
+/// The smallest well-formed baseline JPEG: SOI, APP0, SOF0, SOS, scan data, EOI.
+pub const JPEG: &[u8] = &[
+    0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, b'J', b'F', b'I', b'F', 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0xFF, 0xC0, 0x00, 0x0B,
+    8, 0, 1, 0, 1, 1, 1, 0x11, 0, 0xFF, 0xDA, 0x00, 0x08, 1, 1, 0, 0, 0x3F, 0, 0x12, 0xFF, 0x00, 0x34, 0xFF, 0xD9,
+];
+
 /// A signed-in, verified user without a business.
 pub struct Session {
     pub token: String,

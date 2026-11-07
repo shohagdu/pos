@@ -13,6 +13,8 @@ import { Spinner } from '../../components/ui/Spinner'
 import { describeDevice } from '../../lib/device'
 import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
+import { ImpersonateButton } from './Impersonation'
+import { useCanImpersonate } from './canImpersonate'
 import { roleName } from './labels'
 import { BranchScopePicker, RolePicker } from './RolePicker'
 import { dateLocale } from '../../lib/dates'
@@ -51,6 +53,7 @@ function MemberDetail({ member, tenantId }: { member: Member; tenantId: string }
     },
   })
   const failed = suspend.error ?? reactivate.error ?? remove.error
+  const canImpersonate = useCanImpersonate(member)
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -66,6 +69,14 @@ function MemberDetail({ member, tenantId }: { member: Member; tenantId: string }
         </p>
       </div>
       {failed && <Alert tone="danger">{problemMessage(failed, t)}</Alert>}
+      {canImpersonate && (
+        <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-ink-muted">{t('users.impersonateHint', { name: member.full_name })}</p>
+          <div className="shrink-0">
+            <ImpersonateButton member={member} />
+          </div>
+        </Card>
+      )}
       {editable ? (
         <RolesEditor member={member} tenantId={tenantId} />
       ) : (

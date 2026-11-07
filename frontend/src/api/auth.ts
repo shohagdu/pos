@@ -65,6 +65,10 @@ export interface Me {
   user: UserProfile
   memberships: MembershipSummary[]
   tenant: CurrentTenant | null
+  /** Set while the owner is signed in as this user. */
+  /** Set while someone else is signed in as this user: the owner (as staff) or
+   * platform support (`platform_support`, as the owner). */
+  impersonator?: { user_id: string; full_name: string; platform_support?: boolean }
 }
 
 export interface SessionInfo {
@@ -96,6 +100,12 @@ export const authApi = {
   login: (identifier: string, password: string) => post<TokenResponse>('/login', { identifier, password }),
   logout: () => post<void>('/logout'),
   switchTenant: (tenantId: string | null) => post<TokenResponse>('/switch-tenant', { tenant_id: tenantId }, true),
+  /** Owner only: sign in as a staff member (membership id) of the active business. */
+  impersonate: (membershipId: string) => post<TokenResponse>('/impersonate', { membership_id: membershipId }, true),
+  stopImpersonation: () => post<TokenResponse>('/impersonate/stop', {}, true),
+  /** Platform owner/support: open a business as its owner (reason is audited). */
+  openBusiness: (tenantId: string, reason: string) =>
+    post<TokenResponse>('/open-business', { tenant_id: tenantId, reason }, true),
   forgotPassword: (identifier: string) => post<OtpChallenge>('/password/forgot', { identifier }),
   /** The signed-in user's own password; other devices are signed out. */
   changePassword: (currentPassword: string, newPassword: string) =>

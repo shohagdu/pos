@@ -14,6 +14,19 @@ pub async fn current(tx: &mut TenantTx) -> AppResult<Entitlements> {
 }
 
 /// Fails with `402 PLAN_LIMIT_REACHED` if adding `adding` exceeds the limit.
+/// Serialises plan-limit checks per business: locks the subscription row
+/// until the transaction ends. Call it *before* counting usage; otherwise
+/// parallel requests all count the same total and together pass the limit.
+pub async fn lock_limits(tx: &mut TenantTx) -> AppResult<()> {
+    let tenant_id = tx.tenant_id();
+    sqlx::query("SELECT id FROM subscriptions WHERE tenant_id = ? FOR UPDATE")
+        .bind(tenant_id)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(map_db_error)?;
+    Ok(())
+}
+
 pub async fn ensure_within(tx: &mut TenantTx, feature: &'static str, used: i64, adding: i64) -> AppResult<()> {
     current(tx).await?.within_limit(feature, used, adding)
 }

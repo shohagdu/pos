@@ -37,7 +37,8 @@ pub async fn insert_role_permissions<S: AsRef<str>>(tx: &mut TenantTx, role_id: 
         return Ok(());
     }
     let tenant_id = tx.tenant_id();
-    let mut q: QueryBuilder<MySql> = QueryBuilder::new("INSERT INTO role_permissions (tenant_id, role_id, permission_code) ");
+    let mut q: QueryBuilder<MySql> =
+        QueryBuilder::new("INSERT INTO role_permissions (tenant_id, role_id, permission_code) ");
     q.push_values(codes, |mut row, code| {
         row.push_bind(tenant_id).push_bind(role_id).push_bind(code.as_ref().to_owned());
     });
@@ -55,8 +56,7 @@ pub async fn roles(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<Vec<RoleRef>> {
     let mut q: QueryBuilder<MySql> = QueryBuilder::new("SELECT r.id, r.code, r.name FROM roles r WHERE r.tenant_id = ");
     q.push_bind(tenant_id).push(" AND r.id");
     push_in_list(&mut q, &unique);
-    let rows: Vec<(Uuid, String, String)> =
-        q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
+    let rows: Vec<(Uuid, String, String)> = q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
     if rows.len() != unique.len() {
         return Err(AppError::field("role_ids", "UNKNOWN_ROLE", "a selected role does not exist"));
     }

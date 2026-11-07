@@ -7,6 +7,7 @@ import { type Column, DataTable } from '../../components/ui/DataTable'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { downloadCsv } from '../../lib/csv'
 import { startOfMonth, today } from '../../lib/dates'
+import { AccountingNav } from '../accounting/AccountingNav'
 import { useSession } from '../auth/session'
 import { reportAccess } from './access'
 import { money, usePeriodLabel } from './format'
@@ -76,6 +77,7 @@ export function TrialBalancePage() {
     <ReportFrame
       title={t('reports.tb.title')}
       allowed={allowed}
+      nav={<AccountingNav />}
       period={periodLabel(range.from, tb.data?.to ?? range.to)}
       exports={exports}
       updatedAt={tb.dataUpdatedAt}

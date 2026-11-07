@@ -99,6 +99,8 @@ export interface Product {
   wholesale_price: string | null
   min_selling_price: string | null
   reorder_level: string | null
+  /** The product photo (`GET /files/{id}`); `null` = none. */
+  image_file_id: string | null
   status: 'active' | 'archived'
   version: number
   created_at: string
@@ -229,6 +231,14 @@ export const catalogApi = {
   lookupProducts: (codes: string[]) =>
     apiFetch<{ code: string; product: Product }[]>('/api/v1/products/lookup', { method: 'POST', body: { codes } }),
   createProduct: (input: ProductInput) => apiFetch<Product>('/api/v1/products', { method: 'POST', body: input }),
+  /** Uploads or replaces the photo (JPG, PNG or WebP, at most 2 MB). */
+  setProductImage: (id: string, file: File) =>
+    apiFetch<Product>(`/api/v1/products/${id}/image`, {
+      method: 'PUT',
+      rawBody: file,
+      headers: { 'X-File-Name': encodeURIComponent(file.name) },
+    }),
+  removeProductImage: (id: string) => apiFetch<Product>(`/api/v1/products/${id}/image`, { method: 'DELETE' }),
   updateProduct: (id: string, version: number, input: ProductInput) =>
     apiFetch<Product>(`/api/v1/products/${id}`, { method: 'PUT', body: input, ifMatch: version }),
   archiveProduct: (id: string) => apiFetch<Product>(`/api/v1/products/${id}/archive`, { method: 'POST' }),

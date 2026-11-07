@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { mockApi, problem, token, user } from '../../test/api'
+import { currentTenant, membership, mockApi, problem, token, user } from '../../test/api'
 import { renderRoute } from '../../test/render'
 
 afterEach(() => vi.restoreAllMocks())
@@ -97,6 +97,60 @@ describe('super admin console', () => {
     expect(screen.getByText('2 / 3')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Suspend business' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Add override' })).not.toBeInTheDocument()
+  })
+
+  it('lets support staff open a business as its owner and return to the console', async () => {
+    let inside = false
+    const base = signedIn('support')
+    const calls = mockApi({
+      ...base,
+      'GET /api/v1/auth/me': () =>
+        Response.json(
+          inside
+            ? {
+                user: { ...user, id: 'u9', full_name: 'Rahim' },
+                memberships: [membership('t1', 'Rahim Store')],
+                tenant: currentTenant('t1', 'Rahim Store', ['pos.sell']),
+                impersonator: { user_id: 'u1', full_name: 'Rahim Uddin', platform_support: true },
+              }
+            : base['GET /api/v1/auth/me'],
+        ),
+      'GET /api/v1/admin/tenants/t1': tenant,
+      'GET /api/v1/dashboard': {},
+      'GET /api/v1/onboarding': { steps: [], dismissed: true, complete: false },
+      'POST /api/v1/auth/open-business': () => {
+        inside = true
+        return Response.json(token('t1'))
+      },
+      'POST /api/v1/auth/impersonate/stop': () => {
+        inside = false
+        return Response.json(token(null))
+      },
+    })
+    const { router } = renderRoute('/admin/tenants/t1')
+    await userEvent.click(await screen.findByRole('button', { name: 'Open business' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Open Rahim Store' })
+    expect(within(dialog).getByText(/as its owner, Rahim,/)).toBeInTheDocument()
+    await userEvent.type(within(dialog).getByLabelText(/Reason/), 'Owner asked for help with VAT')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Open business' }))
+
+    expect(await screen.findByText('Support session: Rahim Store')).toBeInTheDocument()
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    expect(calls.find((c) => c.path === '/api/v1/auth/open-business')?.body).toEqual({
+      tenant_id: 't1',
+      reason: 'Owner asked for help with VAT',
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Return to admin console' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/admin'))
+    expect(screen.queryByText('Support session: Rahim Store')).not.toBeInTheDocument()
+  })
+
+  it('does not offer opening a business to billing staff', async () => {
+    mockApi({ ...signedIn('billing'), 'GET /api/v1/admin/tenants/t1': tenant })
+    renderRoute('/admin/tenants/t1')
+    expect(await screen.findByRole('heading', { name: 'Rahim Store' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open business' })).not.toBeInTheDocument()
   })
 
   it('adds a limit override with an expiry and a reason', async () => {

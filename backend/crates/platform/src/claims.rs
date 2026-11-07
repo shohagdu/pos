@@ -138,6 +138,24 @@ pub async fn approve(
             message: "the invoice is already settled".into(),
         });
     }
+    // The owner types the amount they paid; a claim for less than the invoice
+    // (e.g. 1 taka against a lifetime licence) must not activate the plan.
+    let claimed: Decimal = sqlx::query_scalar(
+        "SELECT amount FROM subscription_payment_claims WHERE id = ? \
+         /* tenant-lint: allow platform staff act on any business's claim */",
+    )
+    .bind(id)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    if claimed < total {
+        return Err(AppError::Unprocessable {
+            code: "CLAIM_AMOUNT_SHORT",
+            message: format!(
+                "the claim is for {claimed}, less than the invoice total {total}; reject it or ask for the rest"
+            ),
+        });
+    }
     let sub: (Uuid, String, Uuid, Option<chrono::DateTime<Utc>>) = sqlx::query_as(
         "SELECT id, status, plan_id, current_period_end FROM subscriptions WHERE tenant_id = ? FOR UPDATE",
     )

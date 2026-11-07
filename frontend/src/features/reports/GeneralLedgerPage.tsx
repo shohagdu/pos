@@ -10,6 +10,7 @@ import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { Select } from '../../components/ui/Select'
 import { downloadCsv } from '../../lib/csv'
 import { formatDate, startOfMonth, today } from '../../lib/dates'
+import { AccountingNav } from '../accounting/AccountingNav'
 import { useSession } from '../auth/session'
 import { accountLabel, chartOrder } from '../accounting/ledger'
 import { reportAccess } from './access'
@@ -68,6 +69,7 @@ export function GeneralLedgerPage() {
     <ReportFrame
       title={t('reports.gl.title')}
       allowed={allowed}
+      nav={<AccountingNav />}
       period={`${account ? `${accountLabel(account)} · ` : ''}${periodLabel(from, gl.data?.to ?? to)}`}
       exports={exports}
       updatedAt={gl.dataUpdatedAt}

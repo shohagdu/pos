@@ -264,7 +264,7 @@ async fn product_lifecycle(pool: MySqlPool) {
     let soap =
         call(&srv, post("/api/v1/products", json!({ "name": "Soap", "unit_id": pcs, "selling_price": "40" }))).await;
     let image_uri = format!("/api/v1/products/{}/image", id(&soap.body));
-    let png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR-pretend-image-data";
+    let png = common::PNG;
     // A photo for a product that is not there is refused before anything is stored.
     let photos = std::path::Path::new(&common::config().storage_dir).join(format!("tenants/{tenant}/product_image"));
     let stored = || std::fs::read_dir(&photos).map_or(0, Iterator::count);
@@ -278,6 +278,24 @@ async fn product_lifecycle(pool: MySqlPool) {
         (not_image.status, not_image.body["errors"][0]["code"].as_str()),
         (StatusCode::BAD_REQUEST, Some("UNSUPPORTED_TYPE"))
     );
+    // Starting like an image is not enough: a page or script smuggled after
+    // or inside the image is refused before anything is stored.
+    let polyglot = [png, b"<html><script>alert(document.cookie)</script></html>".as_slice()].concat();
+    let smuggled = call(&srv, Req::put_bytes(&image_uri, &polyglot, "image/png").bearer(&owner.token).build()).await;
+    assert_eq!(
+        (smuggled.status, smuggled.body["errors"][0]["code"].as_str()),
+        (StatusCode::BAD_REQUEST, Some("INVALID_IMAGE"))
+    );
+    let script = b"<script>alert(1)</script>";
+    let mut commented = vec![0xFF, 0xD8, 0xFF, 0xFE, 0, u8::try_from(script.len() + 2).expect("short")];
+    commented.extend_from_slice(script);
+    commented.extend_from_slice(&common::JPEG[2..]);
+    let hidden = call(&srv, Req::put_bytes(&image_uri, &commented, "image/jpeg").bearer(&owner.token).build()).await;
+    assert_eq!(
+        (hidden.status, hidden.body["errors"][0]["code"].as_str()),
+        (StatusCode::BAD_REQUEST, Some("UNSAFE_FILE"))
+    );
+    assert_eq!(stored(), 0, "refused uploads keep no bytes");
     let too_big = vec![0xFF_u8; 2 * 1024 * 1024 + 1];
     let refused = call(&srv, Req::put_bytes(&image_uri, &too_big, "image/jpeg").bearer(&owner.token).build()).await;
     assert_eq!(refused.status, StatusCode::BAD_REQUEST, "{}", refused.body);
@@ -296,9 +314,10 @@ async fn product_lifecycle(pool: MySqlPool) {
         test::call_service(&srv, Req::get(&format!("/api/v1/files/{first_file}")).bearer(&owner.token).build()).await;
     assert_eq!(served.status(), StatusCode::OK);
     assert_eq!(served.headers().get("content-type").and_then(|v| v.to_str().ok()), Some("image/png"));
+    let csp = served.headers().get("content-security-policy").and_then(|v| v.to_str().ok()).unwrap_or_default();
+    assert!(csp.contains("default-src 'none'") && csp.contains("sandbox"), "{csp}");
     assert_eq!(test::read_body(served).await.as_ref(), png);
-    let jpg = [0xFF, 0xD8, 0xFF, 0xE0, 1, 2, 3];
-    let second = call(&srv, Req::put_bytes(&image_uri, &jpg, "image/jpeg").bearer(&owner.token).build()).await;
+    let second = call(&srv, Req::put_bytes(&image_uri, common::JPEG, "image/jpeg").bearer(&owner.token).build()).await;
     assert_eq!(second.status, StatusCode::OK, "{}", second.body);
     assert_ne!(second.body["image_file_id"], json!(first_file));
     let gone = call(&srv, Req::get(&format!("/api/v1/files/{first_file}")).bearer(&owner.token).build()).await;

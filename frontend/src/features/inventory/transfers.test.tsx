@@ -59,27 +59,65 @@ describe('stock transfers', () => {
     expect(screen.getByRole('link', { name: 'New transfer' })).toHaveAttribute('href', '/inventory/transfers/new')
   })
 
-  it('creates and dispatches a transfer with an Idempotency-Key', async () => {
+  it('scans products in, shows stock at the source and dispatches with an Idempotency-Key', async () => {
     const calls = mockApi({
       ...signedIn(),
-      'GET /api/v1/products': { data: [product], next_cursor: null },
+      'GET /api/v1/products': { data: [{ ...product, barcodes: ['8941000000017'], image_file_id: null }], next_cursor: null },
+      'GET /api/v1/stock': (call) => {
+        const variant = new URLSearchParams(call.search).get('variant_id')
+        return Response.json({ data: variant === 'v1' ? [{ variant_id: 'v1', quantity: '12.000' }] : [], next_cursor: null, summary: null })
+      },
       'POST /api/v1/stock-transfers': () => Response.json(transfer, { status: 201 }),
       'GET /api/v1/stock-transfers/tr1': transfer,
     })
     const { router } = renderRoute('/inventory/transfers/new')
-    await userEvent.type(await screen.findByLabelText('Search products'), 'rice')
-    await userEvent.click(screen.getByRole('button', { name: 'Search' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'Add Miniket Rice 5kg' }))
-    await userEvent.type(screen.getByLabelText('Quantity for Miniket Rice 5kg'), '10')
-    await userEvent.click(screen.getByRole('button', { name: 'Save and dispatch' }))
-    expect(await screen.findByText('Choose where the stock goes.')).toBeInTheDocument()
-    await userEvent.selectOptions(screen.getByLabelText('To'), 'loc2')
-    await userEvent.click(screen.getByRole('button', { name: 'Save and dispatch' }))
+    const search = await screen.findByRole('combobox', { name: 'Add product' })
+    // The only other location is picked as the destination.
+    await waitFor(() => expect(screen.getByLabelText(/^To/)).toHaveValue('loc2'))
 
+    // A scan adds the item with quantity 1 and moves to it; scanning again adds one more.
+    await userEvent.type(search, '8941000000017{Enter}')
+    const qty = await screen.findByLabelText('Quantity for Miniket Rice 5kg')
+    await waitFor(() => expect(qty).toHaveFocus())
+    expect(qty).toHaveValue('1')
+    await userEvent.type(search, '8941000000017{Enter}')
+    await waitFor(() => expect(qty).toHaveValue('2'))
+    expect(await screen.findByText('Available 12 pcs')).toBeInTheDocument()
+    expect(calls.some((c) => c.path === '/api/v1/stock' && c.search.includes('location_id=loc1') && c.search.includes('variant_id=v1'))).toBe(true)
+
+    // More than the source holds is flagged; "Send all" fills in what is there.
+    await userEvent.clear(qty)
+    await userEvent.type(qty, '15')
+    expect(screen.getByText('More than is available here')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Send all' }))
+    expect(qty).toHaveValue('12')
+    await userEvent.type(qty, '{Enter}')
+    expect(search).toHaveFocus()
+
+    await userEvent.keyboard('{F9}')
     await waitFor(() => expect(router.state.location.pathname).toBe('/inventory/transfers/tr1'))
     const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/stock-transfers')
-    expect(post?.body).toEqual({ to_location_id: 'loc2', lines: [{ variant_id: 'v1', quantity: '10' }], dispatch: true })
+    expect(post?.body).toEqual({ to_location_id: 'loc2', lines: [{ variant_id: 'v1', quantity: '12' }], dispatch: true })
     expect(post?.headers.get('Idempotency-Key')).toBeTruthy()
+    expect(localStorage.getItem('pos.transfer.to.t1')).toBe('loc2')
+  })
+
+  it('asks for a destination and items before saving', async () => {
+    const base = signedIn()
+    mockApi({
+      ...base,
+      'GET /api/v1/stock-locations': [
+        ...base['GET /api/v1/stock-locations'],
+        { id: 'loc3', branch_id: 'b2', branch_name: 'Uttara', code: 'UTT-W', name: 'Uttara store room', location_type: 'warehouse', is_sellable: false, status: 'active' },
+      ],
+    })
+    localStorage.removeItem('pos.transfer.to.t1')
+    renderRoute('/inventory/transfers/new')
+    await screen.findByRole('combobox', { name: 'Add product' })
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Uttara — Uttara store room' })).toBeInTheDocument())
+    await userEvent.click(screen.getByRole('button', { name: /Save draft/ }))
+    expect(await screen.findByText('Choose where the stock goes.')).toBeInTheDocument()
+    expect(screen.getByLabelText(/^To/)).toHaveFocus()
   })
 
   it('receives a transfer sending only the lines that arrived short', async () => {

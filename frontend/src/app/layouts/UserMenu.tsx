@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 
 import { useStaff } from '../../api/platform'
 import { useSession } from '../../features/auth/session'
@@ -14,8 +14,12 @@ function initials(name: string) {
 /** Avatar button opening the signed-in user's account panel. */
 export function UserMenu() {
   const { t } = useTranslation()
-  const { me, signOut } = useSession()
-  const staff = useStaff()
+  const { me, signOut, stopImpersonation } = useSession()
+  const navigate = useNavigate()
+  // Signed in as a staff member: account pages belong to the real person.
+  const impersonating = Boolean(me?.impersonator)
+  const support = Boolean(me?.impersonator?.platform_support)
+  const staff = useStaff(!impersonating)
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const panelId = useId()
@@ -73,9 +77,25 @@ export function UserMenu() {
             </div>
           </div>
           <div className="my-1 border-t border-border" />
-          {staff.data && link('/admin', 'shield', t('nav.admin'))}
-          {link('/account/password', 'key', t('password.title'))}
-          {link('/account/sessions', 'devices', t('sessions.title'))}
+          {impersonating ? (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                void stopImpersonation().then(() => navigate(support ? '/admin' : '/users', { replace: true }))
+              }}
+              className={`${item} text-ink`}
+            >
+              <Icon name="users" className="size-5 text-ink-muted" />
+              {support ? t('users.returnToAdmin') : t('users.stopImpersonating')}
+            </button>
+          ) : (
+            <>
+              {staff.data && link('/admin', 'shield', t('nav.admin'))}
+              {link('/account/password', 'key', t('password.title'))}
+              {link('/account/sessions', 'devices', t('sessions.title'))}
+            </>
+          )}
           <div className="my-1 border-t border-border" />
           <button type="button" onClick={() => void signOut()} className={`${item} text-danger`}>
             <Icon name="signOut" className="size-5" />

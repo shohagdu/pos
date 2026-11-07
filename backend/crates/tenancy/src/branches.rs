@@ -172,6 +172,7 @@ pub async fn create(tx: &mut TenantTx, meta: &RequestMeta, input: NewBranch) -> 
     let address = clean(input.address, "address", 500)?;
     let phone = validate_contact(input.phone, None)?.0;
     let receipt_header = clean(input.receipt_header, "receipt_header", 500)?;
+    entitlements::lock_limits(tx).await?;
     let used = active_count(tx).await?;
     entitlements::ensure_within(tx, "branches.max", used, 1).await?;
 
@@ -302,6 +303,7 @@ pub async fn set_status(tx: &mut TenantTx, meta: &RequestMeta, branch_id: Uuid, 
         });
     }
     if active {
+        entitlements::lock_limits(tx).await?;
         let used = active_count(tx).await?;
         entitlements::ensure_within(tx, "branches.max", used, 1).await?;
     }

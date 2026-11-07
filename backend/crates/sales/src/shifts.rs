@@ -109,6 +109,7 @@ async fn active_registers(tx: &mut TenantTx) -> AppResult<i64> {
 /// Adds a register to the selected (or default) branch; counts against `registers.max`.
 pub async fn create_register(tx: &mut TenantTx, meta: &RequestMeta, input: RegisterInput) -> AppResult<Register> {
     let name = register_name(&input.name)?;
+    entitlements::lock_limits(tx).await?;
     let used = active_registers(tx).await?;
     entitlements::ensure_within(tx, "registers.max", used, 1).await?;
     let ctx = context::load(tx).await?;
@@ -181,6 +182,7 @@ pub async fn update_register(
         return Err(AppError::Conflict { code: "SHIFT_OPEN", message: "close the open shift first".into() });
     }
     if status == "active" && before.status != "active" {
+        entitlements::lock_limits(tx).await?;
         let used = active_registers(tx).await?;
         entitlements::ensure_within(tx, "registers.max", used, 1).await?;
     }

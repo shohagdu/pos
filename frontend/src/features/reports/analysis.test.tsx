@@ -41,6 +41,54 @@ describe('analysis reports', () => {
     expect(link).toHaveAttribute('href', '/suppliers/sup1')
   })
 
+  it('lists unpaid sales per customer, oldest first, and searches', async () => {
+    const row = {
+      id: 's1', doc_no: 'INV-0007', reference: null, doc_date: '2026-07-01', days_open: 129, party_id: 'c1', party_code: 'C-01',
+      party_name: 'Karim Mia', party_phone: '01711000002', grand_total: '1000.00', paid_total: '300.00', returned_total: '0.00', due_total: '700.00',
+    }
+    const calls = mockApi({
+      ...signedIn(['reports.parties']),
+      'GET /api/v1/reports/dues': (call) =>
+        Response.json({
+          party: 'customers',
+          as_of: '2026-11-07',
+          rows: call.search.includes('q=nobody') ? [] : [row],
+          totals: { grand_total: '1000.00', paid_total: '300.00', returned_total: '0.00', due_total: '700.00', parties: 1 },
+        }),
+    })
+    renderRoute('/reports/customer-dues')
+    expect(await screen.findByRole('heading', { name: 'Due customer records' })).toBeInTheDocument()
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('link', { name: 'Karim Mia' })).toHaveAttribute('href', '/customers/c1')
+    expect(within(table).getByRole('link', { name: 'INV-0007' })).toHaveAttribute('href', '/sales/s1')
+    expect(within(table).getByText('129 days')).toHaveClass('text-danger')
+    expect(calls.find((c) => c.path === '/api/v1/reports/dues')?.search).toBe('?party=customers')
+
+    await userEvent.type(screen.getByLabelText('Customer, phone or invoice'), 'nobody')
+    expect(await screen.findByText('No customer owes anything.')).toBeInTheDocument()
+    expect(calls.at(-1)?.search).toBe('?party=customers&q=nobody')
+  })
+
+  it('lists purchases still to pay with the supplier bill number', async () => {
+    mockApi({
+      ...signedIn(['reports.parties']),
+      'GET /api/v1/reports/dues': {
+        party: 'suppliers',
+        as_of: '2026-11-07',
+        rows: [{
+          id: 'p1', doc_no: 'PUR-0003', reference: 'KT-77', doc_date: '2026-10-20', days_open: 18, party_id: 'sup1', party_code: null,
+          party_name: 'Karim Traders', party_phone: null, grand_total: '1050.00', paid_total: '400.00', returned_total: '0.00', due_total: '650.00',
+        }],
+        totals: { grand_total: '1050.00', paid_total: '400.00', returned_total: '0.00', due_total: '650.00', parties: 1 },
+      },
+    })
+    renderRoute('/reports/supplier-dues')
+    const table = await screen.findByRole('table')
+    expect(within(table).getByRole('link', { name: 'PUR-0003' })).toHaveAttribute('href', '/purchases/p1')
+    expect(within(table).getByText('Bill KT-77')).toBeInTheDocument()
+    expect(screen.getByText('Due to pay', { selector: 'dt' })).toBeInTheDocument()
+  })
+
   it('shows output and input VAT with the net payable and the expenses row', async () => {
     mockApi({
       ...signedIn(['reports.financial']),
@@ -71,6 +119,8 @@ describe('analysis reports', () => {
     mockApi(signedIn(['reports.parties', 'reports.inventory']))
     renderRoute('/reports')
     expect(await screen.findByRole('link', { name: /Receivable & payable aging/ })).toHaveAttribute('href', '/reports/aging')
+    expect(screen.getByRole('link', { name: /Due customers/ })).toHaveAttribute('href', '/reports/customer-dues')
+    expect(screen.getByRole('link', { name: /Suppliers waiting for payment/ })).toHaveAttribute('href', '/reports/supplier-dues')
     expect(screen.getByRole('link', { name: /Fast & slow movers/ })).toHaveAttribute('href', '/reports/product-movement')
     expect(screen.queryByRole('link', { name: /VAT summary/ })).not.toBeInTheDocument()
   })

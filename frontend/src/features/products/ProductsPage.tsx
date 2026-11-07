@@ -12,6 +12,7 @@ import { formatMoney } from '../../lib/format'
 import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { CatalogNav } from './CatalogNav'
+import { ProductThumb } from './ProductThumb'
 import { categoryLabel } from './labels'
 
 const STATUSES: ProductStatusFilter[] = ['active', 'archived', 'all']
@@ -113,11 +114,16 @@ export function ProductsPage() {
             <tbody>
               {rows.map((p) => (
                 <tr key={p.id} className="border-b border-border last:border-b-0 hover:bg-canvas">
-                  <td className="px-4 py-3">
-                    <Link to={`/products/${p.id}`} className="font-medium text-brand-700 hover:underline">
-                      {p.name}
-                    </Link>
-                    {p.name_bn && <span className="block text-xs text-ink-muted">{p.name_bn}</span>}
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-3">
+                      <ProductThumb fileId={p.image_file_id} size="md" />
+                      <div className="min-w-0">
+                        <Link to={`/products/${p.id}`} className="font-medium text-brand-700 hover:underline">
+                          {p.name}
+                        </Link>
+                        {p.name_bn && <span className="block text-xs text-ink-muted">{p.name_bn}</span>}
+                      </div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{p.sku}</td>
                   <td className="px-4 py-3">{p.category_name ?? '—'}</td>

@@ -8,6 +8,7 @@ import { currencySymbol, formatMoney, formatQuantity } from '../../lib/format'
 import type { LineResult } from '../../lib/pricing'
 import { warrantyExpiresOn, warrantyTenure } from '../sales/warranty'
 import type { CartAction, CartLine, LineProblem } from './cart'
+import { ProductThumb } from '../products/ProductThumb'
 
 const input =
   'min-h-10 rounded-lg border border-border bg-surface px-2 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
@@ -81,23 +82,28 @@ export function CartTable({
                 className={`border-b border-border align-top last:border-b-0 ${selected === id ? 'bg-brand-50/60' : ''}`}
               >
                 <td className="min-w-40 px-3 py-2">
-                  <span className="block font-medium">{name}</span>
-                  <span className="block text-xs text-ink-muted">
-                    {item.sku}
-                    {item.stock !== null &&
-                      ` · ${t('pos.stock', { qty: formatQuantity(item.stock, lang, item.allow_fraction), unit: item.unit_short_name })}`}
-                  </span>
-                  {tenure && warrantyEnd && (
-                    <span className="mt-0.5 block text-xs text-brand-700">
-                      {t('pos.warranty', { tenure, date: formatDate(warrantyEnd, lang) })}
-                    </span>
-                  )}
-                  {overStock && <span className="mt-0.5 block text-xs font-medium text-warning">{t('pos.overStock')}</span>}
-                  {problem && (
-                    <span role="alert" className="mt-0.5 block text-xs text-danger">
-                      {t(`pos.errors.${problem}`)}
-                    </span>
-                  )}
+                  <div className="flex items-start gap-2.5">
+                    <ProductThumb fileId={item.image_file_id} />
+                    <div className="min-w-0">
+                      <span className="block font-medium">{name}</span>
+                      <span className="block text-xs text-ink-muted">
+                        {item.sku}
+                        {item.stock !== null &&
+                          ` · ${t('pos.stock', { qty: formatQuantity(item.stock, lang, item.allow_fraction), unit: item.unit_short_name })}`}
+                      </span>
+                      {tenure && warrantyEnd && (
+                        <span className="mt-0.5 block text-xs text-brand-700">
+                          {t('pos.warranty', { tenure, date: formatDate(warrantyEnd, lang) })}
+                        </span>
+                      )}
+                      {overStock && <span className="mt-0.5 block text-xs font-medium text-warning">{t('pos.overStock')}</span>}
+                      {problem && (
+                        <span role="alert" className="mt-0.5 block text-xs text-danger">
+                          {t(`pos.errors.${problem}`)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1">

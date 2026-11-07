@@ -7,6 +7,8 @@ use rust_decimal::{Decimal, RoundingStrategy};
 use crate::{AppError, AppResult};
 
 /// Largest value of a `DECIMAL(18,2)` column.
+/// The largest quantity on a line (1,000,000,000).
+pub const MAX_QUANTITY: Decimal = Decimal::from_parts(1_000_000_000, 0, 0, false, 0);
 pub const MAX_AMOUNT: Decimal = Decimal::from_parts(2_808_348_671, 232_830_643, 0, false, 2); // 9999999999999999.99
 
 pub fn round2(value: Decimal) -> Decimal {
@@ -53,7 +55,9 @@ pub fn price(value: Decimal, field: &str) -> AppResult<Decimal> {
 
 /// A quantity: more than 0, at most 3 decimals, whole when the unit has no fractions.
 pub fn quantity(value: Decimal, field: &str, allow_fraction: bool) -> AppResult<Decimal> {
-    if value <= Decimal::ZERO || value > MAX_AMOUNT || value.normalize().scale() > 3 {
+    // Capped like stock moves: quantity × price must stay far inside Decimal's
+    // range, or the line arithmetic would overflow (a panic, not a 400).
+    if value <= Decimal::ZERO || value > MAX_QUANTITY || value.normalize().scale() > 3 {
         return Err(AppError::field(
             field,
             "INVALID_QUANTITY",
@@ -113,6 +117,8 @@ mod tests {
         assert!(quantity(d("1.5"), "q", false).is_err());
         assert!(quantity(d("1.5"), "q", true).is_ok());
         assert!(quantity(d("0"), "q", true).is_err());
+        assert!(quantity(d("1000000000"), "q", false).is_ok());
+        assert!(quantity(d("9999999999999999"), "q", false).is_err(), "would overflow quantity x price");
         assert!(percent(d("100"), "p").is_ok());
         assert!(percent(d("100.01"), "p").is_err());
     }

@@ -76,7 +76,19 @@ pub struct ExportFile {
 
 fn csv_cell(value: Option<&str>) -> String {
     let text = value.unwrap_or_default();
-    if text.contains([',', '"', '\n', '\r']) { format!("\"{}\"", text.replace('"', "\"\"")) } else { text.to_owned() }
+    // A cell that starts like a formula (`=HYPERLINK(...)`, `@SUM`, `+cmd|...`)
+    // would run when the owner opens the file in Excel; a leading `'` keeps it
+    // text. Plain numbers such as `-12.50` stay numbers.
+    let text = if starts_like_formula(text) { format!("'{text}") } else { text.to_owned() };
+    if text.contains([',', '"', '\n', '\r']) { format!("\"{}\"", text.replace('"', "\"\"")) } else { text }
+}
+
+fn starts_like_formula(text: &str) -> bool {
+    match text.chars().next() {
+        Some('=' | '@' | '\t' | '\r') => true,
+        Some('+' | '-') => text.parse::<f64>().is_err(),
+        _ => false,
+    }
 }
 
 /// The columns to export and how to render each as text.
@@ -152,6 +164,20 @@ pub async fn build(tx: &mut TenantTx, meta: &RequestMeta) -> AppResult<Vec<Expor
     )
     .await?;
     Ok(files)
+}
+
+#[cfg(test)]
+mod formula_tests {
+    use super::csv_cell;
+
+    #[test]
+    fn formulas_are_kept_as_text_but_numbers_are_not_touched() {
+        assert_eq!(csv_cell(Some("=HYPERLINK(\"http://x\",\"a\")")), "\"'=HYPERLINK(\"\"http://x\"\",\"\"a\"\")\"");
+        assert_eq!(csv_cell(Some("@SUM(A1)")), "'@SUM(A1)");
+        assert_eq!(csv_cell(Some("+cmd|' /C calc'!A0")), "'+cmd|' /C calc'!A0");
+        assert_eq!(csv_cell(Some("-12.50")), "-12.50");
+        assert_eq!(csv_cell(Some("Rice 5kg")), "Rice 5kg");
+    }
 }
 
 #[cfg(test)]

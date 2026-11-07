@@ -183,6 +183,7 @@ pub async fn create(
     .execute(&mut **tx)
     .await
     .map_err(map_db_error)?;
+    entitlements::lock_limits(tx).await?;
     let used = entitlements::seats_used(tx, None).await?;
     entitlements::ensure_within(tx, "users.max", used, 1).await?;
 
@@ -248,6 +249,7 @@ pub async fn resend(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResul
     }
     if expired {
         // An expired invitation stopped holding a seat; it needs one again.
+        entitlements::lock_limits(tx).await?;
         let used = entitlements::seats_used(tx, Some(id)).await?;
         entitlements::ensure_within(tx, "users.max", used, 1).await?;
     }

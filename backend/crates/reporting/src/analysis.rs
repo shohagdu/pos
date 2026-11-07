@@ -132,6 +132,152 @@ pub async fn aging(tx: &mut TenantTx, query: &AgingQuery) -> AppResult<AgingRepo
     Ok(AgingReport { party: party.to_owned(), as_of, rows, totals })
 }
 
+// ---------------------------------------------------------------- dues
+
+#[derive(Debug, Clone, Default, Deserialize, utoipa::IntoParams)]
+#[serde(deny_unknown_fields)]
+#[into_params(parameter_in = Query)]
+pub struct DuesQuery {
+    /// `customers` (default): sales not yet fully paid; `suppliers`:
+    /// received purchases still to pay.
+    pub party: Option<String>,
+    /// One customer or supplier only.
+    pub party_id: Option<Uuid>,
+    /// Name, phone or code of the party, or the document number.
+    pub q: Option<String>,
+    /// Documents dated on or after this day.
+    pub from: Option<NaiveDate>,
+    /// Documents dated on or before this day.
+    pub to: Option<NaiveDate>,
+}
+
+/// One unpaid document: a sale the customer still owes on, or a purchase
+/// the business still has to pay the supplier for.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
+pub struct DueRecord {
+    /// Sale or purchase id.
+    pub id: Uuid,
+    /// Invoice number (sales) or purchase number.
+    pub doc_no: Option<String>,
+    /// The supplier's own bill number (purchases only).
+    pub reference: Option<String>,
+    pub doc_date: NaiveDate,
+    /// Days since the document date, as of today.
+    pub days_open: i64,
+    pub party_id: Uuid,
+    pub party_code: Option<String>,
+    pub party_name: String,
+    pub party_phone: Option<String>,
+    #[schema(value_type = String)]
+    pub grand_total: Decimal,
+    #[schema(value_type = String)]
+    pub paid_total: Decimal,
+    #[schema(value_type = String)]
+    pub returned_total: Decimal,
+    #[schema(value_type = String)]
+    pub due_total: Decimal,
+}
+
+#[derive(Debug, Clone, Default, Serialize, utoipa::ToSchema)]
+pub struct DueTotals {
+    #[schema(value_type = String)]
+    pub grand_total: Decimal,
+    #[schema(value_type = String)]
+    pub paid_total: Decimal,
+    #[schema(value_type = String)]
+    pub returned_total: Decimal,
+    #[schema(value_type = String)]
+    pub due_total: Decimal,
+    /// Distinct customers or suppliers in the list.
+    pub parties: usize,
+}
+
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+pub struct DueReport {
+    pub party: String,
+    pub as_of: NaiveDate,
+    /// Oldest first, so the longest-waiting dues lead.
+    pub rows: Vec<DueRecord>,
+    pub totals: DueTotals,
+}
+
+/// Unpaid sales by customer, or unpaid received purchases by supplier, one
+/// row per document (the per-party summary is [`aging`]). Balances not tied
+/// to a document (opening balances) are not listed.
+pub async fn dues(tx: &mut TenantTx, query: &DuesQuery) -> AppResult<DueReport> {
+    let as_of = pos_tenancy::context::today(tx).await?;
+    let party = query.party.as_deref().unwrap_or("customers");
+    // (party table, document table, number column, reference column, date column, party column, live status test)
+    let (parties, docs, no_col, ref_col, date_col, party_col, live) = match party {
+        "customers" => {
+            ("customers", "sales", "d.invoice_no", "NULL", "business_date", "customer_id", "d.status <> 'cancelled'")
+        }
+        "suppliers" => (
+            "suppliers",
+            "purchases",
+            "d.purchase_no",
+            "d.supplier_invoice_no",
+            "purchase_date",
+            "supplier_id",
+            "d.status IN ('received', 'partially_received')",
+        ),
+        _ => return Err(AppError::field("party", "INVALID_PARTY", "use customers or suppliers")),
+    };
+    if let (Some(from), Some(to)) = (query.from, query.to)
+        && from > to
+    {
+        return Err(AppError::field("to", "INVALID_RANGE", "to must not be before from"));
+    }
+    let search = query.q.as_deref().map(str::trim).filter(|q| !q.is_empty()).map(|text| {
+        let escaped = text.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
+        format!("%{escaped}%")
+    });
+    let tenant_id = tx.tenant_id();
+    let branch = tx.branch_id();
+    // Only the formatted table/column names above go into the SQL text.
+    let sql = format!(
+        "SELECT d.id, {no_col} AS doc_no, {ref_col} AS reference, d.{date_col} AS doc_date, \
+         CAST(DATEDIFF(?, d.{date_col}) AS SIGNED) AS days_open, p.id AS party_id, p.code AS party_code, p.name AS party_name, \
+         p.phone AS party_phone, d.grand_total, d.paid_total, d.returned_total, d.due_total \
+         FROM {docs} d JOIN {parties} p ON p.tenant_id = d.tenant_id AND p.id = d.{party_col} \
+         WHERE d.tenant_id = ? AND d.due_total > 0 AND {live} \
+           AND (? IS NULL OR d.branch_id = ?) AND (? IS NULL OR d.{party_col} = ?) \
+           AND (? IS NULL OR d.{date_col} >= ?) AND (? IS NULL OR d.{date_col} <= ?) \
+           AND (? IS NULL OR p.name LIKE ? OR p.phone LIKE ? OR p.code LIKE ? OR {no_col} LIKE ?) \
+         ORDER BY d.{date_col}, d.id"
+    );
+    let rows: Vec<DueRecord> = sqlx::query_as(sqlx::AssertSqlSafe(sql))
+        .bind(as_of)
+        .bind(tenant_id)
+        .bind(branch)
+        .bind(branch)
+        .bind(query.party_id)
+        .bind(query.party_id)
+        .bind(query.from)
+        .bind(query.from)
+        .bind(query.to)
+        .bind(query.to)
+        .bind(&search)
+        .bind(&search)
+        .bind(&search)
+        .bind(&search)
+        .bind(&search)
+        .fetch_all(&mut **tx)
+        .await
+        .map_err(map_db_error)?;
+    let mut totals = DueTotals::default();
+    let mut seen = std::collections::BTreeSet::new();
+    for r in &rows {
+        totals.grand_total += r.grand_total;
+        totals.paid_total += r.paid_total;
+        totals.returned_total += r.returned_total;
+        totals.due_total += r.due_total;
+        seen.insert(r.party_id);
+    }
+    totals.parties = seen.len();
+    Ok(DueReport { party: party.to_owned(), as_of, rows, totals })
+}
+
 // ---------------------------------------------------------------- VAT
 
 #[derive(Debug, Clone, Default, Serialize, utoipa::ToSchema)]

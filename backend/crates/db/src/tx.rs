@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use pos_core::{AppResult, PlatformCtx, TenantCtx};
+use pos_core::{AppError, AppResult, PlatformCtx, TenantCtx};
 use sqlx::{MySql, MySqlConnection, MySqlPool, Transaction};
 use uuid::Uuid;
 
@@ -16,6 +16,9 @@ pub struct TenantTx {
     tenant_id: Uuid,
     user_id: Uuid,
     branch_id: Option<Uuid>,
+    /// Branches the member may reach (`None` = every branch), for records
+    /// opened by id; see [`TenantTx::ensure_branch`].
+    allowed_branches: Option<Vec<Uuid>>,
 }
 
 impl TenantTx {
@@ -35,6 +38,46 @@ impl TenantTx {
 
     pub fn set_branch(&mut self, branch_id: Option<Uuid>) {
         self.branch_id = branch_id;
+    }
+
+    /// Limits records opened by id to these branches (`None` = every branch).
+    pub fn set_allowed_branches(&mut self, branches: Option<Vec<Uuid>>) {
+        self.allowed_branches = branches;
+    }
+
+    /// Refuses a record (sale, purchase, payment, stock location, ...) that
+    /// belongs to a branch outside the member's branch scope (BRN-R02). Lists
+    /// are already filtered by the selected branch; this covers ids sent
+    /// directly, which a member limited to some branches could otherwise use
+    /// to read or change another branch.
+    pub fn ensure_branch(&self, branch_id: Uuid) -> AppResult<()> {
+        match &self.allowed_branches {
+            Some(allowed) if !allowed.contains(&branch_id) => Err(AppError::Denied {
+                code: "BRANCH_NOT_ALLOWED",
+                message: "this belongs to a branch you cannot work in".into(),
+            }),
+            _ => Ok(()),
+        }
+    }
+
+    /// [`Self::ensure_branch`] for a row of `table` (a fixed table name with a
+    /// `branch_id` column) found by id. Costs a query only for members limited
+    /// to some branches; a missing row is left to the caller's own lookup.
+    pub async fn ensure_row_branch(&mut self, table: &'static str, id: Uuid) -> AppResult<()> {
+        if self.allowed_branches.is_none() {
+            return Ok(());
+        }
+        let sql = format!("SELECT branch_id FROM {table} WHERE tenant_id = ? AND id = ?");
+        let branch: Option<Option<Uuid>> = sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
+            .bind(self.tenant_id)
+            .bind(id)
+            .fetch_optional(&mut *self.inner)
+            .await
+            .map_err(map_db_error)?;
+        match branch {
+            Some(Some(branch_id)) => self.ensure_branch(branch_id),
+            _ => Ok(()),
+        }
     }
 
     pub async fn commit(self) -> AppResult<()> {
@@ -98,7 +141,7 @@ async fn init_tenant(mut inner: Transaction<'static, MySql>, ctx: &TenantCtx) ->
         .execute(&mut *inner)
         .await
         .map_err(map_db_error)?;
-    Ok(TenantTx { inner, tenant_id: ctx.tenant_id, user_id: ctx.user_id, branch_id: None })
+    Ok(TenantTx { inner, tenant_id: ctx.tenant_id, user_id: ctx.user_id, branch_id: None, allowed_branches: None })
 }
 
 /// A platform-level transaction (Super Admin, scheduled jobs). The guard

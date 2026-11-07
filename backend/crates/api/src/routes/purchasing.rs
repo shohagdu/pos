@@ -268,11 +268,17 @@ pub async fn cancel_purchase(
     path: web::Path<Uuid>,
     body: web::Json<ReasonInput>,
 ) -> Result<HttpResponse, ApiError> {
+    let id = path.into_inner();
+    let mut tx = auth.begin(&state).await?;
+    // Whoever can create bills may throw away a draft; cancelling an order
+    // that was placed or approved needs `purchases.cancel`.
     if !auth.access.can("purchases.cancel") {
         auth.require("purchases.create")?;
+        if purchases::get(&mut tx, id).await?.purchase.status != "draft" {
+            auth.require("purchases.cancel")?;
+        }
     }
-    let mut tx = auth.begin(&state).await?;
-    let detail = purchases::cancel_draft(&mut tx, &auth.ctx.meta, path.into_inner(), &body.reason).await?;
+    let detail = purchases::cancel_draft(&mut tx, &auth.ctx.meta, id, &body.reason).await?;
     tx.commit().await?;
     Ok(ok(detail))
 }

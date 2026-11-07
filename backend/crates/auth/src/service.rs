@@ -24,6 +24,9 @@ use crate::{
 /// AUTH-R03: 5 failures per identifier + IP within 15 minutes lock the pair for 15 minutes.
 pub const MAX_LOGIN_FAILURES: i64 = 5;
 pub const LOCKOUT_MINUTES: i64 = 15;
+/// Failed sign-ins for one account from all IPs together before it locks for
+/// [`LOCKOUT_MINUTES`] (the per-IP limit is [`MAX_LOGIN_FAILURES`]).
+pub const MAX_ACCOUNT_FAILURES: i64 = 20;
 
 /// Tokens for a signed-in session. The refresh token goes into an httpOnly
 /// cookie and never into a response body.
@@ -320,6 +323,23 @@ impl Auth {
         if failures >= MAX_LOGIN_FAILURES {
             return Err(locked_out(retry_after));
         }
+        // The per-IP limit alone is beaten by changing IPs (botnet, rotating
+        // proxies), so the account also locks after more failures from anywhere.
+        let (account_failures, account_retry): (i64, Option<i64>) = sqlx::query_as(
+            "SELECT COUNT(*), TIMESTAMPDIFF(SECOND, NOW(6), MAX(created_at) + INTERVAL ? MINUTE) FROM auth_events \
+             WHERE identifier = ? AND event = ? AND created_at > NOW(6) - INTERVAL ? MINUTE \
+             /* tenant-lint: allow security log, not tenant data */",
+        )
+        .bind(LOCKOUT_MINUTES)
+        .bind(identifier.as_str())
+        .bind(events::LOGIN_FAILURE)
+        .bind(LOCKOUT_MINUTES)
+        .fetch_one(pool)
+        .await
+        .map_err(map_db_error)?;
+        if account_failures >= MAX_ACCOUNT_FAILURES {
+            return Err(locked_out(account_retry));
+        }
 
         let user = find_user(pool, &identifier).await?;
         let valid = password::verify(password, user.as_ref().map(|u| u.password_hash.clone())).await?;
@@ -369,13 +389,20 @@ impl Auth {
         meta: &RequestMeta,
     ) -> AppResult<Tokens> {
         let issued =
-            session::create(conn, user_id, tenant.map(|t| t.tenant_id), new_id(), meta, self.refresh_ttl_days).await?;
-        self.tokens(user_id, issued, tenant)
+            session::create(conn, user_id, tenant.map(|t| t.tenant_id), new_id(), None, meta, self.refresh_ttl_days)
+                .await?;
+        self.tokens(user_id, issued, tenant, None)
     }
 
-    fn tokens(&self, user_id: Uuid, issued: session::IssuedSession, tenant: Option<TenantClaim>) -> AppResult<Tokens> {
+    fn tokens(
+        &self,
+        user_id: Uuid,
+        issued: session::IssuedSession,
+        tenant: Option<TenantClaim>,
+        impersonator: Option<Uuid>,
+    ) -> AppResult<Tokens> {
         Ok(Tokens {
-            access_token: self.keys.issue(user_id, issued.session_id, tenant)?,
+            access_token: self.keys.issue(user_id, issued.session_id, tenant, impersonator)?,
             expires_in: self.keys.ttl_secs(),
             refresh_token: issued.refresh_token,
             refresh_max_age_secs: self.refresh_ttl_days * 24 * 3600,
@@ -437,6 +464,22 @@ impl Auth {
         if current.expired || expected_user.is_some_and(|u| u != current.user_id) {
             return Err(session::invalid());
         }
+        if current.impersonator_id.is_some() && matches!(choice, TenantChoice::Switch(_)) {
+            return Err(impersonating());
+        }
+        if let Some(owner_id) = current.impersonator_id {
+            if !impersonation_still_valid(&mut tx, &current, owner_id).await? {
+                session::revoke_family(
+                    &mut tx,
+                    current.family_id,
+                    current.user_id,
+                    session::REASON_IMPERSONATION_ENDED,
+                )
+                .await?;
+                tx.commit().await.map_err(map_db_error)?;
+                return Err(session::invalid());
+            }
+        }
 
         let status: Option<String> = sqlx::query_scalar("SELECT status FROM users WHERE id = ?")
             .bind(current.user_id)
@@ -458,11 +501,21 @@ impl Auth {
             TenantChoice::Switch(Some(tid)) => Some(active_membership(&mut tx, tid, current.user_id).await??),
         };
 
+        // An impersonation lives only inside its business: once the staff member
+        // has lost access there, it ends instead of continuing without a tenant.
+        if current.impersonator_id.is_some() && tenant.is_none() {
+            session::revoke_family(&mut tx, current.family_id, current.user_id, session::REASON_IMPERSONATION_ENDED)
+                .await?;
+            tx.commit().await.map_err(map_db_error)?;
+            return Err(session::invalid());
+        }
+
         let issued = session::create(
             &mut tx,
             current.user_id,
             tenant.map(|t| t.tenant_id),
             current.family_id,
+            current.impersonator_id,
             meta,
             self.refresh_ttl_days,
         )
@@ -473,7 +526,248 @@ impl Auth {
             events::record(&mut tx, events::TENANT_SWITCHED, subject, meta, json!({})).await?;
         }
         tx.commit().await.map_err(map_db_error)?;
-        self.tokens(current.user_id, issued, tenant)
+        self.tokens(current.user_id, issued, tenant, current.impersonator_id)
+    }
+
+    // ---------------------------------------------------------- impersonation
+
+    /// The owner of the token's business signs in as one of its staff
+    /// (`membership_id`). The owner's session on this device ends and a new
+    /// one starts for the staff member, marked with the owner, limited to this
+    /// business; [`Self::stop_impersonation`] goes back. Owners and the
+    /// caller themself cannot be chosen; other businesses' members are 404.
+    pub async fn impersonate(
+        &self,
+        pool: &MySqlPool,
+        refresh_token: &str,
+        claims: &AccessClaims,
+        membership_id: Uuid,
+        meta: &RequestMeta,
+    ) -> AppResult<Tokens> {
+        if claims.imp.is_some() {
+            return Err(impersonating());
+        }
+        let Some(tenant_id) = claims.tid else {
+            return Err(AppError::Denied { code: "TENANT_REQUIRED", message: "choose a business first".into() });
+        };
+        let mut tx = pool.begin().await.map_err(map_db_error)?;
+        let Some(current) = session::lock_by_token(&mut tx, refresh_token).await? else {
+            return Err(session::invalid());
+        };
+        if current.revoked || current.expired || current.user_id != claims.sub || current.tenant_id != Some(tenant_id) {
+            return Err(session::invalid());
+        }
+
+        let owner: Option<(bool, String)> =
+            sqlx::query_as("SELECT is_owner, status FROM tenant_memberships WHERE tenant_id = ? AND user_id = ?")
+                .bind(tenant_id)
+                .bind(claims.sub)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(map_db_error)?;
+        if !matches!(owner, Some((true, ref status)) if status == "active") {
+            return Err(AppError::Denied {
+                code: "OWNER_ONLY",
+                message: "only the business owner can sign in as a staff member".into(),
+            });
+        }
+
+        let target: Option<(Uuid, bool, String, String)> = sqlx::query_as(
+            "SELECT m.user_id, m.is_owner, m.status, u.status FROM tenant_memberships m \
+             JOIN users u ON u.id = m.user_id WHERE m.tenant_id = ? AND m.id = ? AND m.status <> 'removed'",
+        )
+        .bind(tenant_id)
+        .bind(membership_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_db_error)?;
+        let Some((target_user, target_is_owner, member_status, user_status)) = target else {
+            return Err(AppError::NotFound);
+        };
+        if target_user == claims.sub || target_is_owner {
+            return Err(AppError::Denied {
+                code: "CANNOT_IMPERSONATE",
+                message: "you cannot sign in as yourself or as an owner".into(),
+            });
+        }
+        if member_status != "active" || user_status != "active" {
+            return Err(AppError::Conflict {
+                code: "MEMBER_NOT_ACTIVE",
+                message: "this staff member is not active; reactivate them first".into(),
+            });
+        }
+        let tenant = active_membership(&mut tx, tenant_id, target_user).await??;
+
+        session::revoke_family(&mut tx, current.family_id, claims.sub, session::REASON_IMPERSONATION_STARTED).await?;
+        let issued = session::create(
+            &mut tx,
+            target_user,
+            Some(tenant_id),
+            new_id(),
+            Some(claims.sub),
+            meta,
+            self.refresh_ttl_days,
+        )
+        .await?;
+        let subject = EventSubject { user_id: Some(claims.sub), tenant_id: Some(tenant_id), identifier: None };
+        events::record(
+            &mut tx,
+            events::IMPERSONATION_STARTED,
+            subject,
+            meta,
+            json!({ "target_user_id": target_user, "membership_id": membership_id }),
+        )
+        .await?;
+        tx.commit().await.map_err(map_db_error)?;
+        self.tokens(target_user, issued, Some(tenant), Some(claims.sub))
+    }
+
+    /// Platform support: a platform staff member opens a business by signing in
+    /// as its owner (the same impersonation machinery as an owner signing in as
+    /// staff). The caller has already checked the staff role; this re-checks it
+    /// inside the transaction. The staff member's own session is replaced and
+    /// `POST /auth/impersonate/stop` brings them back with no business chosen
+    /// (the admin console). Audit entries written meanwhile name the staff
+    /// member as impersonator. Refused for the platform tenant itself.
+    pub async fn open_business(
+        &self,
+        pool: &MySqlPool,
+        refresh_token: &str,
+        claims: &AccessClaims,
+        tenant_id: Uuid,
+        meta: &RequestMeta,
+    ) -> AppResult<Tokens> {
+        if claims.imp.is_some() {
+            return Err(impersonating());
+        }
+        let mut tx = pool.begin().await.map_err(map_db_error)?;
+        let Some(current) = session::lock_by_token(&mut tx, refresh_token).await? else {
+            return Err(session::invalid());
+        };
+        if current.revoked || current.expired || current.user_id != claims.sub || current.impersonator_id.is_some() {
+            return Err(session::invalid());
+        }
+        if !platform_support_staff(&mut tx, claims.sub).await? {
+            return Err(AppError::Forbidden);
+        }
+
+        let slug: Option<String> = sqlx::query_scalar("SELECT slug FROM tenants WHERE id = ?")
+            .bind(tenant_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(map_db_error)?;
+        if slug.is_none_or(|s| s == PLATFORM_TENANT_SLUG) {
+            return Err(AppError::NotFound);
+        }
+        let owner: Option<(Uuid, String, String)> = sqlx::query_as(
+            "SELECT m.user_id, m.status, u.status FROM tenant_memberships m JOIN users u ON u.id = m.user_id \
+             WHERE m.tenant_id = ? AND m.is_owner ORDER BY m.status = 'active' DESC, m.created_at LIMIT 1",
+        )
+        .bind(tenant_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(map_db_error)?;
+        let Some((owner_id, member_status, user_status)) = owner else {
+            return Err(AppError::Conflict {
+                code: "NO_OWNER",
+                message: "this business has no owner to sign in as".into(),
+            });
+        };
+        if member_status != "active" || user_status != "active" {
+            return Err(AppError::Conflict {
+                code: "OWNER_NOT_ACTIVE",
+                message: "the owner of this business is not active".into(),
+            });
+        }
+        if owner_id == claims.sub {
+            return Err(AppError::Denied {
+                code: "CANNOT_IMPERSONATE",
+                message: "you own this business; switch to it instead".into(),
+            });
+        }
+        let tenant = active_membership(&mut tx, tenant_id, owner_id).await??;
+
+        session::revoke_family(&mut tx, current.family_id, claims.sub, session::REASON_IMPERSONATION_STARTED).await?;
+        let issued = session::create(
+            &mut tx,
+            owner_id,
+            Some(tenant_id),
+            new_id(),
+            Some(claims.sub),
+            meta,
+            self.refresh_ttl_days,
+        )
+        .await?;
+        let subject = EventSubject { user_id: Some(claims.sub), tenant_id: Some(tenant_id), identifier: None };
+        events::record(
+            &mut tx,
+            events::IMPERSONATION_STARTED,
+            subject,
+            meta,
+            json!({ "target_user_id": owner_id, "platform_support": true }),
+        )
+        .await?;
+        tx.commit().await.map_err(map_db_error)?;
+        self.tokens(owner_id, issued, Some(tenant), Some(claims.sub))
+    }
+
+    /// Ends an impersonation and signs the owner back in to the same business
+    /// (or with no business if they are no longer its active owner).
+    pub async fn stop_impersonation(
+        &self,
+        pool: &MySqlPool,
+        refresh_token: &str,
+        claims: &AccessClaims,
+        meta: &RequestMeta,
+    ) -> AppResult<Tokens> {
+        let mut tx = pool.begin().await.map_err(map_db_error)?;
+        let Some(current) = session::lock_by_token(&mut tx, refresh_token).await? else {
+            return Err(session::invalid());
+        };
+        let Some(owner_id) = current.impersonator_id else {
+            return Err(AppError::Conflict {
+                code: "NOT_IMPERSONATING",
+                message: "you are not signed in as someone else".into(),
+            });
+        };
+        if current.revoked || current.expired || current.user_id != claims.sub || claims.imp != Some(owner_id) {
+            return Err(session::invalid());
+        }
+        let still_valid = impersonation_still_valid(&mut tx, &current, owner_id).await?;
+        session::revoke_family(&mut tx, current.family_id, current.user_id, session::REASON_IMPERSONATION_ENDED)
+            .await?;
+        // Going back mints an owner session without a password, so it is only
+        // allowed while the owner is still the active owner here and within the
+        // impersonation's lifetime; otherwise the owner signs in again.
+        if !still_valid {
+            tx.commit().await.map_err(map_db_error)?;
+            return Err(session::invalid());
+        }
+        let tenant = match current.tenant_id {
+            Some(tid) => active_membership(&mut tx, tid, owner_id).await?.ok(),
+            None => None,
+        };
+        let issued = session::create(
+            &mut tx,
+            owner_id,
+            tenant.map(|t| t.tenant_id),
+            new_id(),
+            None,
+            meta,
+            self.refresh_ttl_days,
+        )
+        .await?;
+        let subject = EventSubject { user_id: Some(owner_id), tenant_id: current.tenant_id, identifier: None };
+        events::record(
+            &mut tx,
+            events::IMPERSONATION_ENDED,
+            subject,
+            meta,
+            json!({ "target_user_id": current.user_id }),
+        )
+        .await?;
+        tx.commit().await.map_err(map_db_error)?;
+        self.tokens(owner_id, issued, tenant, None)
     }
 
     // ------------------------------------------------------------------ logout
@@ -518,15 +812,16 @@ impl Auth {
         meta: &RequestMeta,
     ) -> AppResult<()> {
         let identifier = Identifier::parse(raw_identifier, "identifier")?;
+        // The general rules come first and the personal ones only after the code
+        // matched: otherwise "password too short" for a real account versus
+        // "wrong code" for an unknown one would tell anyone who has an account.
+        password::validate_policy(&new_password, "new_password", &[])?;
         let Some(user) = find_user(pool, &identifier).await?.filter(|u| u.status == "active") else {
             return Err(AppError::Unprocessable {
                 code: "OTP_INVALID",
                 message: "the code is wrong or has expired".into(),
             });
         };
-        let personal =
-            [user.full_name.as_str(), user.phone.as_deref().unwrap_or(""), user.email.as_deref().unwrap_or("")];
-        password::validate_policy(&new_password, "new_password", &personal)?;
         let matched = otp::check(pool, &self.otp_pepper, identifier.as_str(), OtpPurpose::ResetPassword, code).await?;
         if matched.user_id != Some(user.id) {
             return Err(AppError::Unprocessable {
@@ -534,6 +829,9 @@ impl Auth {
                 message: "the code is wrong or has expired".into(),
             });
         }
+        let personal =
+            [user.full_name.as_str(), user.phone.as_deref().unwrap_or(""), user.email.as_deref().unwrap_or("")];
+        password::validate_policy(&new_password, "new_password", &personal)?;
         let password_hash = password::hash(new_password).await?;
 
         let mut tx = pool.begin().await.map_err(map_db_error)?;
@@ -663,6 +961,14 @@ impl Auth {
     }
 }
 
+/// Refused while the owner is signed in as a staff member.
+pub fn impersonating() -> AppError {
+    AppError::Denied {
+        code: "IMPERSONATING",
+        message: "not available while signed in as a staff member; return to your account first".into(),
+    }
+}
+
 fn locked_out(retry_after: Option<i64>) -> AppError {
     AppError::RateLimited {
         code: "TOO_MANY_ATTEMPTS",
@@ -690,6 +996,55 @@ async fn find_user(pool: &MySqlPool, identifier: &Identifier) -> AppResult<Optio
 }
 
 /// The membership to sign in to: `Ok(claim)`, or `Err` if it is not usable.
+/// How long a "signed in as staff" session may last in total, refreshes included.
+const IMPERSONATION_MAX_HOURS: i64 = 8;
+
+/// An impersonation continues only while whoever started it is still an
+/// active user and the active owner of that business (or active platform
+/// support staff, see [`AuthService::open_business`]), and for at most
+/// [`IMPERSONATION_MAX_HOURS`] from its start.
+async fn impersonation_still_valid(
+    conn: &mut MySqlConnection,
+    current: &session::SessionRow,
+    owner_id: Uuid,
+) -> AppResult<bool> {
+    let Some(tenant_id) = current.tenant_id else { return Ok(false) };
+    let owner: Option<i64> = sqlx::query_scalar(
+        "SELECT 1 FROM tenant_memberships m JOIN users u ON u.id = m.user_id \
+         WHERE m.tenant_id = ? AND m.user_id = ? AND m.is_owner AND m.status = 'active' AND u.status = 'active'",
+    )
+    .bind(tenant_id)
+    .bind(owner_id)
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(map_db_error)?;
+    // Or a platform staff member who opened the business for support.
+    if owner.is_none() && !platform_support_staff(conn, owner_id).await? {
+        return Ok(false);
+    }
+    let started = session::family_started_at(conn, current.family_id).await?;
+    Ok(started.is_some_and(|at| chrono::Utc::now() - at < chrono::Duration::hours(IMPERSONATION_MAX_HOURS)))
+}
+
+/// The platform tenant's slug (`pos_platform::tenants::PLATFORM_SLUG`); it is
+/// never opened as a business.
+const PLATFORM_TENANT_SLUG: &str = "platform";
+
+/// Whether the user is active platform staff allowed to open businesses.
+pub async fn platform_support_staff(conn: &mut MySqlConnection, user_id: Uuid) -> AppResult<bool> {
+    // Roles allowed to open a business (ADM-R11): `StaffRole::can_open_business`.
+    let found: Option<i64> = sqlx::query_scalar(
+        "SELECT 1 FROM platform_staff s JOIN users u ON u.id = s.user_id \
+         WHERE s.user_id = ? AND s.status = 'active' AND u.status = 'active' \
+         AND s.staff_role IN ('platform_owner', 'support')",
+    )
+    .bind(user_id)
+    .fetch_optional(conn)
+    .await
+    .map_err(map_db_error)?;
+    Ok(found.is_some())
+}
+
 async fn active_membership(
     conn: &mut MySqlConnection,
     tenant_id: Uuid,

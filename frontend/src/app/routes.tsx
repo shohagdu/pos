@@ -49,6 +49,7 @@ import { PurchasesPage } from '../features/purchases/PurchasesPage'
 import { ShiftReportPage } from '../features/registers/ShiftReportPage'
 import { ShiftsPage } from '../features/registers/ShiftsPage'
 import { AgingReportPage } from '../features/reports/AgingReportPage'
+import { DuesReportPage } from '../features/reports/DuesReportPage'
 import { BalanceSheetPage } from '../features/reports/BalanceSheetPage'
 import { DiscountReportPage } from '../features/reports/DiscountReportPage'
 import { ExpenseReportPage } from '../features/reports/ExpenseReportPage'
@@ -224,6 +225,8 @@ export const routes: RouteObject[] = [
                   { path: '/reports/balance-sheet', element: <BalanceSheetPage /> },
                   { path: '/reports/general-ledger', element: <GeneralLedgerPage /> },
                   { path: '/reports/aging', element: <AgingReportPage /> },
+                  { path: '/reports/customer-dues', element: <DuesReportPage key="customers" party="customers" /> },
+                  { path: '/reports/supplier-dues', element: <DuesReportPage key="suppliers" party="suppliers" /> },
                   { path: '/reports/vat', element: <VatReportPage /> },
                   { path: '/reports/discounts', element: <DiscountReportPage /> },
                   { path: '/reports/product-movement', element: <ProductMovementPage /> },

@@ -40,6 +40,10 @@ pub struct NewBusiness {
     pub bin_number: Option<String>,
     #[serde(default)]
     pub trade_license_no: Option<String>,
+    /// `BD` (default) or `IT`. Italy starts with EUR, Europe/Rome, IVA rates
+    /// and tax-inclusive prices, and `bin_number` is the Partita IVA.
+    #[serde(default)]
+    pub country_code: Option<String>,
     /// UI language for the business; defaults to the owner's.
     #[serde(default)]
     pub locale: Option<String>,
@@ -136,8 +140,19 @@ pub async fn provision(
     let (phone, email) = validate_contact(input.phone, input.email)?;
     let address = clean(input.address, "address", 500)?;
     let district = clean(input.district, "district", 100)?;
-    let bin_number = clean(input.bin_number, "bin_number", 30)?;
+    let mut bin_number = clean(input.bin_number, "bin_number", 30)?;
     let trade_license_no = clean(input.trade_license_no, "trade_license_no", 50)?;
+    let country = match input.country_code.as_deref().map(|c| c.trim().to_uppercase()) {
+        None => Country::Bangladesh,
+        Some(c) if c.is_empty() || c == "BD" => Country::Bangladesh,
+        Some(c) if c == "IT" => Country::Italy,
+        Some(_) => {
+            return Err(AppError::field("country_code", "UNSUPPORTED_COUNTRY", "choose Bangladesh or Italy"));
+        }
+    };
+    if country == Country::Italy {
+        bin_number = bin_number.as_deref().map(crate::settings::partita_iva).transpose()?;
+    }
 
     let owner: Option<(String, bool, String)> = sqlx::query_as(
         "SELECT full_name, phone_verified_at IS NOT NULL, locale FROM users WHERE id = ? AND status = 'active'",
@@ -197,6 +212,7 @@ pub async fn provision(
                 district: district.as_deref(),
                 bin_number: bin_number.as_deref(),
                 trade_license_no: trade_license_no.as_deref(),
+                country,
                 owner_name: &owner_name,
             };
             match provision_tx(pool, user_id, &profile, meta).await {
@@ -221,7 +237,50 @@ struct Profile<'a> {
     district: Option<&'a str>,
     bin_number: Option<&'a str>,
     trade_license_no: Option<&'a str>,
+    country: Country,
     owner_name: &'a str,
+}
+
+/// Where the business is: picks the regional defaults it starts with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Country {
+    Bangladesh,
+    Italy,
+}
+
+impl Country {
+    fn code(self) -> &'static str {
+        match self {
+            Self::Bangladesh => "BD",
+            Self::Italy => "IT",
+        }
+    }
+
+    fn currency(self) -> &'static str {
+        match self {
+            Self::Bangladesh => "BDT",
+            Self::Italy => "EUR",
+        }
+    }
+
+    fn timezone(self) -> &'static str {
+        match self {
+            Self::Bangladesh => "Asia/Dhaka",
+            Self::Italy => "Europe/Rome",
+        }
+    }
+
+    fn tax_rates(self) -> &'static [(&'static str, i64, u32, bool)] {
+        match self {
+            Self::Bangladesh => TAX_RATES,
+            Self::Italy => IT_TAX_RATES,
+        }
+    }
+
+    /// Italian shelf prices include IVA.
+    fn prices_include_tax(self) -> bool {
+        self == Self::Italy
+    }
 }
 
 async fn provision_tx(
@@ -236,7 +295,8 @@ async fn provision_tx(
 
     sqlx::query(
         "INSERT INTO tenants (id, slug, name, business_type, status, locale, phone, email, address, district, \
-         bin_number, trade_license_no) VALUES (?, ?, ?, ?, 'provisioning', ?, ?, ?, ?, ?, ?, ?)",
+         bin_number, trade_license_no, country_code, currency_code, timezone) \
+         VALUES (?, ?, ?, ?, 'provisioning', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(tenant_id)
     .bind(p.slug)
@@ -249,19 +309,26 @@ async fn provision_tx(
     .bind(p.district)
     .bind(p.bin_number)
     .bind(p.trade_license_no)
+    .bind(p.country.code())
+    .bind(p.country.currency())
+    .bind(p.country.timezone())
     .execute(&mut *tx)
     .await
     .map_err(map_db_error)?;
 
-    let default_tax_rate_id = create_catalog_defaults(&mut tx).await?;
-    sqlx::query("INSERT INTO tenant_settings (tenant_id, default_tax_rate_id, extra, updated_by) VALUES (?, ?, ?, ?)")
-        .bind(tenant_id)
-        .bind(default_tax_rate_id)
-        .bind(onboarding::initial_extra())
-        .bind(user_id)
-        .execute(&mut *tx)
-        .await
-        .map_err(map_db_error)?;
+    let default_tax_rate_id = create_catalog_defaults(&mut tx, p.country.tax_rates()).await?;
+    sqlx::query(
+        "INSERT INTO tenant_settings (tenant_id, default_tax_rate_id, prices_include_tax, extra, updated_by) \
+         VALUES (?, ?, ?, ?, ?)",
+    )
+    .bind(tenant_id)
+    .bind(default_tax_rate_id)
+    .bind(p.country.prices_include_tax())
+    .bind(onboarding::initial_extra())
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(map_db_error)?;
 
     let branch_id = create_default_branch(&mut tx, p, user_id).await?;
     let owner_role_id = create_system_roles(&mut tx).await?;
@@ -344,6 +411,15 @@ const TAX_RATES: &[(&str, i64, u32, bool)] = &[
     ("VAT 15%", 15, 0, false),
 ];
 
+/// Italy: aliquote IVA (ordinaria 22%, ridotte 10/5/4%) and exempt.
+const IT_TAX_RATES: &[(&str, i64, u32, bool)] = &[
+    ("IVA 22%", 22, 0, true),
+    ("IVA 10%", 10, 0, false),
+    ("IVA 5%", 5, 0, false),
+    ("IVA 4%", 4, 0, false),
+    ("Esente IVA", 0, 0, false),
+];
+
 /// (name, short name, fractional quantities?) — DB design §13.2.
 const UNITS: &[(&str, &str, bool)] = &[
     ("Piece", "pcs", false),
@@ -358,10 +434,10 @@ const UNITS: &[(&str, &str, bool)] = &[
 
 /// Tax rates and units; returns the default tax rate. Migration 0009 adds the
 /// same rows for businesses created before the catalogue existed.
-async fn create_catalog_defaults(tx: &mut TenantTx) -> AppResult<Uuid> {
+async fn create_catalog_defaults(tx: &mut TenantTx, tax_rates: &[(&str, i64, u32, bool)]) -> AppResult<Uuid> {
     let tenant_id = tx.tenant_id();
     let mut default_id = None;
-    for &(name, mantissa, scale, is_default) in TAX_RATES {
+    for &(name, mantissa, scale, is_default) in tax_rates {
         let id = new_id();
         sqlx::query("INSERT INTO tax_rates (tenant_id, id, name, rate_pct, is_default) VALUES (?, ?, ?, ?, ?)")
             .bind(tenant_id)

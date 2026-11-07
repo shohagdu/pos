@@ -66,6 +66,66 @@ describe('users & roles', () => {
     expect(calls.some((c) => c.path === '/api/v1/invitations' && c.method === 'POST')).toBe(false)
   })
 
+  it('lets the owner sign in as a staff member and return', async () => {
+    const cashier = {
+      id: 'm9', user_id: 'u9', full_name: 'Karim Cashier', phone: '+8801711000202', email: null, status: 'active', is_owner: false,
+      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }], joined_at: '2026-11-07T00:00:00Z', last_login_at: null,
+    }
+    const owner = { ...cashier, id: 'm-t1', user_id: 'u1', full_name: 'Rahim Uddin', is_owner: true, roles: [] }
+    let as: 'owner' | 'cashier' = 'owner'
+    const base = signedIn()
+    const calls = mockApi({
+      ...base,
+      'GET /api/v1/auth/me': () =>
+        Response.json(
+          as === 'owner'
+            ? base['GET /api/v1/auth/me']
+            : {
+                user: { ...user, id: 'u9', full_name: 'Karim Cashier' },
+                memberships: [{ ...membership('t1', 'Rahim Store'), is_owner: false }],
+                tenant: { ...currentTenant('t1', 'Rahim Store', ['pos.sell', 'sales.view']), membership_id: 'm9', is_owner: false },
+                impersonator: { user_id: 'u1', full_name: 'Rahim Uddin' },
+              },
+        ),
+      'GET /api/v1/members': [owner, cashier],
+      'GET /api/v1/invitations': [],
+      'GET /api/v1/dashboard': {},
+      'GET /api/v1/onboarding': { steps: [], dismissed: true, complete: false },
+      'POST /api/v1/auth/impersonate': () => {
+        as = 'cashier'
+        return Response.json(token('t1'))
+      },
+      'POST /api/v1/auth/impersonate/stop': () => {
+        as = 'owner'
+        return Response.json(token('t1'))
+      },
+    })
+    const { router } = renderRoute('/users')
+    // Only staff, never the owner's own row.
+    const buttons = await screen.findAllByRole('button', { name: 'Sign in as' })
+    expect(buttons).toHaveLength(1)
+    await userEvent.click(buttons[0]!)
+    expect(await screen.findByText('You are signed in as Karim Cashier')).toBeInTheDocument()
+    await waitFor(() => expect(router.state.location.pathname).toBe('/'))
+    expect(calls.find((c) => c.path === '/api/v1/auth/impersonate')?.body).toEqual({ membership_id: 'm9' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Return to my account' }))
+    await waitFor(() => expect(screen.queryByText('You are signed in as Karim Cashier')).not.toBeInTheDocument())
+    await waitFor(() => expect(router.state.location.pathname).toBe('/users'))
+    expect(calls.some((c) => c.path === '/api/v1/auth/impersonate/stop')).toBe(true)
+  })
+
+  it('does not offer sign-in-as to staff who are not the owner', async () => {
+    const cashier = {
+      id: 'm9', user_id: 'u9', full_name: 'Karim Cashier', phone: '+8801711000202', email: null, status: 'active', is_owner: false,
+      roles: [], joined_at: null, last_login_at: null,
+    }
+    mockApi({ ...signedIn(ownerPerms, false), 'GET /api/v1/members': [cashier], 'GET /api/v1/invitations': [] })
+    renderRoute('/users')
+    expect(await screen.findByText('Karim Cashier')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Sign in as' })).not.toBeInTheDocument()
+  })
+
   it('tells when the number already had an account', async () => {
     const member = {
       id: 'm8', user_id: 'u8', full_name: 'Rina', phone: '+8801711000203', email: null, status: 'active', is_owner: false,

@@ -5,7 +5,9 @@
 use actix_web::{HttpResponse, get, web};
 use pos_reporting::{
     DateRange,
-    analysis::{self, AgingQuery, AgingReport, DiscountReport, MovementQuery, ProductMovement, VatSummary},
+    analysis::{
+        self, AgingQuery, AgingReport, DiscountReport, DueReport, DuesQuery, MovementQuery, ProductMovement, VatSummary,
+    },
     dashboard::{self, Dashboard, ProfitEstimate},
     expenses::{self, ExpenseSummary},
     purchases::{self, PurchaseReport},
@@ -25,6 +27,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(expense_summary)
         .service(profit_estimate)
         .service(aging_report)
+        .service(dues_report)
         .service(vat_summary)
         .service(discount_report)
         .service(product_movement);
@@ -183,6 +186,23 @@ pub async fn aging_report(
     auth.require("reports.parties")?;
     let mut tx = auth.begin(&state).await?;
     let report = analysis::aging(&mut tx, &query).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(report))
+}
+
+/// Unpaid documents one by one: sales customers still owe on
+/// (`party=customers`) or received purchases still to pay (`party=suppliers`).
+#[utoipa::path(get, path = "/api/v1/reports/dues", tag = "reports", params(DuesQuery), security(("bearer" = [])),
+    responses((status = 200, body = DueReport), (status = 400, body = crate::error::Problem)))]
+#[get("/reports/dues")]
+pub async fn dues_report(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    query: web::Query<DuesQuery>,
+) -> Result<HttpResponse, ApiError> {
+    auth.require("reports.parties")?;
+    let mut tx = auth.begin(&state).await?;
+    let report = analysis::dues(&mut tx, &query).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(report))
 }

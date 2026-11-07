@@ -25,6 +25,8 @@ export interface PosItem {
   tax_rate_pct: string
   /** Stock at the sale location; `null` for services. */
   stock: string | null
+  /** The product photo (`GET /files/{id}`); missing on carts held before photos were shown. */
+  image_file_id?: string | null
   /** The search text matched a barcode or SKU exactly (scan → add). */
   exact: boolean
 }
@@ -175,7 +177,15 @@ export interface ReceiptInfo {
   branch_name: string
   address: string | null
   phone: string | null
+  /** `BD` or `IT`: which registration lines print, and their labels. */
+  country_code?: string
+  legal_name?: string | null
+  /** BIN; in Italy the Partita IVA. */
   bin_number: string | null
+  /** Italy only. */
+  tax_code?: string | null
+  rea_number?: string | null
+  registry_office?: string | null
   receipt_header: string | null
   receipt_footer: string | null
   receipt_paper: '80mm' | '58mm' | 'a4' | string

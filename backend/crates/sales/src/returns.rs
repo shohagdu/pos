@@ -205,6 +205,7 @@ pub async fn list(tx: &mut TenantTx, filter: &ReturnFilter, can_view_cost: bool)
 }
 
 pub async fn get(tx: &mut TenantTx, id: Uuid, can_view_cost: bool) -> AppResult<SaleReturnDetail> {
+    tx.ensure_row_branch("sale_returns", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SELECT);
     q.push_bind(tenant_id).push(" AND r.id = ").push_bind(id);
@@ -303,6 +304,7 @@ pub async fn create(
     .await
     .map_err(map_db_error)?
     .ok_or_else(|| AppError::field("sale_id", "NOT_FOUND", "the invoice was not found"))?;
+    tx.ensure_branch(sale.branch_id)?;
     if !matches!(sale.status.as_str(), "completed" | "partially_returned") {
         return Err(AppError::Unprocessable {
             code: "SALE_NOT_RETURNABLE",

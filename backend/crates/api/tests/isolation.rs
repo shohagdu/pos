@@ -43,6 +43,9 @@ enum Access {
     QueryRead(&'static str),
     /// Super Admin console: a business owner who is not platform staff gets `403`.
     Platform,
+    /// A POST that reads (or fills in) records named in its body: with A's ids
+    /// or codes it answers `200` and shows nothing of A's.
+    BodyRead,
 }
 
 /// The classification of every API operation. Add new routes here.
@@ -66,6 +69,16 @@ fn access(method: &str, path: &str) -> Option<Access> {
         ) => Public,
         // Checked separately below: switching into a business you are not a member of.
         ("post", "/api/v1/auth/switch-tenant") => Public,
+        // Checked in tests/impersonation.rs: another business's member is a 404.
+        ("post", "/api/v1/auth/impersonate" | "/api/v1/auth/impersonate/stop") => Public,
+        // Platform staff only (a business owner gets 403); see tests/impersonation.rs.
+        ("post", "/api/v1/auth/open-business") => Platform,
+        // The caller's own password (checked in tests/auth.rs).
+        ("post", "/api/v1/auth/password/change") => Public,
+        ("get", "/api/v1/products/next-codes" | "/api/v1/sale-warranties") => TenantRead,
+        // Label facts and in-store barcodes by variant id; product lookup by SKU/barcode.
+        ("post", "/api/v1/labels" | "/api/v1/labels/generate-barcodes" | "/api/v1/products/lookup") => BodyRead,
+        ("post", "/api/v1/members" | "/api/v1/products/import") => TenantWrite,
         ("get", "/api/v1/auth/me" | "/api/v1/auth/sessions") => UserRead,
         ("delete", "/api/v1/auth/sessions/{id}") => Resource,
         (
@@ -88,7 +101,6 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/stock"
             | "/api/v1/stock/valuation"
             | "/api/v1/stock/batches"
-            | "/api/v1/stock/batch-options"
             | "/api/v1/stock/movements"
             | "/api/v1/stock-adjustments"
             | "/api/v1/customers"
@@ -134,11 +146,12 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/notifications/unread-count"
             | "/api/v1/notification-preferences"
             | "/api/v1/reports/aging"
+            | "/api/v1/reports/dues"
             | "/api/v1/reports/vat-summary"
             | "/api/v1/reports/discounts"
             | "/api/v1/reports/product-movement",
         ) => TenantRead,
-        ("get", "/api/v1/purchases/last-prices") => QueryRead("variant_ids"),
+        ("get", "/api/v1/purchases/last-prices" | "/api/v1/stock/batch-options") => QueryRead("variant_ids"),
         ("get", "/api/v1/subscription/billing" | "/api/v1/subscription/export") => TenantRead,
         ("post", "/api/v1/subscription/invoices") => TenantWrite,
         ("post", "/api/v1/subscription/invoices/{id}/claims") => Resource,
@@ -404,7 +417,7 @@ impl Victim {
             &self.trade.sale_return_id
         } else if path.starts_with("/api/v1/held-carts/") {
             &self.trade.held_cart_id
-        } else if path.starts_with("/api/v1/purchases/last-prices") {
+        } else if path.starts_with("/api/v1/purchases/last-prices") || path.starts_with("/api/v1/stock/batch-options") {
             &self.trade.variant_id
         } else if path.starts_with("/api/v1/purchases/") {
             &self.trade.purchase_id
@@ -620,13 +633,22 @@ fn body_for(method: &str, path: &str, b_role: &str, b_unit: &str, a: &Trade) -> 
             json!({ "name": "Bob Product", "unit_id": b_unit, "selling_price": "10", "barcodes": ["4006381333931"] })
         }
         ("put", "/api/v1/products/{id}") => json!({ "name": "Hijacked", "unit_id": b_unit, "selling_price": "1" }),
+        ("post", "/api/v1/labels" | "/api/v1/labels/generate-barcodes") => json!({ "variant_ids": [a.variant_id] }),
+        // Alice's SKU and her barcode (which Bob may reuse for his own product).
+        ("post", "/api/v1/products/lookup") => json!({ "codes": ["ALICE-SKU-1", "4006381333931"] }),
+        ("post", "/api/v1/members") => json!({
+            "full_name": "Bob Staff", "phone": "01711000498", "password": "Shop-pass-2026", "role_ids": [b_role],
+        }),
+        // Opening stock into Alice's location must be refused.
+        ("post", "/api/v1/products/import") => json!({
+            "products": [{ "name": "Bob Import", "sku": "BOB-IMP-1", "unit_id": b_unit, "selling_price": "10" }],
+            "opening_stock": [{ "row": 0, "quantity": "1" }],
+            "location_id": a.location_id,
+        }),
         ("post", _) | ("patch", _) | ("put", _) => json!({}),
         _ => return None,
     })
 }
-
-/// Enough of a PNG for the upload's type check.
-const PNG: &[u8] = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR-pretend-image-data";
 
 fn request(method: &str, uri: &str, body: Option<Value>) -> Req {
     match (method, body) {
@@ -740,7 +762,7 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
     .await;
     let photo = call(
         &srv,
-        Req::put_bytes(&format!("/api/v1/products/{}/image", id_of(&product)), PNG, "image/png")
+        Req::put_bytes(&format!("/api/v1/products/{}/image", id_of(&product)), common::PNG, "image/png")
             .bearer(&alice.token)
             .build(),
     )
@@ -824,6 +846,7 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
                     }
                     p if p.contains("/admin/plans") => json!({ "name": "Hijack", "is_public": true }),
                     p if p.ends_with("/licence") => json!({ "kind": "trial", "days": 7, "reason": "Hijack" }),
+                    "/api/v1/auth/open-business" => json!({ "tenant_id": victim.tenant_id, "reason": "Hijack" }),
                     _ => json!({}),
                 };
                 let req = request(&method, &uri, Some(body)).bearer(&bob.token);
@@ -831,6 +854,18 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
                 if res.status != StatusCode::FORBIDDEN || res.code() != "PLATFORM_STAFF_ONLY" {
                     failures
                         .push(format!("{label}: expected 403 PLATFORM_STAFF_ONLY, got {} {}", res.status, res.body));
+                }
+            }
+            Access::BodyRead => {
+                let body = body_for(&method, &path, &b_role, &b_unit, &victim.trade);
+                let res = call(&srv, request(&method, &path, body).bearer(&bob.token).build()).await;
+                if res.status != StatusCode::OK {
+                    failures.push(format!("{label}: expected 200, got {} {}", res.status, res.body));
+                }
+                for marker in victim.markers() {
+                    if res.body.to_string().contains(marker) {
+                        failures.push(format!("{label}: response leaks `{marker}`"));
+                    }
                 }
             }
             Access::QueryResource(param) => {
@@ -864,7 +899,7 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
                 let uri = path.replace("{id}", victim.id_for(&path));
                 // A real image, so the 404 comes from the product lookup, not from the upload checks.
                 let req = if (method.as_str(), path.as_str()) == ("put", "/api/v1/products/{id}/image") {
-                    Req::put_bytes(&uri, PNG, "image/png")
+                    Req::put_bytes(&uri, common::PNG, "image/png")
                 } else {
                     request(&method, &uri, body_for(&method, &path, &b_role, &b_unit, &victim.trade))
                 };

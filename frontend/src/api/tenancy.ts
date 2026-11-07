@@ -5,7 +5,10 @@ import { apiFetch } from './client'
 export const BUSINESS_TYPES = ['retail', 'grocery', 'fashion', 'electronics', 'wholesale', 'pharmacy', 'restaurant', 'other'] as const
 export type BusinessType = (typeof BUSINESS_TYPES)[number]
 
-export const TIMEZONES = ['Asia/Dhaka', 'Asia/Kolkata', 'Asia/Kathmandu', 'UTC'] as const
+export const TIMEZONES = ['Asia/Dhaka', 'Asia/Kolkata', 'Asia/Kathmandu', 'Europe/Rome', 'UTC'] as const
+/** Mirrors `pos_tenancy::settings::COUNTRIES`: where the business is. */
+export const COUNTRIES = ['BD', 'IT'] as const
+export type CountryCode = (typeof COUNTRIES)[number]
 export const RECEIPT_PAPERS = ['80mm', '58mm', 'a4'] as const
 /** Mirrors `pos_tenancy::settings::CURRENCIES` (2-decimal currencies only). */
 export const CURRENCIES = ['BDT', 'INR', 'PKR', 'NPR', 'LKR', 'USD', 'EUR', 'GBP', 'AED', 'SAR', 'QAR', 'MYR', 'SGD', 'AUD', 'CAD'] as const
@@ -19,6 +22,8 @@ export interface NewBusiness {
   email?: string
   bin_number?: string
   trade_license_no?: string
+  /** `BD` (default) or `IT`: Italy starts with EUR, Europe/Rome and IVA rates. */
+  country_code?: CountryCode
   locale?: string
 }
 
@@ -39,8 +44,15 @@ export interface BusinessSettings {
   email: string | null
   address: string | null
   district: string | null
+  /** BIN in Bangladesh, Partita IVA in Italy. */
   bin_number: string | null
   trade_license_no: string | null
+  country_code: CountryCode
+  /** Italy: codice fiscale. */
+  tax_code: string | null
+  /** Italy: R.E.A. number and its Registro Imprese office. */
+  rea_number: string | null
+  registry_office: string | null
   currency_code: string
   timezone: string
   locale: string

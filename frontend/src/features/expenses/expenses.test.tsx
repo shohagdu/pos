@@ -49,6 +49,35 @@ describe('expenses', () => {
     expect(post?.headers.get('Idempotency-Key')).toBeTruthy()
   })
 
+  it('shows each account with its current balance when the member may see balances', async () => {
+    const withBalance = (perms: string[]) => {
+      const base = signedIn()
+      return {
+        ...base,
+        'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant: currentTenant('t1', 'Rahim Store', perms) },
+        'GET /api/v1/payment-accounts': [
+          { ...base['GET /api/v1/payment-accounts'][0], name: 'Cash', current_balance: '180.00' },
+          { ...base['GET /api/v1/payment-accounts'][0], id: 'a-bank', account_type: 'bank', name: 'City Bank', is_default: false, current_balance: '25000.50' },
+        ],
+      }
+    }
+    mockApi(withBalance([...perms, 'accounts.view']))
+    renderRoute('/expenses')
+    await userEvent.click(await screen.findByRole('button', { name: 'New expense' }))
+    const paidFrom = within(await screen.findByRole('dialog')).getByLabelText('Paid from')
+    expect(within(paidFrom).getByRole('option', { name: 'Cash (180.00) (default)' })).toBeInTheDocument()
+    expect(within(paidFrom).getByRole('option', { name: 'Cash (180.00)' })).toBeInTheDocument()
+    expect(within(paidFrom).getByRole('option', { name: 'City Bank (25,000.50)' })).toBeInTheDocument()
+  })
+
+  it('leaves balances out for members who cannot see them', async () => {
+    mockApi(signedIn())
+    renderRoute('/expenses')
+    await userEvent.click(await screen.findByRole('button', { name: 'New expense' }))
+    const paidFrom = within(await screen.findByRole('dialog')).getByLabelText('Paid from')
+    expect(within(paidFrom).getByRole('option', { name: 'Cash drawer' })).toBeInTheDocument()
+  })
+
   it('voids an expense with a reason', async () => {
     const calls = mockApi({ ...signedIn(), 'POST /api/v1/expenses/e1/void': { ...rent, status: 'voided', void_reason: 'Duplicate' } })
     renderRoute('/expenses')

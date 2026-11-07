@@ -283,6 +283,9 @@ const MIME = {
   '.webmanifest': 'application/manifest+json',
 }
 
+const CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+
 function sendFile(res, file, method) {
   const ext = path.extname(file)
   const immutable = file.startsWith(path.join(PUBLIC_DIR, 'assets') + path.sep)
@@ -290,6 +293,12 @@ function sendFile(res, file, method) {
     'content-type': MIME[ext] || 'application/octet-stream',
     'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
     'x-content-type-options': 'nosniff',
+    // Same policy as frontend/nginx.conf: only this origin plus Google Fonts, no framing.
+    'content-security-policy': CSP,
+    'x-frame-options': 'DENY',
+    'referrer-policy': 'no-referrer',
+    'permissions-policy': 'camera=(self), microphone=(), geolocation=()',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
   })
   if (method === 'HEAD') return res.end()
   fs.createReadStream(file).pipe(res)

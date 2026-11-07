@@ -26,6 +26,8 @@ const GROUPS: { key: string; cards: HubCard[] }[] = [
   {
     key: 'analysis',
     cards: [
+      { key: 'customerDues', to: '/reports/customer-dues', access: 'parties' },
+      { key: 'supplierDues', to: '/reports/supplier-dues', access: 'parties' },
       { key: 'aging', to: '/reports/aging', access: 'parties' },
       { key: 'productMovement', to: '/reports/product-movement', access: 'movement' },
       { key: 'discounts', to: '/reports/discounts', access: 'discounts' },

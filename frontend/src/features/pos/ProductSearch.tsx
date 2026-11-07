@@ -6,6 +6,7 @@ import { type PosItem, salesApi, salesKeys, usePosProducts } from '../../api/sal
 import { formatMoney, formatQuantity } from '../../lib/format'
 import { problemMessage } from '../../lib/problem'
 import { useDebounced } from './hooks'
+import { ProductThumb } from '../products/ProductThumb'
 
 /**
  * Product search / barcode box (POS-R02). A scan (exact barcode or SKU
@@ -128,11 +129,14 @@ export function ProductSearch({
               onClick={() => add(item)}
               className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm ${i === active ? 'bg-brand-50' : 'hover:bg-canvas'}`}
             >
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{lang === 'bn' && item.name_bn ? item.name_bn : item.name}</span>
-                <span className="block truncate text-xs text-ink-muted">
-                  {item.sku}
-                  {item.barcode && ` · ${item.barcode}`}
+              <span className="flex min-w-0 items-center gap-3">
+                <ProductThumb fileId={item.image_file_id} />
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{lang === 'bn' && item.name_bn ? item.name_bn : item.name}</span>
+                  <span className="block truncate text-xs text-ink-muted">
+                    {item.sku}
+                    {item.barcode && ` · ${item.barcode}`}
+                  </span>
                 </span>
               </span>
               <span className="shrink-0 text-right">

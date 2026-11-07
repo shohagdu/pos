@@ -134,7 +134,10 @@
       "refunded": "Refunded",
       "credited": "Customer credit",
       "reason": "Reason: {{reason}}",
-      "warranty": "Warranty {{tenure}}, until {{date}}"
+      "warranty": "Warranty {{tenure}}, until {{date}}",
+      "partitaIva": "P.IVA {{value}}",
+      "taxCode": "C.F. {{value}}",
+      "rea": "REA {{office}} {{number}}"
     },
     "warrantyUntil": "Warranty until {{date}}",
     "warrantyExpired": "Warranty expired {{date}}",

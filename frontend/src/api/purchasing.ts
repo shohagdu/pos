@@ -104,6 +104,8 @@ export interface PurchaseItem {
   landed_unit_cost: string
   /** Last purchase price when the line was entered (PUR-R04). */
   previous_unit_cost: string | null
+  /** The product's current photo, if any. */
+  image_file_id?: string | null
 }
 
 export interface PurchasePayment {

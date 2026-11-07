@@ -6,6 +6,7 @@ import { type Product, catalogApi } from '../../api/catalog'
 import { formatMoney } from '../../lib/format'
 import { problemMessage } from '../../lib/problem'
 import { useDebounced } from '../pos/hooks'
+import { ProductThumb } from '../products/ProductThumb'
 
 const MAX_RESULTS = 10
 const filter = (q: string) => ({ q, status: 'active' as const })
@@ -24,10 +25,13 @@ export function PurchaseProductSearch({
   tenantId,
   onAdd,
   inputRef,
+  showCost = true,
 }: {
   tenantId: string
   onAdd: (product: Product) => void
   inputRef: RefObject<HTMLInputElement | null>
+  /** The current cost beside each result (purchases); off for stock moves. */
+  showCost?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
@@ -147,17 +151,21 @@ export function PurchaseProductSearch({
                 p.track_inventory ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
               } ${i === active ? 'bg-brand-50' : ''}`}
             >
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{lang === 'bn' && p.name_bn ? p.name_bn : p.name}</span>
-                <span className="block truncate text-xs text-ink-muted">
-                  {p.sku}
-                  {p.barcodes[0] && ` · ${p.barcodes[0]}`}
+              <span className="flex min-w-0 items-center gap-3">
+                <ProductThumb fileId={p.image_file_id} />
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">{lang === 'bn' && p.name_bn ? p.name_bn : p.name}</span>
+                  <span className="block truncate text-xs text-ink-muted">
+                    {p.sku}
+                    {p.barcodes[0] && ` · ${p.barcodes[0]}`}
+                  </span>
                 </span>
               </span>
               <span className="shrink-0 text-right text-xs text-ink-muted">
                 {!p.track_inventory ? (
                   t('purchases.form.serviceNotStocked')
                 ) : (
+                  showCost &&
                   p.purchase_price !== null && (
                     <>
                       {t('purchases.form.currentCost')}

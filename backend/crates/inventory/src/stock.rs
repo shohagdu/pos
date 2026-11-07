@@ -43,14 +43,16 @@ pub async fn locations(tx: &mut TenantTx) -> AppResult<Vec<StockLocation>> {
 /// Checks that a location belongs to this business and is active.
 pub async fn check_location(tx: &mut TenantTx, location_id: Uuid) -> AppResult<()> {
     let tenant_id = tx.tenant_id();
-    let ok: Option<String> = sqlx::query_scalar("SELECT status FROM stock_locations WHERE tenant_id = ? AND id = ?")
-        .bind(tenant_id)
-        .bind(location_id)
-        .fetch_optional(&mut **tx)
-        .await
-        .map_err(map_db_error)?;
-    match ok.as_deref() {
-        Some("active") => Ok(()),
+    let ok: Option<(String, Uuid)> =
+        sqlx::query_as("SELECT status, branch_id FROM stock_locations WHERE tenant_id = ? AND id = ?")
+            .bind(tenant_id)
+            .bind(location_id)
+            .fetch_optional(&mut **tx)
+            .await
+            .map_err(map_db_error)?;
+    match ok {
+        // A member limited to some branches cannot move another branch's stock.
+        Some((status, branch_id)) if status == "active" => tx.ensure_branch(branch_id),
         _ => Err(AppError::field("location_id", "NOT_FOUND", "choose an active stock location")),
     }
 }

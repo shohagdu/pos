@@ -26,6 +26,7 @@ import { useSession } from '../auth/session'
 import { LINK, SECONDARY_LINK, trimDecimal, useRefreshAfterMoney } from './helpers'
 import { ReceiveGoodsDialog } from './ReceiveGoodsDialog'
 import { PaySupplierDialog, PaymentBadge, PostDialog, ReasonDialog, StatusBadge, VoidPaymentDialog } from './shared'
+import { ProductThumb } from '../products/ProductThumb'
 
 type Open = 'post' | 'cancel' | 'pay' | 'receive' | 'close' | { void: string } | null
 
@@ -82,10 +83,13 @@ export function PurchaseDetailPage() {
       key: 'product',
       header: t('purchases.product'),
       render: (i) => (
-        <>
-          <span className="font-medium">{i.product_name}</span>
-          <span className="block font-mono text-xs text-ink-muted">{i.sku}</span>
-        </>
+        <div className="flex items-center gap-2.5">
+          <ProductThumb fileId={i.image_file_id} />
+          <div className="min-w-0">
+            <span className="font-medium">{i.product_name}</span>
+            <span className="block font-mono text-xs text-ink-muted">{i.sku}</span>
+          </div>
+        </div>
       ),
     },
     { key: 'qty', header: t('common.quantity'), align: 'right', render: (i) => `${formatQuantity(i.quantity, lang, true)} ${i.unit_short_name}` },

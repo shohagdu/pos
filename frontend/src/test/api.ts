@@ -31,7 +31,8 @@ export function mockApi(routes: Record<string, Handler | object>): Call[] {
       method: (init?.method ?? 'GET').toUpperCase(),
       path: url.pathname,
       search: url.search,
-      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+      // JSON bodies are parsed; raw uploads (files) are kept as they are.
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : (init?.body ?? undefined),
       headers: new Headers(init?.headers),
     }
     calls.push(call)

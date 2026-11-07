@@ -32,6 +32,8 @@ function Rule() {
 
 function ReceiptFrame({ info, children, marker }: { info: ReceiptInfo; children: ReactNode; marker?: ReactNode }) {
   const { t } = useTranslation()
+  // Italian receipts print the Partita IVA, codice fiscale and R.E.A.
+  const italy = info.country_code === 'IT'
   return (
     <div
       data-testid="receipt"
@@ -39,10 +41,21 @@ function ReceiptFrame({ info, children, marker }: { info: ReceiptInfo; children:
     >
       <div className="text-center">
         <div className="text-[1.3em] font-bold">{info.business_name}</div>
+        {italy && info.legal_name && <div>{info.legal_name}</div>}
         {info.branch_name && <div>{info.branch_name}</div>}
         {info.address && <div>{info.address}</div>}
         {info.phone && <div>{t('sales.receipt.phone', { phone: info.phone })}</div>}
-        {info.bin_number && <div>{t('sales.receipt.bin', { bin: info.bin_number })}</div>}
+        {italy ? (
+          <>
+            {info.bin_number && <div>{t('sales.receipt.partitaIva', { value: info.bin_number })}</div>}
+            {info.tax_code && <div>{t('sales.receipt.taxCode', { value: info.tax_code })}</div>}
+            {info.rea_number && (
+              <div>{t('sales.receipt.rea', { office: info.registry_office ?? '', number: info.rea_number }).replace(/\s+/g, ' ')}</div>
+            )}
+          </>
+        ) : (
+          info.bin_number && <div>{t('sales.receipt.bin', { bin: info.bin_number })}</div>
+        )}
         {info.receipt_header && <div className="mt-1 whitespace-pre-line">{info.receipt_header}</div>}
         {marker && <div className="mt-1 font-bold">{marker}</div>}
       </div>

@@ -73,11 +73,11 @@ describe('CSV files', () => {
 
   it('reads opening stock rows by SKU or barcode and skips blank quantities', () => {
     expect(readOpeningRows('sku,barcode,name,quantity,unit_cost\nP1,,Rice,"1,200",৳400\n,8941100500019,Oil,3,\nP3,,Salt,,\n')).toEqual([
-      { line: 2, code: 'P1', quantity: '1200', unit_cost: '400' },
-      { line: 3, code: '8941100500019', quantity: '3', unit_cost: '' },
+      { line: 2, code: 'P1', quantity: '1200', unit_cost: '400', batch_no: '', expiry_date: '' },
+      { line: 3, code: '8941100500019', quantity: '3', unit_cost: '', batch_no: '', expiry_date: '' },
     ])
     // Older files with quantity / unit_cost still read.
-    expect(readOpeningRows('sku,quantity,unit_cost\nP1,2,50')).toEqual([{ line: 2, code: 'P1', quantity: '2', unit_cost: '50' }])
+    expect(readOpeningRows('sku,quantity,unit_cost\nP1,2,50')).toEqual([{ line: 2, code: 'P1', quantity: '2', unit_cost: '50', batch_no: '', expiry_date: '' }])
     expect(readOpeningRows('name,quantity\nRice,3')).toBeNull()
   })
 })
@@ -181,7 +181,7 @@ describe('opening stock from CSV', () => {
     renderRoute('/inventory/adjustments/new?reason=opening')
     await userEvent.click(await screen.findByRole('button', { name: 'Download sample CSV' }))
     await waitFor(() => expect(blobs).toHaveLength(1))
-    expect((await blobs[0]!.text()).replace(/^\uFEFF/, '')).toBe('sku,name,unit,opening_stock,opening_cost\r\nP000001,Rice,pcs,,400')
+    expect((await blobs[0]!.text()).replace(/^\uFEFF/, '')).toBe('sku,name,unit,opening_stock,opening_cost,batch_no,expiry_date\r\nP000001,Rice,pcs,,400,,')
 
     await userEvent.upload(
       screen.getByLabelText('Upload CSV file'),

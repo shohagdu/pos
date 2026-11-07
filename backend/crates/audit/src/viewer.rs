@@ -48,6 +48,9 @@ pub struct AuditRecord {
     pub actor_id: Option<Uuid>,
     /// The member's name in this business, for `user` actors.
     pub actor_name: Option<String>,
+    /// The owner who was signed in as the actor (impersonation), if any.
+    pub impersonator_id: Option<Uuid>,
+    pub impersonator_name: Option<String>,
     pub action: String,
     pub entity_type: Option<String>,
     pub entity_id: Option<Uuid>,
@@ -74,6 +77,8 @@ struct Row {
     actor_type: String,
     actor_id: Option<Uuid>,
     actor_name: Option<String>,
+    impersonator_id: Option<Uuid>,
+    impersonator_name: Option<String>,
     action: String,
     entity_type: Option<String>,
     entity_id: Option<Uuid>,
@@ -94,6 +99,8 @@ impl From<Row> for AuditRecord {
             actor_type: r.actor_type,
             actor_id: r.actor_id,
             actor_name: r.actor_name,
+            impersonator_id: r.impersonator_id,
+            impersonator_name: r.impersonator_name,
             action: r.action,
             entity_type: r.entity_type,
             entity_id: r.entity_id,
@@ -157,10 +164,12 @@ pub async fn list(tx: &mut TenantTx, filter: &AuditFilter) -> AppResult<AuditPag
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
         "SELECT a.id, a.created_at, a.actor_type, a.actor_id, \
          CASE WHEN a.actor_type = 'user' THEN COALESCE(m.display_name, u.full_name) END AS actor_name, \
-         a.action, a.entity_type, a.entity_id, a.branch_id, a.before_data, a.after_data, a.reason, \
+         a.impersonator_id, COALESCE(im.display_name, iu.full_name) AS impersonator_name, a.action, a.entity_type, a.entity_id, a.branch_id, a.before_data, a.after_data, a.reason, \
          a.ip_address, a.user_agent, a.request_id FROM audit_logs a \
          LEFT JOIN tenant_memberships m ON m.tenant_id = a.tenant_id AND m.user_id = a.actor_id \
          LEFT JOIN users u ON u.id = a.actor_id \
+         LEFT JOIN tenant_memberships im ON im.tenant_id = a.tenant_id AND im.user_id = a.impersonator_id \
+         LEFT JOIN users iu ON iu.id = a.impersonator_id \
          WHERE a.tenant_id = ",
     );
     q.push_bind(tenant_id);

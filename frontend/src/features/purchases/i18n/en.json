@@ -76,7 +76,7 @@
       "results": "Search results",
       "currentCost": "Current cost",
       "serviceNotStocked": "Service — not stocked",
-      "lastPrice": "Last: {{price}} on {{date}} ({{qty}}) from {{supplier}}",
+      "lastPrice": "Last: {{price}} × {{qty}} {{unit}} · {{date}} · {{supplier}}",
       "variance": "{{amount}} ({{pct}}%)",
       "firstPurchase": "First purchase of this product",
       "inclVat": "incl. VAT {{amount}}",
@@ -112,7 +112,8 @@
         "removeLine": "Remove line",
         "post": "Save & post"
       },
-      "saveAndPost": "Save & post"
+      "saveAndPost": "Save & post",
+      "landedEach": "Landed {{amount}} / unit"
     },
     "post": {
       "button": "Post bill",

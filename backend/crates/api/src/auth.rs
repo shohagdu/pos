@@ -42,7 +42,13 @@ pub fn request_meta(req: &HttpRequest, trust_proxy_headers: bool) -> RequestMeta
         request_id: current_request_id().unwrap_or_default(),
         ip,
         user_agent: req.headers().get(header::USER_AGENT).and_then(|v| v.to_str().ok()).map(str::to_owned),
+        impersonator_id: None,
     }
+}
+
+/// Request metadata for a token's holder, naming the owner behind an impersonation.
+fn claims_meta(req: &HttpRequest, state: &AppState, claims: &AccessClaims) -> RequestMeta {
+    RequestMeta { impersonator_id: claims.imp, ..request_meta(req, state.config.http.trust_proxy_headers) }
 }
 
 /// Request metadata as an extractor.
@@ -57,7 +63,7 @@ impl FromRequest for ClientMeta {
     }
 }
 
-fn bearer_claims(req: &HttpRequest, state: &AppState) -> Result<AccessClaims, ApiError> {
+pub(crate) fn bearer_claims(req: &HttpRequest, state: &AppState) -> Result<AccessClaims, ApiError> {
     let token = req
         .headers()
         .get(header::AUTHORIZATION)
@@ -70,6 +76,9 @@ fn bearer_claims(req: &HttpRequest, state: &AppState) -> Result<AccessClaims, Ap
 }
 
 /// A request with a valid access token, with or without an active business.
+/// Refused while the owner is signed in as a staff member (impersonation):
+/// account-level actions (switching business, passwords, sessions, new
+/// businesses, invitations) stay with the real account holder.
 pub struct Authenticated {
     pub claims: AccessClaims,
     pub meta: RequestMeta,
@@ -82,7 +91,29 @@ impl FromRequest for Authenticated {
     fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
         std::future::ready(state(req).and_then(|s| {
             let claims = bearer_claims(req, s)?;
-            Ok(Self { claims, meta: request_meta(req, s.config.http.trust_proxy_headers) })
+            if claims.imp.is_some() {
+                return Err(pos_auth::service::impersonating().into());
+            }
+            Ok(Self { meta: claims_meta(req, s, &claims), claims })
+        }))
+    }
+}
+
+/// Like [`Authenticated`], but also accepts an impersonation token (for
+/// reading `/auth/me` and ending the impersonation).
+pub struct AnySession {
+    pub claims: AccessClaims,
+    pub meta: RequestMeta,
+}
+
+impl FromRequest for AnySession {
+    type Error = ApiError;
+    type Future = std::future::Ready<Result<Self, ApiError>>;
+
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        std::future::ready(state(req).and_then(|s| {
+            let claims = bearer_claims(req, s)?;
+            Ok(Self { meta: claims_meta(req, s, &claims), claims })
         }))
     }
 }
@@ -115,6 +146,9 @@ impl FromRequest for PlatformAuth {
         Box::pin(async move {
             let state = state(&req)?.clone();
             let claims = bearer_claims(&req, &state)?;
+            if claims.imp.is_some() {
+                return Err(pos_auth::service::impersonating().into());
+            }
             let staff = pos_platform::staff::load(&state.pool, claims.sub).await?.ok_or(AppError::Denied {
                 code: "PLATFORM_STAFF_ONLY",
                 message: "this area is for platform staff".into(),
@@ -170,6 +204,7 @@ impl TenantAuth {
     pub async fn begin_tx(&self, state: &AppState) -> pos_core::AppResult<pos_db::TenantTx> {
         let mut tx = pos_db::begin_tenant(&state.pool, &self.ctx).await?;
         tx.set_branch(self.branch_id);
+        tx.set_allowed_branches(self.branch_scope());
         Ok(tx)
     }
 
@@ -212,7 +247,7 @@ impl TenantAuth {
         if enforce {
             subscription_allows(&entitlements, req.method(), req.path())?;
         }
-        let meta = request_meta(req, state.config.http.trust_proxy_headers);
+        let meta = claims_meta(req, &state, &claims);
         let mut auth = Self {
             ctx: TenantCtx { tenant_id, user_id: claims.sub, meta },
             claims,
@@ -233,6 +268,7 @@ async fn selected_branch(req: &HttpRequest, state: &AppState, auth: &TenantAuth)
     let Some(raw) =
         req.headers().get("x-branch-id").and_then(|v| v.to_str().ok()).map(str::trim).filter(|v| !v.is_empty())
     else {
+        // An empty scope means no permissions at all: nothing to scope.
         let Some(ids) = auth.branch_scope().filter(|ids| !ids.is_empty()) else {
             return Ok(None);
         };
@@ -245,7 +281,11 @@ async fn selected_branch(req: &HttpRequest, state: &AppState, auth: &TenantAuth)
         q.push(") ORDER BY is_default DESC, name LIMIT 1");
         let first: Option<Uuid> =
             q.build_query_scalar().fetch_optional(&state.pool).await.map_err(pos_db::map_db_error)?;
-        return Ok(first);
+        // `None` means every branch, so a member whose branches are all
+        // inactive must be refused, not widened to the whole business.
+        return first.map(Some).ok_or_else(|| {
+            AppError::Denied { code: "BRANCH_NOT_ALLOWED", message: "none of your branches is active".into() }.into()
+        });
     };
     let branch_id =
         Uuid::try_parse(raw).map_err(|_| AppError::validation("X-Branch-Id must be a branch id", vec![]))?;

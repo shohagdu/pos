@@ -248,6 +248,21 @@
       "writeOffExpired_one": "Elimina 1 lotto scaduto",
       "writeOffExpired_other": "Elimina {{count}} lotti scaduti",
       "empty": "Nessun lotto. I lotti nascono da giacenze iniziali e acquisti con data di scadenza."
+    },
+    "itemCount_one": "{{count}} articolo",
+    "itemCount_other": "{{count}} articoli",
+    "available": "Disponibili {{qty}} {{unit}}",
+    "overAvailable": "Più di quanto disponibile qui",
+    "sendAll": "Invia tutto",
+    "route": "Percorso",
+    "noLinesTransfer": "Nessun articolo. Scansiona un codice a barre o cerca sopra (F2).",
+    "shortcuts": {
+      "search": "Trova prodotto",
+      "destination": "Destinazione",
+      "draft": "Salva bozza",
+      "dispatch": "Salva e spedisci",
+      "next": "Torna alla ricerca",
+      "removeLine": "Rimuovi articolo"
     }
   }
 }

@@ -95,6 +95,14 @@
       "productMovement": {
         "title": "Prodotti veloci e lenti",
         "description": "Prodotti per velocità di vendita, con giorni di scorta residui e articoli invenduti."
+      },
+      "customerDues": {
+        "title": "Clienti con saldo da incassare",
+        "description": "Ogni vendita per cui un cliente deve ancora pagare, dalla più vecchia."
+      },
+      "supplierDues": {
+        "title": "Fornitori in attesa di pagamento",
+        "description": "Ogni acquisto ricevuto ancora da pagare, dal più vecchio."
       }
     },
     "sales": {
@@ -311,6 +319,40 @@
       "daysOfStock": "Giorni di scorta",
       "lastSold": "Ultima vendita",
       "never": "Mai"
+    },
+    "dues": {
+      "allOpen": "Tutti i saldi aperti",
+      "seeAging": "Totali per anzianità →",
+      "phone": "Telefono",
+      "date": "Data",
+      "daysOpen": "Giorni aperti",
+      "days_one": "{{count}} giorno",
+      "days_other": "{{count}} giorni",
+      "total": "Totale documento",
+      "paid": "Pagato",
+      "returned": "Reso",
+      "reference": "N. fattura fornitore",
+      "billNo": "Fattura {{no}}",
+      "customers": {
+        "title": "Clienti con saldo da incassare",
+        "party": "Cliente",
+        "doc": "Fattura",
+        "due": "Da incassare",
+        "parties": "Clienti debitori",
+        "documents": "Fatture non pagate",
+        "search": "Cliente, telefono o fattura",
+        "none": "Nessun cliente ha saldi aperti."
+      },
+      "suppliers": {
+        "title": "Fornitori in attesa di pagamento",
+        "party": "Fornitore",
+        "doc": "Acquisto",
+        "due": "Da pagare",
+        "parties": "Fornitori in attesa",
+        "documents": "Acquisti non pagati",
+        "search": "Fornitore, telefono o n. acquisto",
+        "none": "Tutti i fornitori sono pagati."
+      }
     }
   }
 }

@@ -134,7 +134,10 @@
       "refunded": "টাকা ফেরত",
       "credited": "গ্রাহকের জমা",
       "reason": "কারণ: {{reason}}",
-      "warranty": "ওয়ারেন্টি {{tenure}}, {{date}} পর্যন্ত"
+      "warranty": "ওয়ারেন্টি {{tenure}}, {{date}} পর্যন্ত",
+      "partitaIva": "P.IVA {{value}}",
+      "taxCode": "C.F. {{value}}",
+      "rea": "REA {{office}} {{number}}"
     },
     "warrantyUntil": "ওয়ারেন্টি {{date}} পর্যন্ত",
     "warrantyExpired": "ওয়ারেন্টি শেষ {{date}}",

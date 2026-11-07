@@ -80,14 +80,15 @@ async fn insert(
 ) -> AppResult<Uuid> {
     let id = new_id();
     sqlx::query(
-        "INSERT INTO audit_logs (id, tenant_id, actor_type, actor_id, action, entity_type, entity_id, \
-         branch_id, before_data, after_data, reason, ip_address, user_agent, request_id) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO audit_logs (id, tenant_id, actor_type, actor_id, impersonator_id, action, entity_type, \
+         entity_id, branch_id, before_data, after_data, reason, ip_address, user_agent, request_id) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(id)
     .bind(tenant_id)
     .bind(actor_type)
     .bind(actor_id)
+    .bind(meta.impersonator_id)
     .bind(entry.action)
     .bind(entry.entity_type)
     .bind(entry.entity_id)

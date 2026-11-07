@@ -24,6 +24,10 @@ pub struct AccessClaims {
     /// Membership `perms_version` at issue time (AUTH-R07).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pv: Option<i32>,
+    /// The owner signed in as this user (impersonation); such a token only
+    /// works inside `tid` and cannot manage the account.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub imp: Option<Uuid>,
     pub iat: u64,
     pub exp: u64,
     pub iss: String,
@@ -61,7 +65,13 @@ impl TokenKeys {
         self.ttl_secs
     }
 
-    pub fn issue(&self, user_id: Uuid, session_id: Uuid, tenant: Option<TenantClaim>) -> AppResult<String> {
+    pub fn issue(
+        &self,
+        user_id: Uuid,
+        session_id: Uuid,
+        tenant: Option<TenantClaim>,
+        impersonator: Option<Uuid>,
+    ) -> AppResult<String> {
         let now = jsonwebtoken::get_current_timestamp();
         let claims = AccessClaims {
             sub: user_id,
@@ -69,6 +79,7 @@ impl TokenKeys {
             tid: tenant.map(|t| t.tenant_id),
             mid: tenant.map(|t| t.membership_id),
             pv: tenant.map(|t| t.perms_version),
+            imp: impersonator,
             iat: now,
             exp: now + self.ttl_secs,
             iss: ISSUER.to_owned(),
@@ -165,7 +176,7 @@ mod tests {
         let keys = TokenKeys::from_config(&cfg(KEY_A, None, 900));
         let tenant = TenantClaim { tenant_id: Uuid::now_v7(), membership_id: Uuid::now_v7(), perms_version: 3 };
         let (user, session) = (Uuid::now_v7(), Uuid::now_v7());
-        let token = keys.issue(user, session, Some(tenant)).expect("issue");
+        let token = keys.issue(user, session, Some(tenant), None).expect("issue");
         let claims = keys.verify(&token).expect("verify");
         assert_eq!((claims.sub, claims.sid, claims.tid, claims.pv), (user, session, Some(tenant.tenant_id), Some(3)));
         assert_eq!(claims.exp - claims.iat, 900);
@@ -175,7 +186,7 @@ mod tests {
     fn rejects_other_keys_and_tampering() {
         let keys = TokenKeys::from_config(&cfg(KEY_A, None, 900));
         let other = TokenKeys::from_config(&cfg(KEY_B, None, 900));
-        let token = other.issue(Uuid::now_v7(), Uuid::now_v7(), None).expect("issue");
+        let token = other.issue(Uuid::now_v7(), Uuid::now_v7(), None, None).expect("issue");
         assert_eq!(keys.verify(&token).map_err(|e| e.code()).err(), Some("TOKEN_INVALID"));
         assert!(keys.verify("not.a.jwt").is_err());
     }
@@ -184,7 +195,7 @@ mod tests {
     fn accepts_previous_key_during_rotation() {
         let old = TokenKeys::from_config(&cfg(KEY_A, None, 900));
         let rotated = TokenKeys::from_config(&cfg(KEY_B, Some(KEY_A), 900));
-        let token = old.issue(Uuid::now_v7(), Uuid::now_v7(), None).expect("issue");
+        let token = old.issue(Uuid::now_v7(), Uuid::now_v7(), None, None).expect("issue");
         assert!(rotated.verify(&token).is_ok());
     }
 
@@ -198,6 +209,7 @@ mod tests {
             tid: None,
             mid: None,
             pv: None,
+            imp: None,
             iat: now - 7200,
             exp: now - 3600,
             iss: ISSUER.into(),

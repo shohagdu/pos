@@ -31,7 +31,7 @@ pub fn request_hash(endpoint: &str, body: &Value) -> Vec<u8> {
 }
 
 /// endpoint, request hash, status, response status, response body
-type StoredKey = (String, Vec<u8>, String, Option<i16>, Option<Value>);
+type StoredKey = (String, Vec<u8>, String, Option<i16>, Option<Value>, Uuid);
 
 pub async fn claim(tx: &mut TenantTx, key: Uuid, endpoint: &str, body: &Value) -> AppResult<Claim> {
     let (tenant_id, user_id) = (tx.tenant_id(), tx.user_id());
@@ -55,7 +55,7 @@ pub async fn claim(tx: &mut TenantTx, key: Uuid, endpoint: &str, body: &Value) -
     }
 
     let row: Option<StoredKey> = sqlx::query_as(
-        "SELECT endpoint, request_hash, status, response_status, response_body FROM idempotency_keys \
+        "SELECT endpoint, request_hash, status, response_status, response_body, user_id FROM idempotency_keys \
          WHERE tenant_id = ? AND idem_key = ? FOR UPDATE",
     )
     .bind(tenant_id)
@@ -63,10 +63,12 @@ pub async fn claim(tx: &mut TenantTx, key: Uuid, endpoint: &str, body: &Value) -
     .fetch_optional(&mut **tx)
     .await
     .map_err(map_db_error)?;
-    let Some((stored_endpoint, stored_hash, status, response_status, response_body)) = row else {
+    let Some((stored_endpoint, stored_hash, status, response_status, response_body, stored_user)) = row else {
         return Err(AppError::Retryable("idempotency key vanished while waiting".into()));
     };
-    if stored_endpoint != endpoint || stored_hash != hash {
+    // Only the user who made the request gets its stored answer back (it was
+    // built with their permissions, e.g. cost columns).
+    if stored_endpoint != endpoint || stored_hash != hash || stored_user != user_id {
         return Err(AppError::Unprocessable {
             code: "IDEMPOTENCY_KEY_REUSED",
             message: "this Idempotency-Key was used for a different request".into(),

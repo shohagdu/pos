@@ -227,6 +227,8 @@ pub struct PurchaseItem {
     pub previous_unit_cost: Option<Decimal>,
     pub batch_no: Option<String>,
     pub expiry_date: Option<NaiveDate>,
+    /// The product's current photo (`GET /files/{id}`), if any.
+    pub image_file_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
@@ -409,16 +411,20 @@ pub async fn list(tx: &mut TenantTx, filter: &PurchaseFilter) -> AppResult<Purch
 }
 
 pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<PurchaseDetail> {
+    tx.ensure_row_branch("purchases", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SELECT);
     q.push_bind(tenant_id).push(" AND p.id = ").push_bind(id);
     let purchase: Purchase =
         q.build_query_as().fetch_optional(&mut **tx).await.map_err(map_db_error)?.ok_or(AppError::NotFound)?;
     let items = sqlx::query_as(
-        "SELECT id, line_no, variant_id, product_name, sku, unit_short_name, quantity, received_quantity, returned_quantity, \
-         unit_cost, discount_type, discount_value, line_discount, bill_discount_alloc, tax_rate_pct, tax_amount, \
-         charges_alloc, line_total, landed_unit_cost, previous_unit_cost, batch_no, expiry_date FROM purchase_items \
-         WHERE tenant_id = ? AND purchase_id = ? ORDER BY line_no",
+        "SELECT i.id, i.line_no, i.variant_id, i.product_name, i.sku, i.unit_short_name, i.quantity, i.received_quantity, \
+         i.returned_quantity, i.unit_cost, i.discount_type, i.discount_value, i.line_discount, i.bill_discount_alloc, \
+         i.tax_rate_pct, i.tax_amount, i.charges_alloc, i.line_total, i.landed_unit_cost, i.previous_unit_cost, i.batch_no, \
+         i.expiry_date, pr.image_file_id FROM purchase_items i \
+         LEFT JOIN product_variants v ON v.tenant_id = i.tenant_id AND v.id = i.variant_id \
+         LEFT JOIN products pr ON pr.tenant_id = v.tenant_id AND pr.id = v.product_id \
+         WHERE i.tenant_id = ? AND i.purchase_id = ? ORDER BY i.line_no",
     )
     .bind(tenant_id)
     .bind(id)

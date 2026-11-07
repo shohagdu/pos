@@ -112,7 +112,14 @@
       "creating": "Setting up your business…",
       "skip": "Skip for now",
       "skipHint": "We create your business with a placeholder name. Change it any time in Settings.",
-      "defaultName": "{{name}}'s Shop"
+      "defaultName": "{{name}}'s Shop",
+      "country": "Country",
+      "province": "Province",
+      "partitaIva": "Partita IVA (optional)",
+      "taxCode": "Codice fiscale (optional)",
+      "reaNumber": "R.E.A. number (optional)",
+      "registryOffice": "Registro Imprese office (optional)",
+      "countryHint": "Italy starts with euro, Rome time and IVA rates (22% default, prices include IVA)."
     },
     "regional": {
       "title": "Regional settings",
@@ -190,7 +197,8 @@
     },
     "legalName": "Legal name (optional)",
     "address": "Business address: {{slug}}",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "countryHint": "Currency and time zone are under Regional settings."
   },
   "subscription": {
     "seePlan": "See plan",
@@ -455,7 +463,19 @@
     "CURRENCY_LOCKED": "The currency cannot change after sales, purchases or payments are recorded.",
     "WRONG_PASSWORD": "The current password is wrong.",
     "SAME_PASSWORD": "Choose a password different from the current one.",
-    "PASSWORD_MISMATCH": "The two new passwords do not match."
+    "PASSWORD_MISMATCH": "The two new passwords do not match.",
+    "IMPERSONATING": "Not available while signed in as a staff member. Return to your account first.",
+    "OWNER_ONLY": "Only the business owner can do this.",
+    "CANNOT_IMPERSONATE": "You cannot sign in as yourself or as an owner.",
+    "MEMBER_NOT_ACTIVE": "This staff member is not active. Reactivate them first.",
+    "NOT_IMPERSONATING": "You are already using your own account.",
+    "UNSUPPORTED_TYPE": "Use a JPG, PNG or WebP image.",
+    "INVALID_IMAGE": "The file is damaged or is not a real image.",
+    "UNSAFE_FILE": "The image contains hidden code and was refused.",
+    "FILE_TOO_LARGE": "The image must be 2 MB or smaller.",
+    "CLAIM_AMOUNT_SHORT": "The amount paid is less than the invoice total. Reject the claim or ask for the rest.",
+    "ACCOUNT_CHOICE_NOT_ALLOWED": "The money goes to the payment method's account. Only account managers can choose another account.",
+    "BRANCH_NOT_ALLOWED": "This belongs to a branch you cannot work in."
   },
   "users": {
     "title": "Users & roles",
@@ -491,7 +511,16 @@
     "signedOut_one": "Signed out of {{count}} device.",
     "signedOut_other": "Signed out of {{count}} devices.",
     "noPermission": "You do not have permission to invite users.",
-    "addMember": "Add staff"
+    "addMember": "Add staff",
+    "impersonate": "Sign in as this user",
+    "impersonateShort": "Sign in as",
+    "impersonateHint": "See and use the app exactly as {{name}} does. Your actions are recorded under their name with yours alongside. Return to your account at any time.",
+    "impersonating": "You are signed in as {{name}}",
+    "impersonatingBy": "{{owner}}, you are using the app as {{name}}. What you do is recorded with your name.",
+    "stopImpersonating": "Return to my account",
+    "supportSession": "Support session: {{business}}",
+    "supportSessionBy": "{{staff}}, you are using this business as its owner {{name}}. Everything you do is recorded with your name.",
+    "returnToAdmin": "Return to admin console"
   },
   "invitations": {
     "title": "Invite staff",
@@ -823,7 +852,25 @@
       "day": "Days",
       "month": "Months",
       "year": "Years"
-    }
+    },
+    "image": {
+      "label": "Product image",
+      "none": "No image",
+      "preview": "Product image",
+      "choose": "Choose image",
+      "change": "Change image",
+      "remove": "Remove image",
+      "hint": "JPG, PNG or WebP, up to 2 MB.",
+      "wrongType": "Choose a JPG, PNG or WebP image.",
+      "tooLarge": "The image must be 2 MB or smaller.",
+      "uploadFailed": "The product was saved, but the image could not be uploaded: {{reason}} Choose it again below.",
+      "notImage": "This file is not a real JPG, PNG or WebP image.",
+      "unsafe": "This file contains hidden code and cannot be used. Choose another image.",
+      "dropHint": "Click or drop an image here"
+    },
+    "codes": "Codes",
+    "classification": "Classification",
+    "stockWarranty": "Stock & warranty"
   },
   "catalog": {
     "name": "Name",
@@ -850,5 +897,9 @@
     "makeDefault": "Make default",
     "default": "Default",
     "taxHint": "New products get the default rate. Changing a rate affects new sales only."
+  },
+  "countries": {
+    "BD": "Bangladesh",
+    "IT": "Italy"
   }
 }

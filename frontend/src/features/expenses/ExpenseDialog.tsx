@@ -9,10 +9,12 @@ import { Button } from '../../components/ui/Button'
 import { Dialog } from '../../components/ui/Dialog'
 import { Select } from '../../components/ui/Select'
 import { TextField } from '../../components/ui/TextField'
+import { accountLabel } from '../../lib/accounts'
 import { today } from '../../lib/dates'
 import { tryParse } from '../../lib/decimal'
 import { optional } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
+import { useSession } from '../auth/session'
 
 /** Records a paid expense (POST /expenses). Mount only while open. */
 export function ExpenseDialog({
@@ -26,8 +28,11 @@ export function ExpenseDialog({
   accounts: PaymentAccount[]
   onClose: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
+  const { can } = useSession()
+  // Balances are only sent to members who may see them.
+  const label = (a: PaymentAccount) => accountLabel(a, i18n.language, can('accounts.view'))
   const active = categories.filter((c) => c.status === 'active')
   const activeAccounts = accounts.filter((a) => a.status === 'active')
   const [categoryId, setCategoryId] = useState('')
@@ -110,8 +115,8 @@ export function ExpenseDialog({
             onChange={(e) => setAccountId(e.target.value)}
             error={errors.account_id}
             options={[
-              { value: '', label: defaultAccount ? t('expenses.defaultCashNamed', { name: defaultAccount.name }) : t('expenses.defaultCash') },
-              ...activeAccounts.map((a) => ({ value: a.id, label: a.name })),
+              { value: '', label: defaultAccount ? t('expenses.defaultCashNamed', { name: label(defaultAccount) }) : t('expenses.defaultCash') },
+              ...activeAccounts.map((a) => ({ value: a.id, label: label(a) })),
             ]}
           />
           <TextField label={`${t('expenses.payee')} (${t('common.optional')})`} value={payee} onChange={(e) => setPayee(e.target.value)} maxLength={200} error={errors.payee} />

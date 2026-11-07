@@ -323,6 +323,7 @@ pub async fn list(tx: &mut TenantTx, filter: &ExpenseFilter) -> AppResult<Expens
 }
 
 pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<Expense> {
+    tx.ensure_row_branch("expenses", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SELECT);
     q.push_bind(tenant_id).push(" AND e.id = ").push_bind(id);

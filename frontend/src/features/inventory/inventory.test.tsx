@@ -56,7 +56,7 @@ describe('inventory', () => {
     const created = {
       id: 'adj1', adjustment_no: 'ADJ-0001', business_date: '2026-10-18', reason: 'opening', note: null, status: 'posted', location_id: 'loc1',
       location_name: 'Shop floor', total_value: '4000.00', item_count: 1, created_by_name: 'Rahim Uddin', created_at: '2026-10-18T04:00:00Z',
-      items: [{ id: 'i1', variant_id: 'v1', product_name: 'Miniket Rice 5kg', sku: 'P000001', unit_short_name: 'pcs', quantity: '10.000', unit_cost: '400.0000', note: null }],
+      items: [{ id: 'i1', variant_id: 'v1', product_name: 'Miniket Rice 5kg', sku: 'P000001', unit_short_name: 'pcs', quantity: '10.000', unit_cost: '400.0000', note: null, batches: [] }],
     }
     const calls = mockApi({
       ...signedIn(),

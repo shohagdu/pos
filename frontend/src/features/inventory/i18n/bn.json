@@ -248,6 +248,21 @@
       "writeOffExpired_one": "১টি মেয়াদোত্তীর্ণ ব্যাচ বাদ দিন",
       "writeOffExpired_other": "{{count}}টি মেয়াদোত্তীর্ণ ব্যাচ বাদ দিন",
       "empty": "এখানে কোনো ব্যাচ নেই। মেয়াদসহ প্রারম্ভিক স্টক ও ক্রয় থেকে ব্যাচ আসে।"
+    },
+    "itemCount_one": "{{count}}টি পণ্য",
+    "itemCount_other": "{{count}}টি পণ্য",
+    "available": "মজুত {{qty}} {{unit}}",
+    "overAvailable": "এখানে যা আছে তার চেয়ে বেশি",
+    "sendAll": "সব পাঠান",
+    "route": "পথ",
+    "noLinesTransfer": "এখনও কোনো পণ্য নেই। উপরে বারকোড স্ক্যান করুন বা খুঁজুন (F2)।",
+    "shortcuts": {
+      "search": "পণ্য খুঁজুন",
+      "destination": "গন্তব্য",
+      "draft": "খসড়া সংরক্ষণ",
+      "dispatch": "সংরক্ষণ ও পাঠান",
+      "next": "খোঁজায় ফিরুন",
+      "removeLine": "পণ্য সরান"
     }
   }
 }

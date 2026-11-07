@@ -19,7 +19,7 @@ import { formatDate } from '../../lib/dates'
 import { formatMoney } from '../../lib/format'
 import { optional } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
-import { isPositive, trimDecimal } from '../money/utils'
+import { isPositive, trimDecimal, useTenant } from '../money/utils'
 
 const INPUT =
   'min-h-10 w-full max-w-36 rounded-lg border border-border bg-surface px-2 text-right text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
@@ -30,6 +30,8 @@ export function ReceivePaymentDialog({ customer, tenantId, onClose }: { customer
   const lang = i18n.language
   const queryClient = useQueryClient()
   const methods = usePaymentMethods(tenantId)
+  // Only account managers may send the money somewhere other than the method's account.
+  const canChooseAccount = useTenant().can('accounts.manage')
   const accounts = usePaymentAccounts(tenantId)
   const usable = (methods.data ?? []).filter((m) => m.is_active && m.method_type !== 'customer_credit')
   const [amount, setAmount] = useState(isPositive(customer.current_balance) ? trimDecimal(customer.current_balance) : '')
@@ -57,7 +59,7 @@ export function ReceivePaymentDialog({ customer, tenantId, onClose }: { customer
         customer_id: customer.id,
         amount: amount.trim(),
         method_id: method?.id ?? '',
-        account_id: accountId || undefined,
+        account_id: (canChooseAccount && accountId) || undefined,
         reference: optional(reference),
         note: optional(note),
         allocations: allocations.length > 0 ? allocations : undefined,
@@ -133,16 +135,18 @@ export function ReceivePaymentDialog({ customer, tenantId, onClose }: { customer
               error={errors.method_id}
               options={usable.map((m) => ({ value: m.id, label: m.name }))}
             />
-            <Select
-              label={t('customers.account')}
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              error={errors.account_id}
-              options={[
-                { value: '', label: method?.default_account_name ? t('customers.methodAccount', { name: method.default_account_name }) : t('customers.defaultAccount') },
-                ...accountOptions.map((a) => ({ value: a.id, label: a.name })),
-              ]}
-            />
+            {canChooseAccount && (
+              <Select
+                label={t('customers.account')}
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                error={errors.account_id}
+                options={[
+                  { value: '', label: method?.default_account_name ? t('customers.methodAccount', { name: method.default_account_name }) : t('customers.defaultAccount') },
+                  ...accountOptions.map((a) => ({ value: a.id, label: a.name })),
+                ]}
+              />
+            )}
             <TextField
               label={method?.requires_reference ? t('customers.reference') : `${t('customers.reference')} (${t('common.optional')})`}
               value={reference}

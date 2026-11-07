@@ -95,6 +95,14 @@
       "productMovement": {
         "title": "Fast & slow movers",
         "description": "Products by sales speed, with days of stock left and items that do not sell."
+      },
+      "customerDues": {
+        "title": "Due customers",
+        "description": "Every sale a customer still owes money on, oldest first."
+      },
+      "supplierDues": {
+        "title": "Suppliers waiting for payment",
+        "description": "Every received purchase you still have to pay, oldest first."
       }
     },
     "sales": {
@@ -311,6 +319,40 @@
       "daysOfStock": "Days of stock",
       "lastSold": "Last sold",
       "never": "Never"
+    },
+    "dues": {
+      "allOpen": "All open dues",
+      "seeAging": "Totals by age →",
+      "phone": "Phone",
+      "date": "Date",
+      "daysOpen": "Days open",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "total": "Bill total",
+      "paid": "Paid",
+      "returned": "Returned",
+      "reference": "Supplier bill no.",
+      "billNo": "Bill {{no}}",
+      "customers": {
+        "title": "Due customer records",
+        "party": "Customer",
+        "doc": "Invoice",
+        "due": "Due to receive",
+        "parties": "Customers owing",
+        "documents": "Unpaid invoices",
+        "search": "Customer, phone or invoice",
+        "none": "No customer owes anything."
+      },
+      "suppliers": {
+        "title": "Suppliers waiting for payment",
+        "party": "Supplier",
+        "doc": "Purchase",
+        "due": "Due to pay",
+        "parties": "Suppliers waiting",
+        "documents": "Unpaid purchases",
+        "search": "Supplier, phone or purchase no.",
+        "none": "Every supplier is paid."
+      }
     }
   }
 }

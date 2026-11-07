@@ -112,11 +112,47 @@ async fn provisioning_validates_the_profile(pool: MySqlPool) {
         (json!({ "name": "R", "business_type": "retail" }), "name"),
         (json!({ "name": "Rahim Store", "business_type": "casino" }), "business_type"),
         (json!({ "name": "Rahim Store", "business_type": "retail", "email": "bad" }), "email"),
+        (json!({ "name": "Rahim Store", "business_type": "retail", "country_code": "FR" }), "country_code"),
+        // In Italy the VAT number is a Partita IVA with a check digit.
+        (
+            json!({ "name": "Bottega", "business_type": "retail", "country_code": "IT", "bin_number": "03580690985" }),
+            "bin_number",
+        ),
     ] {
         let res = call(&srv, Req::post("/api/v1/tenants", body).bearer(&session.token).build()).await;
         assert_eq!(res.status, StatusCode::BAD_REQUEST);
         assert_eq!(res.body["errors"][0]["field"], field);
     }
+
+    // An Italian business starts with Italian defaults.
+    let mut session = session;
+    let created = call(
+        &srv,
+        Req::post(
+            "/api/v1/tenants",
+            json!({ "name": "Bottega Uddin", "business_type": "retail", "country_code": "it",
+                    "district": "Brescia", "bin_number": "IT 03580690984" }),
+        )
+        .bearer(&session.token)
+        .build(),
+    )
+    .await;
+    assert_eq!(created.status, StatusCode::CREATED, "{}", created.body);
+    let tenant_id = created.body["tenant_id"].as_str().unwrap_or_default().to_owned();
+    common::switch(&srv, &mut session, Some(&tenant_id)).await;
+    let settings = call(&srv, Req::get("/api/v1/settings").bearer(&session.token).build()).await;
+    assert_eq!(settings.status, StatusCode::OK, "{}", settings.body);
+    assert_eq!(
+        (&settings.body["country_code"], &settings.body["currency_code"], &settings.body["timezone"]),
+        (&json!("IT"), &json!("EUR"), &json!("Europe/Rome"))
+    );
+    assert_eq!(settings.body["bin_number"], "03580690984");
+    assert_eq!(settings.body["prices_include_tax"], true);
+    let rates = call(&srv, Req::get("/api/v1/tax-rates").bearer(&session.token).build()).await;
+    let names: Vec<&str> = rates.body.as_array().into_iter().flatten().filter_map(|r| r["name"].as_str()).collect();
+    assert!(names.contains(&"IVA 22%") && !names.contains(&"VAT 15%"), "{names:?}");
+    let default = rates.body.as_array().into_iter().flatten().find(|r| r["is_default"] == true).cloned();
+    assert_eq!(default.map(|r| r["name"].clone()), Some(json!("IVA 22%")));
 }
 
 /// AC-ONB-02: if any provisioning insert fails, no tenant rows remain.

@@ -239,6 +239,16 @@ async fn trade_cycle_keeps_stock_money_parties_and_books_consistent(pool: MySqlP
     let credit_sale_id = s(&credit_sale.body, "id");
     let jamal = get(&srv, &owner, &format!("/api/v1/customers/{customer_id}")).await;
     assert_eq!(jamal.body["current_balance"], "300.00");
+    // Due customer records: the part-paid sale, found by customer or by name.
+    let receivable = get(&srv, &owner, &format!("/api/v1/reports/dues?party=customers&party_id={customer_id}")).await;
+    assert_eq!(receivable.status, StatusCode::OK, "{}", receivable.body);
+    assert_eq!(receivable.body["rows"][0]["id"], credit_sale_id.as_str(), "{}", receivable.body);
+    assert_eq!(receivable.body["totals"]["due_total"], "300.00", "{}", receivable.body);
+    assert_eq!(receivable.body["totals"]["parties"], 1);
+    let searched = get(&srv, &owner, "/api/v1/reports/dues?party=customers&q=jam").await;
+    assert_eq!(searched.body["rows"], receivable.body["rows"]);
+    let none = get(&srv, &owner, "/api/v1/reports/dues?party=customers&q=nobody").await;
+    assert_eq!(none.body["rows"], json!([]));
     // bKash needs its transaction id.
     let no_ref = post_key(
         &srv,
@@ -353,6 +363,18 @@ async fn trade_cycle_keeps_stock_money_parties_and_books_consistent(pool: MySqlP
     let dashboard = get(&srv, &owner, "/api/v1/dashboard").await;
     assert_eq!(dashboard.status, StatusCode::OK, "{}", dashboard.body);
     assert_eq!(dashboard.body["payables"], "650.00");
+
+    // Suppliers waiting for payment: the part-paid bill, one row.
+    let payable = get(&srv, &owner, "/api/v1/reports/dues?party=suppliers").await;
+    assert_eq!(payable.status, StatusCode::OK, "{}", payable.body);
+    assert_eq!(payable.body["rows"].as_array().map(Vec::len), Some(1), "{}", payable.body);
+    let bill = &payable.body["rows"][0];
+    assert_eq!((bill["reference"].as_str(), bill["party_name"].as_str()), (Some("KT-77"), Some("Karim Traders")));
+    assert_eq!((bill["grand_total"].as_str(), bill["paid_total"].as_str()), (Some("1050.00"), Some("400.00")));
+    assert_eq!(payable.body["totals"]["due_total"], "650.00");
+    assert_eq!(bill["days_open"], 0);
+    let bad = get(&srv, &owner, "/api/v1/reports/dues?party=staff").await;
+    assert_eq!(bad.status, StatusCode::BAD_REQUEST);
 
     // Chart of accounts (ACC-R01): own groups and accounts; system accounts
     // can only be renamed; accounts in use keep their shape.

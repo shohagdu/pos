@@ -7,6 +7,7 @@ import { LANGUAGES } from '../../i18n'
 import { NotificationBell } from '../../features/notifications/NotificationBell'
 import { SuspendedNotice } from '../../features/billing/SuspendedNotice'
 import { TrialBanner } from '../../features/dashboard/TrialBanner'
+import { ImpersonationBanner } from '../../features/users/Impersonation'
 import { Icon } from './Icon'
 import { navKeyFor } from './nav'
 import { Sidebar } from './Sidebar'
@@ -58,6 +59,7 @@ export function AppLayout() {
       <Sidebar open={menuOpen} onClose={closeMenu} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="print:hidden">
+          <ImpersonationBanner />
           <TrialBanner />
         </div>
         <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-surface/95 px-4 py-2 backdrop-blur sm:gap-3 sm:px-8 print:hidden">

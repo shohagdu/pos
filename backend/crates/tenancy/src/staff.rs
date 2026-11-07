@@ -153,6 +153,7 @@ pub async fn create(
     if matches!(&membership, Some((_, s)) if s == "active" || s == "suspended") {
         return Err(AppError::Conflict { code: "ALREADY_MEMBER", message: "this person is already a member".into() });
     }
+    entitlements::lock_limits(tx).await?;
     let used = entitlements::seats_used(tx, None).await?;
     entitlements::ensure_within(tx, "users.max", used, 1).await?;
 

@@ -16,6 +16,12 @@ export interface SessionValue {
   signIn: (tokens: TokenResponse) => void
   signOut: () => Promise<void>
   switchTenant: (tenantId: string | null) => Promise<void>
+  /** Owner only: continue as a staff member (membership id) of this business. */
+  impersonate: (membershipId: string) => Promise<void>
+  /** Back to the owner's own account after `impersonate`. */
+  stopImpersonation: () => Promise<void>
+  /** Platform support: enter a business as its owner until `stopImpersonation`. */
+  openBusiness: (tenantId: string, reason: string) => Promise<void>
   retry: () => void
 }
 

@@ -43,6 +43,12 @@ impl StaffRole {
     pub fn can_bill(self) -> bool {
         matches!(self, Self::PlatformOwner | Self::Billing)
     }
+
+    /// Open a business as its owner for support (mirrors
+    /// `pos_auth::service::platform_support_staff`).
+    pub fn can_open_business(self) -> bool {
+        matches!(self, Self::PlatformOwner | Self::Support)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
@@ -60,6 +66,10 @@ impl Staff {
 
     pub fn require_billing(&self) -> AppResult<()> {
         if self.role.can_bill() { Ok(()) } else { Err(AppError::Forbidden) }
+    }
+
+    pub fn require_support(&self) -> AppResult<()> {
+        if self.role.can_open_business() { Ok(()) } else { Err(AppError::Forbidden) }
     }
 }
 

@@ -698,6 +698,7 @@ fn to_json(product: &Product) -> AppResult<serde_json::Value> {
 
 pub async fn create(tx: &mut TenantTx, meta: &RequestMeta, viewer: Viewer, input: ProductInput) -> AppResult<Product> {
     let mut v = validate(input, viewer)?;
+    entitlements::lock_limits(tx).await?;
     let used = entitlements::products_used(tx).await?;
     entitlements::ensure_within(tx, "products.max", used, 1).await?;
     check_references(tx, &mut v, None).await?;
@@ -950,6 +951,7 @@ pub async fn set_status(
         });
     }
     if to == "active" {
+        entitlements::lock_limits(tx).await?;
         let used = entitlements::products_used(tx).await?;
         entitlements::ensure_within(tx, "products.max", used, 1).await?;
     }
@@ -1084,6 +1086,7 @@ pub async fn import(
     if inputs.len() > MAX_IMPORT {
         return Err(AppError::field("products", "TOO_MANY", format!("import at most {MAX_IMPORT} products at a time")));
     }
+    entitlements::lock_limits(tx).await?;
     let used = entitlements::products_used(tx).await?;
     entitlements::ensure_within(tx, "products.max", used, i64::try_from(inputs.len()).unwrap_or(i64::MAX)).await?;
 

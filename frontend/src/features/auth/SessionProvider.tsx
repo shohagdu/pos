@@ -47,6 +47,31 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setTokens(await authApi.switchTenant(tenantId))
   }, [])
 
+  // Same business, different person: nothing cached for one may show for the other.
+  const impersonate = useCallback(
+    async (membershipId: string) => {
+      const tokens = await authApi.impersonate(membershipId)
+      queryClient.clear()
+      setTokens(tokens)
+    },
+    [queryClient],
+  )
+
+  const stopImpersonation = useCallback(async () => {
+    const tokens = await authApi.stopImpersonation()
+    queryClient.clear()
+    setTokens(tokens)
+  }, [queryClient])
+
+  const openBusiness = useCallback(
+    async (tenantId: string, reason: string) => {
+      const tokens = await authApi.openBusiness(tenantId, reason)
+      queryClient.clear()
+      setTokens(tokens)
+    },
+    [queryClient],
+  )
+
   const value = useMemo<SessionValue>(() => {
     let status: SessionStatus
     if (!restored) status = 'loading'
@@ -65,9 +90,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       signIn,
       signOut,
       switchTenant,
+      impersonate,
+      stopImpersonation,
+      openBusiness,
       retry: () => void me.refetch(),
     }
-  }, [restored, session, me, signIn, signOut, switchTenant])
+  }, [restored, session, me, signIn, signOut, switchTenant, impersonate, stopImpersonation, openBusiness])
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

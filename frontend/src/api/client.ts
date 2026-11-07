@@ -51,6 +51,10 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   auth?: boolean
   /** Entity version for optimistic concurrency (`If-Match`, API-07). */
   ifMatch?: number
+  /** Sent as-is with its own type (file uploads) instead of a JSON `body`. */
+  rawBody?: Blob
+  /** `blob` returns the response bytes (files) instead of parsed JSON. */
+  responseType?: 'json' | 'blob'
 }
 
 interface AuthHooks {
@@ -85,10 +89,11 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
 }
 
 async function send<T>(path: string, options: RequestOptions): Promise<T> {
-  const { body, idempotencyKey, headers, auth = true, ifMatch, ...init } = options
+  const { body, rawBody, responseType = 'json', idempotencyKey, headers, auth = true, ifMatch, ...init } = options
   const finalHeaders = new Headers(headers)
-  finalHeaders.set('Accept', 'application/json')
+  finalHeaders.set('Accept', responseType === 'blob' ? '*/*' : 'application/json')
   if (body !== undefined) finalHeaders.set('Content-Type', 'application/json')
+  if (rawBody) finalHeaders.set('Content-Type', rawBody.type || 'application/octet-stream')
   if (idempotencyKey) finalHeaders.set('Idempotency-Key', idempotencyKey)
   if (ifMatch !== undefined) finalHeaders.set('If-Match', `"${ifMatch}"`)
   const token = auth ? authHooks.getToken() : null
@@ -102,7 +107,7 @@ async function send<T>(path: string, options: RequestOptions): Promise<T> {
     response = await fetch(path, {
       ...init,
       headers: finalHeaders,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: rawBody ?? (body === undefined ? undefined : JSON.stringify(body)),
       credentials: 'same-origin',
     })
   } catch (cause) {
@@ -116,6 +121,7 @@ async function send<T>(path: string, options: RequestOptions): Promise<T> {
     throw new ApiError(problem)
   }
   if (response.status === 204) return undefined as T
+  if (responseType === 'blob') return (await response.blob()) as T
   return (await response.json()) as T
 }
 

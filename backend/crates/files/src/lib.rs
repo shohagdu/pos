@@ -10,6 +10,8 @@
 
 use std::path::{Path, PathBuf};
 
+pub mod image_check;
+
 use chrono::{DateTime, Utc};
 use pos_core::{AppError, AppResult, id::new_id};
 use pos_db::{TenantTx, map_db_error};
@@ -80,16 +82,6 @@ pub struct FileRecord {
     pub created_at: DateTime<Utc>,
 }
 
-/// The image type from the file's first bytes (the declared type is not trusted).
-pub fn sniff_image(bytes: &[u8]) -> Option<(&'static str, &'static str)> {
-    match bytes {
-        [0xFF, 0xD8, 0xFF, ..] => Some(("image/jpeg", "jpg")),
-        [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, ..] => Some(("image/png", "png")),
-        [b'R', b'I', b'F', b'F', _, _, _, _, b'W', b'E', b'B', b'P', ..] => Some(("image/webp", "webp")),
-        _ => None,
-    }
-}
-
 /// Checks and stores an image for an entity (e.g. a product) and records it.
 pub async fn store_image(
     tx: &mut TenantTx,
@@ -105,9 +97,21 @@ pub async fn store_image(
     if bytes.len() > MAX_IMAGE_BYTES {
         return Err(AppError::field("file", "FILE_TOO_LARGE", "the image must be 2 MB or smaller"));
     }
-    let (content_type, ext) = sniff_image(bytes)
-        .ok_or_else(|| AppError::field("file", "UNSUPPORTED_TYPE", "use a JPG, PNG or WebP image"))?;
+    // The whole file is checked, not just its first bytes: no data after the
+    // image and no markup or script hidden in it.
+    let (content_type, ext) = image_check::inspect(bytes).map_err(|problem| match problem {
+        image_check::ImageProblem::Unsupported => {
+            AppError::field("file", "UNSUPPORTED_TYPE", "use a JPG, PNG or WebP image")
+        }
+        image_check::ImageProblem::Damaged => {
+            AppError::field("file", "INVALID_IMAGE", "the file is damaged or is not a real image")
+        }
+        image_check::ImageProblem::Unsafe => {
+            AppError::field("file", "UNSAFE_FILE", "the image contains hidden code and was refused")
+        }
+    })?;
     let size = i64::try_from(bytes.len()).map_err(AppError::internal)?;
+    pos_tenancy::entitlements::lock_limits(tx).await?;
     let used = pos_tenancy::entitlements::storage_used_mb(tx).await?;
     let after = (used * MB + size + MB - 1) / MB;
     pos_tenancy::entitlements::ensure_within(tx, "storage.mb", used, after - used).await?;
@@ -177,15 +181,6 @@ pub async fn remove(tx: &mut TenantTx, id: Uuid) -> AppResult<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn images_are_recognised_by_their_first_bytes() {
-        assert_eq!(sniff_image(&[0xFF, 0xD8, 0xFF, 0xE0, 0]), Some(("image/jpeg", "jpg")));
-        assert_eq!(sniff_image(b"\x89PNG\r\n\x1a\n...."), Some(("image/png", "png")));
-        assert_eq!(sniff_image(b"RIFF\x10\0\0\0WEBPVP8 "), Some(("image/webp", "webp")));
-        assert_eq!(sniff_image(b"GIF89a"), None);
-        assert_eq!(sniff_image(b"<svg"), None);
-    }
 
     #[tokio::test]
     async fn storage_round_trips_and_refuses_climbing_keys() {

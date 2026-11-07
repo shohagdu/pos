@@ -139,6 +139,12 @@ impl AppConfig {
         if jwt_secret.len() < 32 {
             return Err(ConfigError::Invalid { key: "JWT_SECRET", message: "must be at least 32 bytes".into() });
         }
+        if !local && looks_like_placeholder(&jwt_secret) {
+            return Err(ConfigError::Invalid {
+                key: "JWT_SECRET",
+                message: "is still the example value; generate one with `openssl rand -base64 48`".into(),
+            });
+        }
         let expose_otp: bool = parse_or("AUTH_EXPOSE_OTP", false)?;
         if expose_otp && !local {
             return Err(ConfigError::Invalid {
@@ -195,6 +201,14 @@ pub fn load_dotenv() {
     let _ = dotenvy::dotenv();
 }
 
+/// Values copied from `.env.example` or the deploy guides instead of a generated secret.
+fn looks_like_placeholder(secret: &str) -> bool {
+    let lower = secret.to_ascii_lowercase();
+    ["dev-only", "change_me", "change-me", "changeme", "example", "placeholder"]
+        .iter()
+        .any(|marker| lower.contains(marker))
+}
+
 fn required(key: &'static str) -> Result<String, ConfigError> {
     env::var(key).ok().filter(|v| !v.is_empty()).ok_or(ConfigError::Missing(key))
 }
@@ -233,5 +247,12 @@ mod tests {
     fn parses_environment_names() {
         assert_eq!("prod".parse::<AppEnv>(), Ok(AppEnv::Production));
         assert!("qa".parse::<AppEnv>().is_err());
+    }
+
+    #[test]
+    fn placeholder_secrets_are_detected() {
+        assert!(looks_like_placeholder("CHANGE_ME_TO_A_LONG_RANDOM_SECRET_0123456789"));
+        assert!(looks_like_placeholder("dev-only-secret-change-me-before-deploying-anywhere"));
+        assert!(!looks_like_placeholder("q3Vx0m9Pz/8kLr2T+bW7yN4cH1sJ6dF5gA0eU2iO9pRwZ3tY"));
     }
 }

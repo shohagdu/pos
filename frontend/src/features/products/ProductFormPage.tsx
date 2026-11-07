@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
+import { type FormEvent, useState } from 'react'
+import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 
 import {
   type Product,
@@ -20,6 +21,7 @@ import {
   useUnits,
 } from '../../api/catalog'
 import { ApiError } from '../../api/client'
+import { useFileUrl } from '../../api/files'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -33,6 +35,7 @@ import { optional, useFields } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
 import { categoryLabel, taxLabel, trimDecimal, unitLabel } from './labels'
+import { ProductImageField } from './ProductImageField'
 import { dateLocale } from '../../lib/dates'
 
 /** `/products/new` and `/products/:id`. */
@@ -72,6 +75,11 @@ export function ProductFormPage() {
   )
 }
 
+/** An upload error: the server names the `file` field (wrong kind, damaged, hidden code). */
+function imageError(err: unknown, t: TFunction): string {
+  return fieldErrors(err, t).file ?? problemMessage(err, t)
+}
+
 function decimal(value: string | null | undefined): string {
   return value ? trimDecimal(value) : ''
 }
@@ -92,8 +100,15 @@ function ProductForm({
 }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
   const { can } = useSession()
+  // Uploading a photo is a change to the product (`products.update`).
+  const canSetImage = can('products.update')
+  const imageUrl = useFileUrl(tenantId, product?.image_file_id)
+  // New products keep the chosen photo here and upload it once created.
+  const [newImage, setNewImage] = useState<File | null>(null)
+  const imageFailed = (location.state as { imageFailed?: string } | null)?.imageFailed
   const units = useUnits(tenantId).data ?? []
   const taxRates = useTaxRates(tenantId).data ?? []
   const categories = useCategories(tenantId).data ?? []
@@ -172,12 +187,21 @@ function ProductForm({
         min_selling_price: optional(values.min_selling_price),
         reorder_level: optional(values.reorder_level),
       }
-      return product ? catalogApi.updateProduct(product.id, product.version, input) : catalogApi.createProduct(input)
+      if (product) return catalogApi.updateProduct(product.id, product.version, input).then((saved) => ({ saved, imageError: null }))
+      return catalogApi.createProduct(input).then(async (created) => {
+        if (!newImage) return { saved: created, imageError: null }
+        // The product exists now, so a failed upload must not fail the save (saving again would duplicate it).
+        try {
+          return { saved: await catalogApi.setProductImage(created.id, newImage), imageError: null }
+        } catch (err) {
+          return { saved: created, imageError: imageError(err, t) }
+        }
+      })
     },
-    onSuccess: async (saved) => {
+    onSuccess: async ({ saved, imageError }) => {
       queryClient.setQueryData(catalogKeys.product(tenantId, saved.id), saved)
       await refresh()
-      if (!product) navigate(`/products/${saved.id}`, { replace: true })
+      if (!product) navigate(`/products/${saved.id}`, { replace: true, state: imageError ? { imageFailed: imageError } : null })
     },
     onError: (err) => {
       // Someone else saved first: load their version; the next save uses it.
@@ -186,6 +210,15 @@ function ProductForm({
   })
   const status = useMutation({
     mutationFn: () => (product?.status === 'active' ? catalogApi.archiveProduct : catalogApi.restoreProduct)(product?.id ?? ''),
+    onSuccess: async (saved) => {
+      queryClient.setQueryData(catalogKeys.product(tenantId, saved.id), saved)
+      await refresh()
+    },
+  })
+  // A saved product's photo changes at once, apart from the form's Save.
+  const image = useMutation({
+    mutationFn: (file: File | null) =>
+      file ? catalogApi.setProductImage(product?.id ?? '', file) : catalogApi.removeProductImage(product?.id ?? ''),
     onSuccess: async (saved) => {
       queryClient.setQueryData(catalogKeys.product(tenantId, saved.id), saved)
       await refresh()
@@ -215,7 +248,7 @@ function ProductForm({
   }
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex max-w-6xl flex-col gap-4">
       <Link to="/products" className="text-sm font-medium text-brand-700 hover:underline">
         ← {t('products.title')}
       </Link>
@@ -235,110 +268,148 @@ function ProductForm({
       </div>
       {product?.status === 'archived' && <Alert>{t('products.archivedHint')}</Alert>}
       {save.isSuccess && <Alert tone="success">{t('products.saved')}</Alert>}
-      <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
-        <fieldset disabled={readOnly} className="flex flex-col gap-6">
-          <Card className="flex flex-col gap-4">
-            <h2 className="font-semibold">{t('products.details')}</h2>
-            <Select
-              label={t('products.type')}
-              {...bind('product_type')}
-              required
-              options={PRODUCT_TYPES.map((p) => ({ value: p, label: t(`products.types.${p}`) }))}
-              error={errors.product_type}
-            />
-            <TextField label={t('products.name')} {...bind('name')} required maxLength={200} error={errors.name} />
-            <TextField label={t('products.nameBn')} {...bind('name_bn')} lang="bn" maxLength={200} error={errors.name_bn} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                label={t('products.sku')}
-                {...bind('sku')}
-                required
-                hint={product ? undefined : t('products.skuHint')}
-                maxLength={64}
-                error={errors.sku}
-              />
-              <TextField
-                label={t('products.barcodes')}
-                {...bind('barcodes')}
-                required
-                hint={suggestedBarcode && values.barcodes.includes(suggestedBarcode) ? t('products.barcodeGenerated') : t('products.barcodesHint')}
-                error={errors.barcodes}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Select
-                label={t('products.category')}
-                {...bind('category_id')}
-                options={[
-                  { value: '', label: t('products.noCategory') },
-                  ...categoryTree(active(categories, values.category_id)).map((c) => ({ value: c.id, label: categoryLabel(c) })),
-                ]}
-                error={errors.category_id}
-              />
-              <Select
-                label={t('products.brand')}
-                {...bind('brand_id')}
-                options={[{ value: '', label: t('products.noBrand') }, ...active(brands, values.brand_id).map((b) => ({ value: b.id, label: b.name }))]}
-                error={errors.brand_id}
-              />
-              <Select
-                label={t('products.unit')}
-                {...bind('unit_id')}
-                required
-                options={[
-                  ...(values.unit_id ? [] : [{ value: '', label: t('products.chooseUnit') }]),
-                  ...active(units, values.unit_id).map((u) => ({ value: u.id, label: unitLabel(u) })),
-                ]}
-                error={errors.unit_id}
-              />
-              <Select
-                label={t('products.taxRate')}
-                {...bind('tax_rate_id')}
-                options={[
-                  { value: '', label: t('products.defaultTax') },
-                  ...active(taxRates, values.tax_rate_id).map((r) => ({ value: r.id, label: taxLabel(r) })),
-                ]}
-                error={errors.tax_rate_id}
-              />
-            </div>
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-ink">
-              {t('products.description')}
-              <textarea
-                {...bind('description')}
-                rows={3}
-                maxLength={2000}
-                className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-normal outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-              />
-            </label>
-            {!isService && <Checkbox label={t('products.trackInventory')} hint={t('products.trackInventoryHint')} {...bindCheck('track_inventory')} />}
-            {!isService && values.track_inventory && (
-              <Checkbox label={t('products.trackBatches')} hint={t('products.trackBatchesHint')} {...bindCheck('track_batches')} />
-            )}
-            <Checkbox label={t('products.hasWarranty')} hint={t('products.hasWarrantyHint')} {...bindCheck('has_warranty')} />
-            {values.has_warranty && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TextField
-                  label={t('products.warrantyPeriod')}
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  step={1}
-                  {...bind('warranty_period')}
-                  required
-                  error={errors.warranty_period}
-                />
+      {imageFailed && <Alert tone="warning">{t('products.image.uploadFailed', { reason: imageFailed })}</Alert>}
+      <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
+        <fieldset disabled={readOnly} className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+          <div className="flex min-w-0 flex-col gap-4">
+            <Card className="flex flex-col gap-4 p-5">
+              <h2 className="font-semibold">{t('products.details')}</h2>
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                <TextField label={t('products.name')} {...bind('name')} required maxLength={200} error={errors.name} />
                 <Select
-                  label={t('products.warrantyUnit')}
-                  {...bind('warranty_unit')}
-                  options={(['day', 'month', 'year'] as const).map((u) => ({ value: u, label: t(`products.warrantyUnits.${u}`) }))}
-                  error={errors.warranty_unit}
+                  label={t('products.type')}
+                  {...bind('product_type')}
+                  required
+                  options={PRODUCT_TYPES.map((p) => ({ value: p, label: t(`products.types.${p}`) }))}
+                  error={errors.product_type}
                 />
               </div>
+              <TextField label={t('products.nameBn')} {...bind('name_bn')} lang="bn" maxLength={200} error={errors.name_bn} />
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-ink">
+                {t('products.description')}
+                <textarea
+                  {...bind('description')}
+                  rows={2}
+                  maxLength={2000}
+                  className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-normal outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                />
+              </label>
+            </Card>
+            <Card className="flex flex-col gap-4 p-5">
+              <h2 className="font-semibold">{t('products.codes')}</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <TextField
+                  label={t('products.sku')}
+                  {...bind('sku')}
+                  required
+                  hint={product ? undefined : t('products.skuHint')}
+                  maxLength={64}
+                  error={errors.sku}
+                />
+                <TextField
+                  label={t('products.barcodes')}
+                  {...bind('barcodes')}
+                  required
+                  hint={suggestedBarcode && values.barcodes.includes(suggestedBarcode) ? t('products.barcodeGenerated') : t('products.barcodesHint')}
+                  error={errors.barcodes}
+                />
+              </div>
+            </Card>
+            <Card className="flex flex-col gap-4 p-5">
+              <h2 className="font-semibold">{t('products.classification')}</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Select
+                  label={t('products.category')}
+                  {...bind('category_id')}
+                  options={[
+                    { value: '', label: t('products.noCategory') },
+                    ...categoryTree(active(categories, values.category_id)).map((c) => ({ value: c.id, label: categoryLabel(c) })),
+                  ]}
+                  error={errors.category_id}
+                />
+                <Select
+                  label={t('products.brand')}
+                  {...bind('brand_id')}
+                  options={[{ value: '', label: t('products.noBrand') }, ...active(brands, values.brand_id).map((b) => ({ value: b.id, label: b.name }))]}
+                  error={errors.brand_id}
+                />
+                <Select
+                  label={t('products.unit')}
+                  {...bind('unit_id')}
+                  required
+                  options={[
+                    ...(values.unit_id ? [] : [{ value: '', label: t('products.chooseUnit') }]),
+                    ...active(units, values.unit_id).map((u) => ({ value: u.id, label: unitLabel(u) })),
+                  ]}
+                  error={errors.unit_id}
+                />
+                <Select
+                  label={t('products.taxRate')}
+                  {...bind('tax_rate_id')}
+                  options={[
+                    { value: '', label: t('products.defaultTax') },
+                    ...active(taxRates, values.tax_rate_id).map((r) => ({ value: r.id, label: taxLabel(r) })),
+                  ]}
+                  error={errors.tax_rate_id}
+                />
+              </div>
+            </Card>
+            <Card className="flex flex-col gap-4 p-5">
+              <h2 className="font-semibold">{t('products.stockWarranty')}</h2>
+              {!isService && <Checkbox label={t('products.trackInventory')} hint={t('products.trackInventoryHint')} {...bindCheck('track_inventory')} />}
+              {!isService && values.track_inventory && (
+                <Checkbox label={t('products.trackBatches')} hint={t('products.trackBatchesHint')} {...bindCheck('track_batches')} />
+              )}
+              {!isService && (
+                <TextField
+                  label={t('products.reorderLevel')}
+                  inputMode="decimal"
+                  {...bind('reorder_level')}
+                  hint={t('products.reorderLevelHint')}
+                  error={errors.reorder_level}
+                  className="sm:max-w-xs"
+                />
+              )}
+              <Checkbox label={t('products.hasWarranty')} hint={t('products.hasWarrantyHint')} {...bindCheck('has_warranty')} />
+              {values.has_warranty && (
+                <div className="grid gap-4 sm:max-w-md sm:grid-cols-2">
+                  <TextField
+                    label={t('products.warrantyPeriod')}
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    step={1}
+                    {...bind('warranty_period')}
+                    required
+                    error={errors.warranty_period}
+                  />
+                  <Select
+                    label={t('products.warrantyUnit')}
+                    {...bind('warranty_unit')}
+                    options={(['day', 'month', 'year'] as const).map((u) => ({ value: u, label: t(`products.warrantyUnits.${u}`) }))}
+                    error={errors.warranty_unit}
+                  />
+                </div>
+              )}
+            </Card>
+          </div>
+          <div className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4">
+            {canSetImage && (
+              <Card className="p-5">
+                {product ? (
+                  <ProductImageField
+                    imageUrl={imageUrl}
+                    busy={image.isPending}
+                    error={image.isError ? imageError(image.error, t) : undefined}
+                    onPick={(file) => image.mutate(file)}
+                  />
+                ) : (
+                  <ProductImageField imageUrl={null} pending={newImage} onPick={setNewImage} />
+                )}
+              </Card>
             )}
-          </Card>
-          <Card className="flex flex-col gap-4">
-            <h2 className="font-semibold">{t('products.prices')}</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <Card className="flex flex-col gap-4 p-5">
+              <h2 className="font-semibold">{t('products.prices')}</h2>
               <TextField label={t('products.sellingPrice')} inputMode="decimal" {...bind('selling_price')} required error={errors.selling_price} />
               {canViewCost && (
                 <TextField
@@ -349,19 +420,12 @@ function ProductForm({
                   error={errors.purchase_price}
                 />
               )}
-              <TextField label={t('products.wholesalePrice')} inputMode="decimal" {...bind('wholesale_price')} error={errors.wholesale_price} />
-              <TextField label={t('products.minSellingPrice')} inputMode="decimal" {...bind('min_selling_price')} error={errors.min_selling_price} />
-              {!isService && (
-                <TextField
-                  label={t('products.reorderLevel')}
-                  inputMode="decimal"
-                  {...bind('reorder_level')}
-                  hint={t('products.reorderLevelHint')}
-                  error={errors.reorder_level}
-                />
-              )}
-            </div>
-          </Card>
+              <div className="grid grid-cols-2 gap-3">
+                <TextField label={t('products.wholesalePrice')} inputMode="decimal" {...bind('wholesale_price')} error={errors.wholesale_price} />
+                <TextField label={t('products.minSellingPrice')} inputMode="decimal" {...bind('min_selling_price')} error={errors.min_selling_price} />
+              </div>
+            </Card>
+          </div>
         </fieldset>
         {save.isError && hasFormError(save.error) && !shownInline && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
         {(status.isError || remove.isError) && <Alert tone="danger">{problemMessage(status.error ?? remove.error, t)}</Alert>}

@@ -19,6 +19,7 @@ export interface Staff {
 /** What a role may do (mirrors the server, ADM-R11). */
 export const canAdminister = (role?: StaffRole) => role === 'platform_owner'
 export const canBill = (role?: StaffRole) => role === 'platform_owner' || role === 'billing'
+export const canOpenBusiness = (role?: StaffRole) => role === 'platform_owner' || role === 'support'
 
 export interface PlatformMetrics {
   businesses: number

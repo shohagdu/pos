@@ -11,8 +11,12 @@ async fn audit_entries_are_written_and_cannot_be_changed(pool: MySqlPool) {
         .await
         .expect("tenant");
 
-    let meta =
-        RequestMeta { request_id: "req-1".into(), ip: "203.0.113.7".parse().ok(), user_agent: Some("test".into()) };
+    let meta = RequestMeta {
+        request_id: "req-1".into(),
+        ip: "203.0.113.7".parse().ok(),
+        user_agent: Some("test".into()),
+        ..RequestMeta::default()
+    };
     let ctx = TenantCtx { tenant_id, user_id: new_id(), meta: meta.clone() };
     let mut tx = pos_db::begin_tenant(&pool, &ctx).await.expect("begin");
     let entity = new_id();

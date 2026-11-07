@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { type FormEvent, type ReactNode, useState } from 'react'
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 
 import type { PaymentClaim, SubscriptionInvoice } from '../../api/billing'
 import {
@@ -11,6 +11,7 @@ import {
   type TenantDetail,
   canAdminister,
   canBill,
+  canOpenBusiness,
   platformApi,
   platformKeys,
   useAdminTenant,
@@ -28,6 +29,7 @@ import { TextField } from '../../components/ui/TextField'
 import { formatDate, formatDateTime } from '../../lib/dates'
 import { formatMoney } from '../../lib/format'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
+import { useSession } from '../auth/session'
 import { LINK, cycleLabel, featureName, methodLabel, planLabel, stateLabel, useStaffRole } from './labels'
 import { LicenceDialog } from './LicenceDialog'
 import { BusinessStatusBadge, ClaimStatusBadge, Fact, InvoiceStatusBadge, ReasonDialog, SubscriptionBadge } from './shared'
@@ -89,6 +91,14 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
     setAction(a)
   }
   const suspended = d.status === 'suspended'
+  const { openBusiness } = useSession()
+  const navigate = useNavigate()
+  const [opening, setOpening] = useState(false)
+  const owner = d.members.find((m) => m.is_owner && m.status === 'active')
+  const enter = useMutation({
+    mutationFn: (reason: string) => openBusiness(d.id, reason),
+    onSuccess: () => navigate('/', { replace: true }),
+  })
 
   return (
     <Card className="flex flex-col gap-4">
@@ -101,8 +111,21 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
             <SubscriptionBadge state={d.subscription_status} />
           </div>
         </div>
-        {(canAdminister(role) || canBill(role)) && (
+        {(canAdminister(role) || canBill(role) || canOpenBusiness(role)) && (
           <div className="flex flex-wrap gap-2 print:hidden">
+            {canOpenBusiness(role) && !suspended && (
+              <Button
+                variant="secondary"
+                disabled={!owner}
+                title={owner ? undefined : t('admin.tenant.openNoOwner')}
+                onClick={() => {
+                  enter.reset()
+                  setOpening(true)
+                }}
+              >
+                {t('admin.tenant.openBusiness')}
+              </Button>
+            )}
             {canBill(role) && <Button onClick={() => setLicensing(true)}>{t('admin.licence.open')}</Button>}
             {canAdminister(role) &&
               (suspended ? (
@@ -141,6 +164,16 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
         pending={change.isPending}
         error={change.error}
         onSubmit={(reason) => change.mutate(reason)}
+      />
+      <ReasonDialog
+        open={opening}
+        onClose={() => setOpening(false)}
+        title={t('admin.tenant.openTitle', { name: d.name })}
+        hint={t('admin.tenant.openHint', { owner: owner?.full_name ?? '' })}
+        confirmLabel={t('admin.tenant.openBusiness')}
+        pending={enter.isPending}
+        error={enter.error}
+        onSubmit={(reason) => enter.mutate(reason)}
       />
       {licensing && <LicenceDialog tenant={d} onClose={() => setLicensing(false)} />}
     </Card>

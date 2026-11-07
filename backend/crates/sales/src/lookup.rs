@@ -42,6 +42,8 @@ pub struct PosItem {
     /// Stock at the sale location (`null` for services).
     #[schema(value_type = Option<String>)]
     pub stock: Option<Decimal>,
+    /// The product photo (`GET /files/{id}`), if any.
+    pub image_file_id: Option<Uuid>,
     /// The search text matched a barcode or SKU exactly (scan → add to cart).
     pub exact: bool,
 }
@@ -63,7 +65,7 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
          u.short_name AS unit_short_name, u.allow_fraction, p.track_inventory, p.warranty_period, p.warranty_unit, \
          v.selling_price, v.min_selling_price, \
          COALESCE(t.rate_pct, 0) AS tax_rate_pct, \
-         IF(p.track_inventory, COALESCE(sb.quantity, 0), NULL) AS stock, ",
+         IF(p.track_inventory, COALESCE(sb.quantity, 0), NULL) AS stock, p.image_file_id, ",
     );
     q.push("(v.sku = ").push_bind(text.to_owned());
     q.push(" OR EXISTS (SELECT 1 FROM product_barcodes x WHERE x.tenant_id = v.tenant_id AND x.variant_id = v.id AND x.barcode = ")

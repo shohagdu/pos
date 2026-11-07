@@ -76,7 +76,7 @@
       "results": "Risultati della ricerca",
       "currentCost": "Costo attuale",
       "serviceNotStocked": "Servizio — non a magazzino",
-      "lastPrice": "Ultimo: {{price}} il {{date}} ({{qty}}) da {{supplier}}",
+      "lastPrice": "Ultimo: {{price}} × {{qty}} {{unit}} · {{date}} · {{supplier}}",
       "variance": "{{amount}} ({{pct}}%)",
       "firstPurchase": "Primo acquisto di questo prodotto",
       "inclVat": "IVA incl. {{amount}}",
@@ -112,7 +112,8 @@
         "removeLine": "Rimuovi riga",
         "post": "Salva e registra"
       },
-      "saveAndPost": "Salva e registra"
+      "saveAndPost": "Salva e registra",
+      "landedEach": "Costo di carico {{amount}} / unità"
     },
     "post": {
       "button": "Registra fattura",

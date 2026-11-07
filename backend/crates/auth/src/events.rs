@@ -19,6 +19,10 @@ pub const PASSWORD_CHANGE_FAILURE: &str = "password.change_failure";
 pub const REFRESH_REUSE: &str = "refresh.reuse_detected";
 pub const SESSION_REVOKED: &str = "session.revoked";
 pub const TENANT_SWITCHED: &str = "tenant.switched";
+/// The owner signed in as a staff member (`user_id` = the owner).
+pub const IMPERSONATION_STARTED: &str = "impersonation.started";
+/// The owner returned to their own account (`user_id` = the owner).
+pub const IMPERSONATION_ENDED: &str = "impersonation.ended";
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct EventSubject<'a> {

@@ -3,7 +3,7 @@ import { type FormEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 
-import { BUSINESS_TYPES, type BusinessType, type NewBusiness, tenancyApi } from '../../api/tenancy'
+import { BUSINESS_TYPES, type BusinessType, type CountryCode, type NewBusiness, tenancyApi } from '../../api/tenancy'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -12,6 +12,7 @@ import { TextField } from '../../components/ui/TextField'
 import { optional, useFields } from '../../lib/form'
 import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
+import { countryOptions, defaultCountry, profileLabels } from './country'
 
 /** Wizard step 2: creates the business with its defaults, then signs in to it. */
 export function CreateBusinessPage() {
@@ -23,6 +24,7 @@ export function CreateBusinessPage() {
   const { values, bind } = useFields({
     name: '',
     business_type: 'retail',
+    country_code: defaultCountry(i18n.language) as string,
     address: '',
     district: '',
     phone: '',
@@ -48,7 +50,8 @@ export function CreateBusinessPage() {
         phone: optional(values.phone),
         email: optional(values.email),
         bin_number: optional(values.bin_number),
-        trade_license_no: optional(values.trade_license_no),
+        trade_license_no: labels.italy ? undefined : optional(values.trade_license_no),
+        country_code: values.country_code as CountryCode,
         locale: i18n.language,
       }),
     onSuccess: () => navigate('/onboarding/regional', { replace: true }),
@@ -60,10 +63,12 @@ export function CreateBusinessPage() {
       createAndEnter({
         name: t('onboarding.business.defaultName', { name: me?.user.full_name ?? '' }).trim(),
         business_type: 'retail',
+        country_code: values.country_code as CountryCode,
         locale: i18n.language,
       }),
     onSuccess: () => navigate('/', { replace: true }),
   })
+  const labels = profileLabels(t, values.country_code)
   const pending = create.isPending || skip.isPending
   const errors = fieldErrors(create.error, t)
 
@@ -84,14 +89,18 @@ export function CreateBusinessPage() {
           error={errors.business_type}
           {...bind('business_type')}
         />
+        <Select label={t('onboarding.business.country')} options={countryOptions(t)} error={errors.country_code} {...bind('country_code')} />
+        {labels.italy && <p className="-mt-2 text-sm text-ink-muted">{t('onboarding.business.countryHint')}</p>}
         <TextField label={t('onboarding.business.address')} autoComplete="street-address" error={errors.address} {...bind('address')} />
-        <TextField label={t('onboarding.business.district')} error={errors.district} {...bind('district')} />
+        <TextField label={labels.district} error={errors.district} {...bind('district')} />
         {more ? (
           <>
             <TextField label={t('onboarding.business.phone')} type="tel" error={errors.phone} {...bind('phone')} />
             <TextField label={t('onboarding.business.email')} type="email" error={errors.email} {...bind('email')} />
-            <TextField label={t('onboarding.business.bin')} error={errors.bin_number} {...bind('bin_number')} />
-            <TextField label={t('onboarding.business.tradeLicense')} error={errors.trade_license_no} {...bind('trade_license_no')} />
+            <TextField label={labels.bin} error={errors.bin_number} {...bind('bin_number')} />
+            {!labels.italy && (
+              <TextField label={t('onboarding.business.tradeLicense')} error={errors.trade_license_no} {...bind('trade_license_no')} />
+            )}
           </>
         ) : (
           <Button variant="ghost" className="self-start" onClick={() => setMore(true)}>

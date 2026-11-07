@@ -44,6 +44,7 @@ export function ReportFrame({
   filters,
   exports = [],
   links,
+  nav,
   updatedAt,
   children,
 }: {
@@ -53,6 +54,8 @@ export function ReportFrame({
   filters?: ReactNode
   exports?: ExportAction[]
   links?: ReactNode
+  /** Section tabs shown under the header (e.g. the accounting tabs). */
+  nav?: ReactNode
   updatedAt?: number
   children: ReactNode
 }) {
@@ -77,6 +80,7 @@ export function ReportFrame({
           )
         }
       />
+      {nav}
       {!allowed ? (
         <Alert tone="warning">{t('reports.noAccess')}</Alert>
       ) : (

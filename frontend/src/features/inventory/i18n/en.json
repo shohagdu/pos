@@ -248,6 +248,21 @@
       "writeOffExpired_one": "Write off 1 expired batch",
       "writeOffExpired_other": "Write off {{count}} expired batches",
       "empty": "No batches here. Batches come from opening stock and purchases with an expiry date."
+    },
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "available": "Available {{qty}} {{unit}}",
+    "overAvailable": "More than is available here",
+    "sendAll": "Send all",
+    "route": "Route",
+    "noLinesTransfer": "No items yet. Scan a barcode or search above (F2).",
+    "shortcuts": {
+      "search": "Find product",
+      "destination": "Destination",
+      "draft": "Save draft",
+      "dispatch": "Save and dispatch",
+      "next": "Back to search",
+      "removeLine": "Remove item"
     }
   }
 }

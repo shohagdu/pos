@@ -8,7 +8,7 @@
 mod common;
 
 use actix_web::{http::StatusCode, test};
-use common::{Res, Session, call, create_business, sign_up};
+use common::{Req, Res, Session, call, create_business, role_id, sign_up, switch};
 use pos_api::{AppState, app};
 use serde_json::{Value, json};
 use sqlx::MySqlPool;
@@ -88,7 +88,7 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     .expect("plan limits");
     let srv = test::init_service(app(AppState::new(pool.clone(), common::config()))).await;
     let mut owner = sign_up(&srv, "Owner", "01711000951").await;
-    create_business(&srv, &mut owner, "Karim Traders").await;
+    let tenant_id = create_business(&srv, &mut owner, "Karim Traders").await;
     // A new business may pick its currency; it is reported with the session.
     let euro = set_currency(&srv, &owner, "EUR").await;
     assert_eq!(euro.body["currency_code"], "EUR", "{}", euro.body);
@@ -221,6 +221,52 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     assert_eq!(main_sales.body["data"].as_array().map(Vec::len), Some(0), "{}", main_sales.body);
     let account = get!(&format!("/api/v1/payment-accounts/{mir_cash}")).await;
     assert_eq!(num(&account.body, "current_balance"), 100.0, "{}", account.body);
+
+    // --- a manager limited to the main branch cannot reach Mirpur by id
+    // (BRN-R02): not its sale, not its stock location, and not by dropping
+    // the branch header either.
+    let manager_role = role_id(&srv, &owner, "branch_manager").await;
+    let added = call(
+        &srv,
+        Req::post(
+            "/api/v1/members",
+            json!({ "full_name": "Main Manager", "phone": "01711000981", "password": "Shop-pass-2026",
+                    "role_ids": [&manager_role], "branch_ids": [&main] }),
+        )
+        .bearer(&owner.token)
+        .build(),
+    )
+    .await;
+    assert_eq!(added.status, StatusCode::CREATED, "{}", added.body);
+    let login = call(
+        &srv,
+        Req::post("/api/v1/auth/login", json!({ "identifier": "01711000981", "password": "Shop-pass-2026" })).build(),
+    )
+    .await;
+    let mut manager = Session { token: login.token(), cookie: login.cookie(), phone: "01711000981".into() };
+    switch(&srv, &mut manager, Some(&tenant_id)).await;
+    let mir_sale = s(&sale.body, "id");
+    let peek = send(&srv, &manager, "get", &format!("/api/v1/sales/{mir_sale}"), None, None).await;
+    assert_eq!(peek.code(), "BRANCH_NOT_ALLOWED", "{}", peek.body);
+    let cancel =
+        send(&srv, &manager, "post", &format!("/api/v1/sales/{mir_sale}/cancel"), Some(json!({ "reason": "x" })), None)
+            .await;
+    assert_eq!(cancel.code(), "BRANCH_NOT_ALLOWED", "{}", cancel.body);
+    let adjust = send(
+        &srv,
+        &manager,
+        "post",
+        "/api/v1/stock-adjustments",
+        Some(json!({ "reason": "damaged", "location_id": mir_main, "lines": [{ "variant_id": soap, "quantity": "-1" }] })),
+        None,
+    )
+    .await;
+    assert_eq!(adjust.code(), "BRANCH_NOT_ALLOWED", "{}", adjust.body);
+    let own = send(&srv, &manager, "get", "/api/v1/sales", None, None).await;
+    assert_eq!(own.status, StatusCode::OK, "{}", own.body);
+    // The owner, whatever branch is selected, still opens it.
+    let owner_view = send(&srv, &owner, "get", &format!("/api/v1/sales/{mir_sale}"), None, Some(&main)).await;
+    assert_eq!(owner_view.status, StatusCode::OK, "{}", owner_view.body);
 
     // --- a register shift: float 500, one cash sale of 100, counted 590
     let register =

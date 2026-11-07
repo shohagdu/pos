@@ -449,6 +449,7 @@ pub async fn receipt_info(tx: &mut TenantTx, branch_id: Uuid) -> AppResult<Recei
 }
 
 pub async fn get(tx: &mut TenantTx, id: Uuid, seller: Seller) -> AppResult<SaleDetail> {
+    tx.ensure_row_branch("sales", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SALE_SELECT);
     q.push_bind(tenant_id).push(" AND s.id = ").push_bind(id);
@@ -642,7 +643,12 @@ pub async fn create(
         };
         let line_over = totals.lines.iter().any(|l| over(l.line_discount, l.gross));
         let net: Decimal = totals.lines.iter().map(|l| l.net_before_invoice).sum();
-        if line_over || over(totals.invoice_discount, net) {
+        // Each discount alone may be within the limit while both together are
+        // not (10% on the line + 10% on the invoice = 19% off), so the total
+        // given away is checked against the whole cart as well.
+        let gross: Decimal = totals.lines.iter().map(|l| l.gross).sum();
+        let given: Decimal = totals.lines.iter().map(|l| l.line_discount).sum::<Decimal>() + totals.invoice_discount;
+        if line_over || over(totals.invoice_discount, net) || over(given, gross) {
             return Err(AppError::Denied {
                 code: "DISCOUNT_OVER_LIMIT",
                 message: format!("discounts above {}% need a manager", max_discount_pct.normalize()),

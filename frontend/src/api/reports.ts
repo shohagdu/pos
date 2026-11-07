@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from './client'
 import { queryString } from './query'
@@ -186,6 +186,38 @@ export interface AgingRow extends AgingTotals {
   oldest_date: string | null
 }
 
+export interface DueRecord {
+  /** Sale or purchase id. */
+  id: string
+  /** Invoice number (sales) or purchase number. */
+  doc_no: string | null
+  /** The supplier's own bill number (purchases). */
+  reference: string | null
+  doc_date: string
+  days_open: number
+  party_id: string
+  party_code: string | null
+  party_name: string
+  party_phone: string | null
+  grand_total: string
+  paid_total: string
+  returned_total: string
+  due_total: string
+}
+
+export interface DueReport {
+  party: 'customers' | 'suppliers'
+  as_of: string
+  rows: DueRecord[]
+  totals: { grand_total: string; paid_total: string; returned_total: string; due_total: string; parties: number }
+}
+
+export interface DuesFilter {
+  q?: string
+  from?: string
+  to?: string
+}
+
 export interface AgingReport {
   party: 'customers' | 'suppliers'
   as_of: string
@@ -292,6 +324,9 @@ export const reportsApi = {
     apiFetch<ProductMovement>(`/api/v1/reports/product-movement${queryString({ ...range })}`),
   aging: (party: 'customers' | 'suppliers', asOf?: string) =>
     apiFetch<AgingReport>(`/api/v1/reports/aging${queryString({ party, as_of: asOf })}`),
+  /** Unpaid sales (customers) or unpaid received purchases (suppliers), one row each. */
+  dues: (party: 'customers' | 'suppliers', filter: DuesFilter) =>
+    apiFetch<DueReport>(`/api/v1/reports/dues${queryString({ party, q: filter.q || undefined, from: filter.from || undefined, to: filter.to || undefined })}`),
 }
 
 export const reportKeys = {
@@ -332,4 +367,12 @@ export const useAgingReport = (tenantId: string, party: 'customers' | 'suppliers
     queryKey: ['reports', tenantId, 'aging', party, asOf] as const,
     queryFn: () => reportsApi.aging(party, asOf || undefined),
     enabled,
+  })
+
+export const useDuesReport = (tenantId: string, party: 'customers' | 'suppliers', filter: DuesFilter, enabled = true) =>
+  useQuery({
+    queryKey: ['reports', tenantId, 'dues', party, filter] as const,
+    queryFn: () => reportsApi.dues(party, filter),
+    enabled,
+    placeholderData: keepPreviousData,
   })

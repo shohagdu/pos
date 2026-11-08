@@ -26,8 +26,9 @@ import { BranchesSection } from '../branches/BranchesSection'
 import { RegistersSection } from '../branches/RegistersSection'
 import { BranchStep, SettingsStep } from '../onboarding/WizardStepPage'
 import { countryOptions, profileLabels } from '../onboarding/country'
+import { DataResetSection } from './DataResetSection'
 
-const SECTIONS = ['profile', 'regional', 'branch', 'invoice', 'branches', 'registers'] as const
+const SECTIONS = ['profile', 'regional', 'branch', 'invoice', 'branches', 'registers', 'data'] as const
 type Section = (typeof SECTIONS)[number]
 /** Sections for `branches.manage`; the rest need `settings.manage`. */
 const BRANCH_SECTIONS: readonly Section[] = ['branches', 'registers']
@@ -38,7 +39,11 @@ export function SettingsPage() {
   const { section = 'profile' } = useParams()
   const { me, can } = useSession()
   const tenantId = me?.tenant?.tenant_id
-  const visible = SECTIONS.filter((s) => (BRANCH_SECTIONS.includes(s) ? can('branches.manage') : can('settings.manage')))
+  // Clearing transactions is for the owner in person (not while signed in as them).
+  const owner = Boolean(me?.tenant?.is_owner) && !me?.impersonator
+  const visible = SECTIONS.filter((s) =>
+    s === 'data' ? owner : BRANCH_SECTIONS.includes(s) ? can('branches.manage') : can('settings.manage'),
+  )
   if (!tenantId || !SECTIONS.includes(section as Section)) return <Navigate to="/settings" replace />
   if (!visible.includes(section as Section)) {
     // Branch managers without `settings.manage` land on their first section.
@@ -64,6 +69,7 @@ export function SettingsPage() {
         ))}
       </nav>
       {section === 'profile' && <ProfileSection tenantId={tenantId} />}
+      {section === 'data' && <DataResetSection tenantId={tenantId} />}
       {section === 'regional' && <SettingsStep step="regional" tenantId={tenantId} mode="settings" />}
       {section === 'invoice' && <SettingsStep step="invoice" tenantId={tenantId} mode="settings" />}
       {section === 'branch' && <BranchStep tenantId={tenantId} mode="settings" />}

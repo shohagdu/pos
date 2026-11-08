@@ -1,6 +1,6 @@
 # Barcode Label Printing — Feature Specification
 
-> Reusable spec for the barcode label feature built in the SaaS POS (requirement **PROD-R05**, roadmap 6.4).
+> Reusable spec for the barcode label feature built in JSA MULTISERVICES (requirement **PROD-R05**, roadmap 6.4).
 > It describes what the feature does, the data it needs, the API, the barcode encoder (no library), the
 > print layout and the known pitfalls, so it can be rebuilt in another project.
 >

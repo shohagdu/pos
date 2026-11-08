@@ -12,6 +12,7 @@ pub mod invitations;
 pub mod members;
 pub mod onboarding;
 pub mod provisioning;
+pub mod reset;
 pub mod roles;
 pub mod sequences;
 pub mod settings;

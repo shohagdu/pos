@@ -7,7 +7,7 @@ use crate::{auth::TokenResponse, error::Problem, routes};
 
 #[derive(OpenApi)]
 #[openapi(
-    info(title = "SaaS POS API", description = "Multi-tenant POS & business management API"),
+    info(title = "JSA MULTISERVICES API", description = "Multi-tenant POS & business management API"),
     paths(
         routes::health::healthz,
         routes::health::readyz,
@@ -39,6 +39,9 @@ use crate::{auth::TokenResponse, error::Problem, routes};
         routes::tenancy::get_onboarding,
         routes::tenancy::complete_onboarding_step,
         routes::tenancy::dismiss_onboarding,
+        routes::tenancy::get_data_reset,
+        routes::tenancy::clear_transactions,
+        routes::tenancy::restore_archive,
         routes::users::list_invitations,
         routes::users::create_invitation,
         routes::users::resend_invitation,

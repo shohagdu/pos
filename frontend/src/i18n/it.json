@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "SaaS POS",
+    "name": "JSA MULTISERVICES",
     "tagline": "Vendite, magazzino e incassi in un unico posto"
   },
   "nav": {
@@ -193,12 +193,55 @@
       "branch": "Filiale",
       "invoice": "Fattura e IVA",
       "branches": "Filiali",
-      "registers": "Casse"
+      "registers": "Casse",
+      "data": "Dati"
     },
     "legalName": "Ragione sociale (facoltativa)",
     "address": "Indirizzo dell'attività: {{slug}}",
     "saved": "Salvato.",
-    "countryHint": "Valuta e fuso orario sono nelle Impostazioni regionali."
+    "countryHint": "Valuta e fuso orario sono nelle Impostazioni regionali.",
+    "dataReset": {
+      "clearTitle": "Cancella tutte le transazioni",
+      "clearIntro": "Ricomincia da zero, ad esempio dopo i test. Tutto ciò che viene cancellato resta in un archivio qui sotto e può essere ripristinato in qualsiasi momento.",
+      "clears": "Cancellati: vendite, resi, acquisti, pagamenti, spese, entrate, rettifiche, trasferimenti e inventari di magazzino, registrazioni contabili, turni e carrelli sospesi.",
+      "keeps": "Conservati: prodotti, clienti, fornitori, personale, conti e impostazioni.",
+      "resets": "Azzerati: giacenze, crediti e debiti verso clienti e fornitori e saldi dei conti; la numerazione delle fatture riparte.",
+      "live": "Registrate ora",
+      "none": "nessuna transazione",
+      "clear": "Cancella tutte le transazioni",
+      "clearing": "Cancellazione…",
+      "cleared": "Tutte le transazioni sono state cancellate. Se serve, ripristinale dagli archivi qui sotto.",
+      "archivesTitle": "Archivi",
+      "restoreHint": "Il ripristino riporta un archivio. Le transazioni registrate nel frattempo vengono messe da parte in un nuovo archivio, così nulla va perso.",
+      "restore": "Ripristina",
+      "restored": "L'archivio è stato ripristinato.",
+      "noArchives": "Non è stato ancora cancellato nulla.",
+      "when": "Quando",
+      "kind": "Cosa",
+      "documents": "Transazioni",
+      "kinds": {
+        "clear": "Cancellazione",
+        "restore": "Messo da parte da un ripristino"
+      },
+      "statuses": {
+        "held": "Archiviato",
+        "restored": "Ripristinato"
+      },
+      "docs": {
+        "sales": "Vendite",
+        "sale_returns": "Resi di vendita",
+        "purchases": "Acquisti",
+        "purchase_returns": "Resi a fornitore",
+        "payments": "Pagamenti",
+        "expenses": "Spese",
+        "other_incomes": "Entrate",
+        "stock_adjustments": "Rettifiche",
+        "stock_transfers": "Trasferimenti",
+        "stock_counts": "Inventari",
+        "journal_entries": "Registrazioni",
+        "register_shifts": "Turni"
+      }
+    }
   },
   "subscription": {
     "seePlan": "Vedi piano",

@@ -79,6 +79,10 @@ fn access(method: &str, path: &str) -> Option<Access> {
         // Label facts and in-store barcodes by variant id; product lookup by SKU/barcode.
         ("post", "/api/v1/labels" | "/api/v1/labels/generate-barcodes" | "/api/v1/products/lookup") => BodyRead,
         ("post", "/api/v1/members" | "/api/v1/products/import") => TenantWrite,
+        ("get", "/api/v1/data-reset") => TenantRead,
+        // Bob clears his own business: harmless to Alice (checked by the snapshot).
+        ("post", "/api/v1/data-reset/clear") => TenantWrite,
+        ("post", "/api/v1/data-reset/archives/{id}/restore") => Resource,
         ("get", "/api/v1/auth/me" | "/api/v1/auth/sessions") => UserRead,
         ("delete", "/api/v1/auth/sessions/{id}") => Resource,
         (
@@ -326,6 +330,8 @@ fn every_route_is_documented() {
 struct Victim {
     owner: Session,
     tenant_id: String,
+    /// A held archive of Alice's (clear all transactions, then restore).
+    archive_id: String,
     member_id: String,
     invitation_id: String,
     role_id: String,
@@ -447,6 +453,8 @@ impl Victim {
             &self.trade.invoice_id
         } else if path.starts_with("/api/v1/reports/general-ledger") || path.starts_with("/api/v1/ledger-accounts/") {
             &self.trade.ledger_account_id
+        } else if path.starts_with("/api/v1/data-reset/archives/") {
+            &self.archive_id
         } else {
             panic!("no fixture id for {path}; add one to Victim")
         }
@@ -662,6 +670,56 @@ fn request(method: &str, uri: &str, body: Option<Value>) -> Req {
 }
 
 /// What A sees of its own business; compared before and after B's attempts.
+/// Alice clears every transaction and restores them: her data must come back
+/// exactly as it was. Returns the archive that holds the (empty) set-aside data.
+async fn clear_and_restore<S, B>(srv: &S, alice: &Session) -> String
+where
+    S: actix_web::dev::Service<
+            actix_http::Request,
+            Response = actix_web::dev::ServiceResponse<B>,
+            Error = actix_web::Error,
+        >,
+    B: actix_web::body::MessageBody,
+{
+    let before = snapshot(srv, alice).await;
+    let cleared = call(srv, Req::post("/api/v1/data-reset/clear", json!({})).bearer(&alice.token).build()).await;
+    assert_eq!(cleared.status, StatusCode::OK, "clear: {}", cleared.body);
+    assert!(cleared.body["documents"]["sales"].as_i64().unwrap_or(0) > 0, "{}", cleared.body);
+    let sales = call(srv, Req::get("/api/v1/sales").bearer(&alice.token).build()).await;
+    assert_eq!(sales.body["data"].as_array().map(Vec::len), Some(0), "sales after clear: {}", sales.body);
+    let journals = call(srv, Req::get("/api/v1/journals").bearer(&alice.token).build()).await;
+    assert_eq!(journals.body["data"].as_array().map(Vec::len), Some(0), "journals after clear: {}", journals.body);
+    let customers = call(srv, Req::get("/api/v1/customers?status=all").bearer(&alice.token).build()).await;
+    assert!(
+        customers.body["data"].as_array().into_iter().flatten().all(|c| c["current_balance"] == "0.00"),
+        "dues after clear: {}",
+        customers.body
+    );
+
+    let id = cleared.body["id"].as_str().expect("archive id").to_owned();
+    let restored = call(
+        srv,
+        Req::post(&format!("/api/v1/data-reset/archives/{id}/restore"), json!({})).bearer(&alice.token).build(),
+    )
+    .await;
+    assert_eq!(restored.status, StatusCode::OK, "restore: {}", restored.body);
+    assert_eq!(restored.body["status"], "restored");
+    assert_eq!(snapshot(srv, alice).await, before, "restore brings back exactly what was cleared");
+    let again = call(
+        srv,
+        Req::post(&format!("/api/v1/data-reset/archives/{id}/restore"), json!({})).bearer(&alice.token).build(),
+    )
+    .await;
+    assert_eq!(again.code(), "ALREADY_RESTORED", "{}", again.body);
+
+    let overview = call(srv, Req::get("/api/v1/data-reset").bearer(&alice.token).build()).await;
+    assert_eq!(overview.status, StatusCode::OK, "{}", overview.body);
+    let archives = overview.body["archives"].as_array().cloned().unwrap_or_default();
+    assert_eq!(archives.len(), 2, "{}", overview.body);
+    assert_eq!((&archives[0]["kind"], &archives[0]["status"]), (&json!("restore"), &json!("held")));
+    archives[0]["id"].as_str().expect("set-aside archive").to_owned()
+}
+
 async fn snapshot<S, B>(srv: &S, a: &Session) -> Vec<Value>
 where
     S: actix_web::dev::Service<
@@ -778,6 +836,7 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
     pos_notify::jobs::run(&pool, tomorrow).await.expect("notification checks");
     let notifications = call(&srv, Req::get("/api/v1/notifications").bearer(&alice.token).build()).await;
     let notification_id = notifications.body["data"][0]["id"].as_str().expect("a notification for Alice").to_owned();
+    let archive_id = clear_and_restore(&srv, &alice).await;
     let victim = Victim {
         member_id: find_id(&members.body, "full_name", "Alice Staff"),
         role_id: role.body["id"].as_str().expect("role id").to_owned(),
@@ -793,6 +852,7 @@ async fn other_businesses_cannot_see_or_touch_data(pool: MySqlPool) {
         trade,
         invitation_id,
         tenant_id,
+        archive_id,
         owner: alice,
     };
     let before = snapshot(&srv, &victim.owner).await;

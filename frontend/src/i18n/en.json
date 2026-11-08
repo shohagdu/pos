@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "SaaS POS",
+    "name": "JSA MULTISERVICES",
     "tagline": "Sales, stock and money in one place"
   },
   "nav": {
@@ -193,12 +193,55 @@
       "branch": "Branch",
       "invoice": "Invoice & tax",
       "branches": "Branches",
-      "registers": "Registers"
+      "registers": "Registers",
+      "data": "Data"
     },
     "legalName": "Legal name (optional)",
     "address": "Business address: {{slug}}",
     "saved": "Saved.",
-    "countryHint": "Currency and time zone are under Regional settings."
+    "countryHint": "Currency and time zone are under Regional settings.",
+    "dataReset": {
+      "clearTitle": "Clear all transactions",
+      "clearIntro": "Start fresh, for example after testing. Everything cleared is kept in an archive below and can be restored at any time.",
+      "clears": "Cleared: sales, returns, purchases, payments, expenses, incomes, stock adjustments, transfers and counts, journals, shifts and held carts.",
+      "keeps": "Kept: products, customers, suppliers, staff, accounts and settings.",
+      "resets": "Reset: stock to 0, customer and supplier dues and account balances to 0, invoice numbers start again.",
+      "live": "Now recorded",
+      "none": "no transactions",
+      "clear": "Clear all transactions",
+      "clearing": "Clearing…",
+      "cleared": "All transactions are cleared. Restore them from the archives below if needed.",
+      "archivesTitle": "Archives",
+      "restoreHint": "Restoring brings an archive back. Transactions recorded since are set aside as a new archive, so nothing is lost.",
+      "restore": "Restore",
+      "restored": "The archive is restored.",
+      "noArchives": "Nothing has been cleared yet.",
+      "when": "When",
+      "kind": "What",
+      "documents": "Transactions",
+      "kinds": {
+        "clear": "Cleared",
+        "restore": "Set aside by a restore"
+      },
+      "statuses": {
+        "held": "Archived",
+        "restored": "Restored"
+      },
+      "docs": {
+        "sales": "Sales",
+        "sale_returns": "Sale returns",
+        "purchases": "Purchases",
+        "purchase_returns": "Purchase returns",
+        "payments": "Payments",
+        "expenses": "Expenses",
+        "other_incomes": "Incomes",
+        "stock_adjustments": "Adjustments",
+        "stock_transfers": "Transfers",
+        "stock_counts": "Counts",
+        "journal_entries": "Journals",
+        "register_shifts": "Shifts"
+      }
+    }
   },
   "subscription": {
     "seePlan": "See plan",

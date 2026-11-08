@@ -1,4 +1,4 @@
-# SaaS POS — Database Design (MySQL)
+# JSA MULTISERVICES — Database Design (MySQL)
 
 | Field | Value |
 |---|---|

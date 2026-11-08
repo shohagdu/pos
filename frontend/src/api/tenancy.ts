@@ -99,7 +99,32 @@ export interface OnboardingStatus {
   complete: boolean
 }
 
+/** Documents per type (`sales`, `purchases`, …); zero counts are left out. */
+export type DocumentCounts = Partial<Record<string, number>>
+
+/** Made by "Clear all transactions" (`clear`) or set aside by a restore (`restore`). */
+export interface DataArchive {
+  id: string
+  kind: 'clear' | 'restore'
+  status: 'held' | 'restored'
+  documents: DocumentCounts
+  total_rows: number
+  created_by_name: string | null
+  created_at: string
+  restored_by_name: string | null
+  restored_at: string | null
+}
+
+export interface DataResetOverview {
+  live: DocumentCounts
+  archives: DataArchive[]
+}
+
 export const tenancyApi = {
+  /** Owner only. */
+  dataReset: () => apiFetch<DataResetOverview>('/api/v1/data-reset'),
+  clearTransactions: () => apiFetch<DataArchive>('/api/v1/data-reset/clear', { method: 'POST', body: {} }),
+  restoreArchive: (id: string) => apiFetch<DataArchive>(`/api/v1/data-reset/archives/${id}/restore`, { method: 'POST', body: {} }),
   createTenant: (input: NewBusiness) => apiFetch<ProvisionedTenant>('/api/v1/tenants', { method: 'POST', body: input }),
   settings: () => apiFetch<BusinessSettings>('/api/v1/settings'),
   updateSettings: (version: number, patch: SettingsPatch) =>
@@ -121,6 +146,7 @@ export const tenancyKeys = {
   settings: (tenantId: string) => ['tenancy', tenantId, 'settings'] as const,
   branches: (tenantId: string) => ['tenancy', tenantId, 'branches'] as const,
   onboarding: (tenantId: string) => ['tenancy', tenantId, 'onboarding'] as const,
+  dataReset: (tenantId: string) => ['tenancy', tenantId, 'data-reset'] as const,
 }
 
 export function useSettings(tenantId: string) {

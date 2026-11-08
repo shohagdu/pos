@@ -6,6 +6,7 @@ use pos_tenancy::{
     NewBusiness, ProvisionedTenant,
     branches::{self, Branch, BranchPatch, NewBranch},
     onboarding::{self, OnboardingStatus},
+    reset::{self, Archive, ResetOverview},
     settings::{self, BusinessSettings, SettingsPatch},
 };
 use uuid::Uuid;
@@ -26,7 +27,10 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(deactivate_branch)
         .service(get_onboarding)
         .service(complete_onboarding_step)
-        .service(dismiss_onboarding);
+        .service(dismiss_onboarding)
+        .service(get_data_reset)
+        .service(clear_transactions)
+        .service(restore_archive);
 }
 
 /// Onboarding step 2: creates the business with all defaults and a 14-day
@@ -200,4 +204,66 @@ pub async fn dismiss_onboarding(state: web::Data<AppState>, auth: TenantAuth) ->
     let status = onboarding::dismiss(&mut tx).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(status))
+}
+
+/// Clearing and restoring transactions is for the business owner in person:
+/// not staff, and not someone signed in as the owner (impersonation).
+fn require_real_owner(auth: &TenantAuth) -> Result<(), ApiError> {
+    if auth.claims.imp.is_some() {
+        return Err(pos_auth::service::impersonating().into());
+    }
+    if !auth.access.is_owner {
+        return Err(pos_core::AppError::Denied {
+            code: "OWNER_ONLY",
+            message: "only the business owner can clear or restore transactions".into(),
+        }
+        .into());
+    }
+    Ok(())
+}
+
+/// Live document counts and the archives made by "Clear all transactions".
+#[utoipa::path(get, path = "/api/v1/data-reset", tag = "tenancy", security(("bearer" = [])),
+    responses((status = 200, body = ResetOverview), (status = 403, body = crate::error::Problem)))]
+#[get("/data-reset")]
+pub async fn get_data_reset(state: web::Data<AppState>, auth: TenantAuth) -> Result<HttpResponse, ApiError> {
+    require_real_owner(&auth)?;
+    let mut tx = auth.begin(&state).await?;
+    let overview = reset::overview(&mut tx).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(overview))
+}
+
+/// Clears every transaction (sales, returns, purchases, payments, expenses,
+/// incomes, stock movements, journals, shifts, held carts). They are archived
+/// and can be restored. Products, customers, suppliers, staff and settings
+/// stay; stock, dues and balances become zero and document numbers restart.
+#[utoipa::path(post, path = "/api/v1/data-reset/clear", tag = "tenancy", security(("bearer" = [])),
+    responses((status = 200, body = Archive), (status = 403, body = crate::error::Problem)))]
+#[post("/data-reset/clear")]
+pub async fn clear_transactions(state: web::Data<AppState>, auth: TenantAuth) -> Result<HttpResponse, ApiError> {
+    require_real_owner(&auth)?;
+    let mut tx = auth.begin(&state).await?;
+    let archive = reset::clear(&mut tx, &auth.ctx.meta).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(archive))
+}
+
+/// Restores an archive. The transactions live now are archived first (and
+/// can be restored in turn), so nothing is lost.
+#[utoipa::path(post, path = "/api/v1/data-reset/archives/{id}/restore", tag = "tenancy", params(("id" = Uuid, Path)),
+    security(("bearer" = [])),
+    responses((status = 200, body = Archive), (status = 403, body = crate::error::Problem),
+              (status = 404, body = crate::error::Problem), (status = 409, body = crate::error::Problem)))]
+#[post("/data-reset/archives/{id}/restore")]
+pub async fn restore_archive(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, ApiError> {
+    require_real_owner(&auth)?;
+    let mut tx = auth.begin(&state).await?;
+    let archive = reset::restore(&mut tx, &auth.ctx.meta, path.into_inner()).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(archive))
 }

@@ -1,4 +1,4 @@
-# SaaS POS — Detailed Requirement Analysis
+# JSA MULTISERVICES — Detailed Requirement Analysis
 
 | Field | Value |
 |---|---|
@@ -7,7 +7,7 @@
 | Date | 17 October 2026 |
 | Source documents | `Docs/saas_pos_software_requirements_specification_srs.md`, `Docs/saas_pos_feature_list.md`, `Docs/developemnt_roudmap.md` |
 | Related documents | `02_Development_Roadmap.md`, `03_Database_Design.md` |
-| Product | Multi-tenant SaaS POS & Business Management Platform |
+| Product | JSA MULTISERVICES — multi-tenant SaaS POS & Business Management Platform |
 | Initial market | Bangladesh (BDT, Asia/Dhaka, Bengali + English) |
 | Stack | React + TypeScript + Tailwind CSS · Rust + Actix Web · MySQL 8.4 LTS |
 

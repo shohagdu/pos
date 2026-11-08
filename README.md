@@ -1,4 +1,4 @@
-# SaaS POS
+# JSA MULTISERVICES
 
 Multi-tenant point-of-sale and business management platform for retail
 businesses in Bangladesh.

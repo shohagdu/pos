@@ -1,4 +1,4 @@
-# SaaS POS — Detailed Development Roadmap
+# JSA MULTISERVICES — Detailed Development Roadmap
 
 | Field | Value |
 |---|---|
@@ -68,7 +68,7 @@ Week 1 = project kick-off. Dates are relative. If kick-off is on **2 Nov 2026**,
 
 ```mermaid
 gantt
-    title SaaS POS MVP (weeks from kick-off)
+    title JSA MULTISERVICES MVP (weeks from kick-off)
     dateFormat  YYYY-MM-DD
     axisFormat  W%W
     section Phase 0

@@ -1,4 +1,4 @@
-# SaaS POS — Final Documentation
+# JSA MULTISERVICES — Final Documentation
 
 These documents were built from the initial documents in `../Docs/` (feature list, SRS, development roadmap).
 

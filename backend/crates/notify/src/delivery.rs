@@ -12,7 +12,7 @@
 //!   SMS gateway taking a form POST of `api_key`, `senderid`, `number`,
 //!   `message` (the common shape of Bangladeshi bulk-SMS providers).
 //! - `SMTP_HOST`, `SMTP_PORT` (587 STARTTLS, 465 TLS), `SMTP_USERNAME`,
-//!   `SMTP_PASSWORD`, `SMTP_FROM` ("Shop POS <no-reply@example.com>").
+//!   `SMTP_PASSWORD`, `SMTP_FROM` ("JSA MULTISERVICES <no-reply@example.com>").
 
 use std::time::Duration as StdDuration;
 

@@ -125,6 +125,7 @@ pub async fn hold(tx: &mut TenantTx, input: HoldInput) -> AppResult<HeldCart> {
 
 /// Resuming and discarding both remove the cart.
 pub async fn remove(tx: &mut TenantTx, id: Uuid) -> AppResult<HeldCart> {
+    tx.ensure_row_branch("held_carts", id).await?;
     let tenant_id = tx.tenant_id();
     let cart: HeldCart = sqlx::query_as(sqlx::AssertSqlSafe(format!("{SELECT} AND h.id = ? FOR UPDATE")))
         .bind(tenant_id)

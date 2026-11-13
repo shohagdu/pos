@@ -16,7 +16,7 @@ use sqlx::MySqlPool;
 use uuid::Uuid;
 
 use crate::{
-    grants::{OWNER_ONLY_PERMISSIONS, ensure_grantable},
+    grants::{self, OWNER_ONLY_PERMISSIONS, ensure_grantable},
     provisioning::clean,
 };
 
@@ -269,6 +269,8 @@ pub async fn update(
     // permissions you lack from it would be harmless, but keep one rule).
     ensure_grantable(actor, &current.permissions)?;
     let role = validate(tx, actor, input, Some(role_id)).await?;
+    // ...and only where its holders hold it (no branch escalation).
+    grants::ensure_role_holders_grantable(tx, actor, role_id, &role.permissions).await?;
     let tenant_id = tx.tenant_id();
     sqlx::query(
         "UPDATE roles SET name = ?, description = ?, max_discount_pct = ?, version = version + 1 \

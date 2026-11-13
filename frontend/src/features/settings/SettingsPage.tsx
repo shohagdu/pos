@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import type { FormEvent } from 'react'
+import { type FormEvent, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, NavLink, useParams } from 'react-router'
 
@@ -27,8 +27,9 @@ import { RegistersSection } from '../branches/RegistersSection'
 import { BranchStep, SettingsStep } from '../onboarding/WizardStepPage'
 import { countryOptions, profileLabels } from '../onboarding/country'
 import { DataResetSection } from './DataResetSection'
+import { ProductCodesSection } from './ProductCodesSection'
 
-const SECTIONS = ['profile', 'regional', 'branch', 'invoice', 'branches', 'registers', 'data'] as const
+const SECTIONS = ['profile', 'regional', 'branch', 'invoice', 'codes', 'branches', 'registers', 'data'] as const
 type Section = (typeof SECTIONS)[number]
 /** Sections for `branches.manage`; the rest need `settings.manage`. */
 const BRANCH_SECTIONS: readonly Section[] = ['branches', 'registers']
@@ -44,6 +45,11 @@ export function SettingsPage() {
   const visible = SECTIONS.filter((s) =>
     s === 'data' ? owner : BRANCH_SECTIONS.includes(s) ? can('branches.manage') : can('settings.manage'),
   )
+  const nav = useRef<HTMLElement>(null)
+  // On narrow screens the tab row scrolls; keep the open tab in view.
+  useEffect(() => {
+    nav.current?.querySelector('[aria-current="page"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [section])
   if (!tenantId || !SECTIONS.includes(section as Section)) return <Navigate to="/settings" replace />
   if (!visible.includes(section as Section)) {
     // Branch managers without `settings.manage` land on their first section.
@@ -52,29 +58,35 @@ export function SettingsPage() {
   }
 
   return (
-    <div className={`flex flex-col gap-6 ${BRANCH_SECTIONS.includes(section as Section) ? 'max-w-5xl' : 'max-w-2xl'}`}>
+    // The title and tabs keep one width on every tab, so the tab row never
+    // re-wraps or jumps when moving between tabs; only the content narrows.
+    <div className="flex max-w-5xl flex-col gap-6">
       <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
-      <nav aria-label={t('settings.title')} className="flex flex-wrap gap-1 border-b border-border">
+      {/* One row: scrolls sideways on small screens instead of wrapping. */}
+      <nav ref={nav} aria-label={t('settings.title')} className="-mb-px flex gap-1 overflow-x-auto border-b border-border [scrollbar-width:thin]">
         {visible.map((s) => (
           <NavLink
             key={s}
             to={s === 'profile' ? '/settings' : `/settings/${s}`}
             end
             className={({ isActive }) =>
-              `-mb-px border-b-2 px-3 py-2 text-sm font-medium ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`
+              `-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`
             }
           >
             {t(`settings.sections.${s}`)}
           </NavLink>
         ))}
       </nav>
-      {section === 'profile' && <ProfileSection tenantId={tenantId} />}
-      {section === 'data' && <DataResetSection tenantId={tenantId} />}
-      {section === 'regional' && <SettingsStep step="regional" tenantId={tenantId} mode="settings" />}
-      {section === 'invoice' && <SettingsStep step="invoice" tenantId={tenantId} mode="settings" />}
-      {section === 'branch' && <BranchStep tenantId={tenantId} mode="settings" />}
-      {section === 'branches' && <BranchesSection tenantId={tenantId} />}
-      {section === 'registers' && <RegistersSection tenantId={tenantId} />}
+      <div className={BRANCH_SECTIONS.includes(section as Section) ? '' : 'max-w-2xl'}>
+        {section === 'profile' && <ProfileSection tenantId={tenantId} />}
+        {section === 'data' && <DataResetSection tenantId={tenantId} />}
+        {section === 'regional' && <SettingsStep step="regional" tenantId={tenantId} mode="settings" />}
+        {section === 'invoice' && <SettingsStep step="invoice" tenantId={tenantId} mode="settings" />}
+        {section === 'codes' && <ProductCodesSection tenantId={tenantId} />}
+        {section === 'branch' && <BranchStep tenantId={tenantId} mode="settings" />}
+        {section === 'branches' && <BranchesSection tenantId={tenantId} />}
+        {section === 'registers' && <RegistersSection tenantId={tenantId} />}
+      </div>
     </div>
   )
 }

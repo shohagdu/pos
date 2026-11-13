@@ -500,7 +500,11 @@ async fn put_back(tx: &mut TenantTx, id: Uuid, archived_columns: &Value) -> AppR
             continue;
         }
         let names: Vec<String> = cols.iter().map(|c| format!("`{}`", c.name)).collect();
-        let values: Vec<String> = cols.iter().map(json_value).collect();
+        // tenant_id comes from the archive row (filtered to this tenant
+        // below), never from the stored JSON, so archived content can only
+        // ever be restored into its own business.
+        let values: Vec<String> =
+            cols.iter().map(|c| if c.name == "tenant_id" { "r.tenant_id".to_owned() } else { json_value(c) }).collect();
         let sql = format!(
             "INSERT INTO {table} ({}) SELECT {} FROM data_archive_rows r \
              WHERE r.tenant_id = ? AND r.archive_id = ? AND r.table_name = '{table}' ORDER BY r.row_no",

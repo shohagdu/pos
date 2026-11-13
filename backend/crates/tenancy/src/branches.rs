@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::{
     entitlements,
-    provisioning::{SEQUENCES, clean, validate_contact, validate_name},
+    provisioning::{SEQUENCES, clean, default_padding, validate_contact, validate_name},
 };
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq, utoipa::ToSchema)]
@@ -243,7 +243,7 @@ pub async fn create(tx: &mut TenantTx, meta: &RequestMeta, input: NewBranch) -> 
         // `INV-MIR-2610-00042` when it fits; numbers are unique per branch anyway.
         .bind(Some(format!("{prefix}-{code}")).filter(|p| p.len() <= 10).unwrap_or_else(|| (*prefix).to_owned()))
         .bind(with_period)
-        .bind(if *with_period { 5 } else { 6 })
+        .bind(default_padding(doc_type, *with_period))
         .execute(&mut **tx)
         .await
         .map_err(map_db_error)?;

@@ -99,7 +99,7 @@ async fn product_lifecycle(pool: MySqlPool) {
     )
     .await;
     assert_eq!(rice.status, StatusCode::CREATED, "{}", rice.body);
-    assert_eq!(rice.body["sku"], "P000001");
+    assert_eq!(rice.body["sku"], "P0001");
     assert_eq!(rice.body["selling_price"], "450.5000");
     assert_eq!(rice.body["purchase_price"], "400.0000");
     assert_eq!(rice.body["barcodes"], json!(["4006381333931", "RICE-5"]));
@@ -111,29 +111,91 @@ async fn product_lifecycle(pool: MySqlPool) {
     let oil =
         call(&srv, post("/api/v1/products", json!({ "name": "Soybean Oil", "unit_id": pcs, "selling_price": "190" })))
             .await;
-    assert_eq!(oil.body["sku"], "P000002");
+    assert_eq!(oil.body["sku"], "P0002");
 
     // The form's suggestions skip codes typed by hand and reserve nothing.
     let next_codes = |srv, token: &str| {
         let req = Req::get("/api/v1/products/next-codes").bearer(token).build();
         async move { call(srv, req).await.body }
     };
-    assert_eq!(next_codes(&srv, &owner.token).await, json!({ "sku": "P000003", "barcode": "2000000000015" }));
+    assert_eq!(next_codes(&srv, &owner.token).await, json!({ "sku": "P0003", "barcode": "200000001" }));
     let typed = call(
         &srv,
         post(
             "/api/v1/products",
-            json!({ "name": "Free sample", "unit_id": pcs, "selling_price": "0.00", "sku": "P000003",
+            json!({ "name": "Free sample", "unit_id": pcs, "selling_price": "0.00", "sku": "P0003",
                     "barcodes": ["SAMPLE"], "generate_barcode": true }),
         ),
     )
     .await;
     assert_eq!(typed.status, StatusCode::CREATED, "a zero price is allowed: {}", typed.body);
     assert_eq!(typed.body["selling_price"], "0.0000");
-    assert_eq!(typed.body["barcodes"], json!(["2000000000015", "SAMPLE"]), "the generated code is the primary");
+    assert_eq!(typed.body["barcodes"], json!(["200000001", "SAMPLE"]), "the generated code is the primary");
     let suggested = next_codes(&srv, &owner.token).await;
-    assert_eq!(suggested, json!({ "sku": "P000004", "barcode": "2000000000022" }));
+    assert_eq!(suggested, json!({ "sku": "P0004", "barcode": "200000002" }));
     assert_eq!(next_codes(&srv, &owner.token).await, suggested);
+
+    // The form checks typed codes while typing: whose they are, except its own.
+    let check = |query: String| {
+        let req = Req::get(&format!("/api/v1/products/check-codes?{query}")).bearer(&owner.token).build();
+        let srv = &srv;
+        async move { call(srv, req).await.body }
+    };
+    assert_eq!(
+        check("sku=P0001&barcodes=RICE-5,%20NEW-1".to_owned()).await,
+        json!({ "sku": { "code": "P0001", "product_name": "Miniket Rice 5kg" },
+                "barcodes": [{ "code": "RICE-5", "product_name": "Miniket Rice 5kg" }] })
+    );
+    assert_eq!(
+        check(format!("sku=P0001&barcodes=RICE-5&product_id={rice_id}")).await,
+        json!({ "sku": null, "barcodes": [] }),
+        "a product's own codes are not taken"
+    );
+
+    // Settings → Product codes decide how the next automatic codes look; the
+    // running numbers carry on.
+    let settings = call(&srv, Req::get("/api/v1/settings").bearer(&owner.token).build()).await;
+    assert_eq!(
+        (
+            &settings.body["sku_prefix"],
+            &settings.body["sku_digits"],
+            &settings.body["barcode_prefix"],
+            &settings.body["barcode_digits"]
+        ),
+        (&json!("P"), &json!(4), &json!("20"), &json!(7))
+    );
+    let version = settings.body["version"].as_i64().expect("version");
+    let retail = call(
+        &srv,
+        Req::patch("/api/v1/settings", json!({ "barcode_digits": 6 })).bearer(&owner.token).if_match(version).build(),
+    )
+    .await;
+    assert_eq!(retail.status, StatusCode::BAD_REQUEST, "20 + 6 digits would read as an EAN-8: {}", retail.body);
+    let changed = call(
+        &srv,
+        Req::patch(
+            "/api/v1/settings",
+            json!({ "sku_prefix": "mir", "sku_digits": 5, "barcode_prefix": "B", "barcode_digits": 5 }),
+        )
+        .bearer(&owner.token)
+        .if_match(version)
+        .build(),
+    )
+    .await;
+    assert_eq!(changed.status, StatusCode::OK, "{}", changed.body);
+    assert_eq!(next_codes(&srv, &owner.token).await, json!({ "sku": "MIR00003", "barcode": "B00002" }));
+    let restored = call(
+        &srv,
+        Req::patch(
+            "/api/v1/settings",
+            json!({ "sku_prefix": "P", "sku_digits": 4, "barcode_prefix": "20", "barcode_digits": 7 }),
+        )
+        .bearer(&owner.token)
+        .if_match(changed.body["version"].as_i64().expect("version"))
+        .build(),
+    )
+    .await;
+    assert_eq!(restored.status, StatusCode::OK, "{}", restored.body);
     let service = call(
         &srv,
         post(
@@ -157,7 +219,7 @@ async fn product_lifecycle(pool: MySqlPool) {
     assert_eq!((dup_barcode.status, dup_barcode.code()), (StatusCode::CONFLICT, "DUPLICATE_BARCODE"));
     let dup_sku = call(
         &srv,
-        post("/api/v1/products", json!({ "name": "Copy", "unit_id": pcs, "selling_price": "1", "sku": "p000001" })),
+        post("/api/v1/products", json!({ "name": "Copy", "unit_id": pcs, "selling_price": "1", "sku": "p0001" })),
     )
     .await;
     assert_eq!((dup_sku.status, dup_sku.code()), (StatusCode::CONFLICT, "DUPLICATE_SKU"), "SKUs are case-insensitive");
@@ -186,7 +248,7 @@ async fn product_lifecycle(pool: MySqlPool) {
     let updated = call(&srv, update(1, body)).await;
     assert_eq!(updated.status, StatusCode::OK, "{}", updated.body);
     assert_eq!(updated.body["version"], 2);
-    assert_eq!(updated.body["sku"], "P000001", "a blank SKU keeps the current one");
+    assert_eq!(updated.body["sku"], "P0001", "a blank SKU keeps the current one");
     assert_eq!(updated.body["purchase_price"], "400.0000", "a blank cost keeps the current one");
     assert_eq!(updated.body["barcodes"], json!(["RICE-5"]));
     let history =
@@ -239,10 +301,7 @@ async fn product_lifecycle(pool: MySqlPool) {
     assert_eq!(gone.status, StatusCode::NOT_FOUND);
     let same_sku = call(
         &srv,
-        post(
-            "/api/v1/products",
-            json!({ "name": "Oil again", "unit_id": pcs, "selling_price": "1", "sku": "P000002" }),
-        ),
+        post("/api/v1/products", json!({ "name": "Oil again", "unit_id": pcs, "selling_price": "1", "sku": "P0002" })),
     )
     .await;
     assert_eq!(same_sku.status, StatusCode::CREATED, "{}", same_sku.body);
@@ -489,18 +548,18 @@ async fn cost_is_hidden_and_writes_need_permission(pool: MySqlPool) {
     let generated = call(&srv, Req::post(gen_uri, ask.clone()).bearer(&owner.token).build()).await;
     assert_eq!(generated.status, StatusCode::OK, "{}", generated.body);
     assert_eq!(generated.body[0]["barcode"], "4006381333931", "existing barcodes are kept");
-    assert_eq!(generated.body[1]["barcode"], "2000000000015", "first in-store EAN-13");
+    assert_eq!(generated.body[1]["barcode"], "200000001", "first code from the business's barcode numbering");
     let again = call(&srv, Req::post(gen_uri, ask).bearer(&owner.token).build()).await;
-    assert_eq!(again.body[1]["barcode"], "2000000000015", "generating twice changes nothing");
+    assert_eq!(again.body[1]["barcode"], "200000001", "generating twice changes nothing");
     let next =
         call(&srv, Req::post(gen_uri, json!({ "variant_ids": [sugar_variant] })).bearer(&owner.token).build()).await;
-    assert_eq!(next.body[0]["barcode"], "2000000000022", "numbers continue");
+    assert_eq!(next.body[0]["barcode"], "200000002", "numbers continue");
 
     let tea_now =
         call(&srv, Req::get(&format!("/api/v1/products/{}", id(&created.body))).bearer(&owner.token).build()).await;
-    assert_eq!(tea_now.body["barcodes"], json!(["2000000000015"]));
+    assert_eq!(tea_now.body["barcodes"], json!(["200000001"]));
     assert_eq!(tea_now.body["version"], 2, "open edit forms see the change");
-    let found = call(&srv, Req::get("/api/v1/products?q=2000000000015").bearer(&owner.token).build()).await;
+    let found = call(&srv, Req::get("/api/v1/products?q=200000001").bearer(&owner.token).build()).await;
     assert_eq!(names(&found.body), ["Tea"], "the POS search finds the new barcode");
     let audit =
         call(&srv, Req::get("/api/v1/audit-logs?action=product.barcode_generated").bearer(&owner.token).build()).await;
@@ -596,9 +655,9 @@ async fn csv_import_is_all_or_nothing(pool: MySqlPool) {
     )
     .await;
     assert_eq!(ok.status, StatusCode::CREATED, "{}", ok.body);
-    assert_eq!(ok.body[0]["barcodes"], json!(["2000000000015"]));
-    assert_eq!(ok.body[1]["sku"], "P000001");
-    assert_eq!(ok.body[2]["barcodes"], json!(["2000000000022"]), "each row gets its own code");
+    assert_eq!(ok.body[0]["barcodes"], json!(["200000001"]));
+    assert_eq!(ok.body[1]["sku"], "P0001");
+    assert_eq!(ok.body[2]["barcodes"], json!(["200000002"]), "each row gets its own code");
 
     // Opening stock files name products by SKU (any case) or barcode.
     let found =

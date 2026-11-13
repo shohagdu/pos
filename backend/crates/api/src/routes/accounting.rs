@@ -32,12 +32,13 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(general_ledger);
 }
 
-/// Statements are for `accounting.view` or `reports.financial`.
+/// Statements are for `accounting.view` or `reports.financial`, held for
+/// every branch: the books cover the whole business.
 fn require_statements(auth: &TenantAuth) -> Result<(), ApiError> {
-    if auth.access.can("reports.financial") {
+    if auth.require_everywhere("reports.financial").is_ok() {
         return Ok(());
     }
-    auth.require("accounting.view")
+    auth.require_everywhere("accounting.view")
 }
 
 #[utoipa::path(get, path = "/api/v1/ledger-accounts", tag = "accounting", security(("bearer" = [])),
@@ -61,7 +62,7 @@ pub async fn create_ledger_account(
     auth: TenantAuth,
     body: web::Json<LedgerAccountInput>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.coa_manage")?;
+    auth.require_everywhere("accounting.coa_manage")?;
     let mut tx = auth.begin(&state).await?;
     let account = ledger::create(&mut tx, &auth.ctx.meta, body.into_inner()).await?;
     tx.commit().await?;
@@ -81,7 +82,7 @@ pub async fn update_ledger_account(
     path: web::Path<Uuid>,
     body: web::Json<LedgerAccountInput>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.coa_manage")?;
+    auth.require_everywhere("accounting.coa_manage")?;
     let version = if_match_version(&req)?;
     let mut tx = auth.begin(&state).await?;
     let account = ledger::update(&mut tx, &auth.ctx.meta, path.into_inner(), version, body.into_inner()).await?;
@@ -97,7 +98,7 @@ pub async fn list_journals(
     auth: TenantAuth,
     filter: web::Query<JournalFilter>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.view")?;
+    auth.require_everywhere("accounting.view")?;
     let mut tx = auth.begin(&state).await?;
     let page = journal::list(&mut tx, &filter).await?;
     tx.commit().await?;
@@ -114,7 +115,7 @@ pub async fn create_journal(
     auth: TenantAuth,
     body: web::Json<ManualJournalInput>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.journal_create")?;
+    auth.require_everywhere("accounting.journal_create")?;
     let mut tx = auth.begin(&state).await?;
     let detail = journal::create_manual(&mut tx, &auth.ctx.meta, body.into_inner()).await?;
     tx.commit().await?;
@@ -129,7 +130,7 @@ pub async fn get_journal(
     auth: TenantAuth,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.view")?;
+    auth.require_everywhere("accounting.view")?;
     let mut tx = auth.begin(&state).await?;
     let detail = journal::get(&mut tx, path.into_inner()).await?;
     tx.commit().await?;
@@ -145,7 +146,7 @@ pub async fn reverse_journal(
     auth: TenantAuth,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.journal_create")?;
+    auth.require_everywhere("accounting.journal_create")?;
     let mut tx = auth.begin(&state).await?;
     let detail = journal::reverse_manual(&mut tx, &auth.ctx.meta, path.into_inner()).await?;
     tx.commit().await?;
@@ -156,7 +157,7 @@ pub async fn reverse_journal(
     responses((status = 200, body = Vec<FiscalPeriod>)))]
 #[get("/fiscal-periods")]
 pub async fn list_periods(state: web::Data<AppState>, auth: TenantAuth) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.view")?;
+    auth.require_everywhere("accounting.view")?;
     let mut tx = auth.begin(&state).await?;
     let list = periods::list(&mut tx).await?;
     tx.commit().await?;
@@ -172,7 +173,7 @@ pub async fn lock_period(
     auth: TenantAuth,
     body: web::Json<PeriodInput>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.period_lock")?;
+    auth.require_everywhere("accounting.period_lock")?;
     let mut tx = auth.begin(&state).await?;
     let period = periods::set_locked(&mut tx, &auth.ctx.meta, body.into_inner(), true).await?;
     tx.commit().await?;
@@ -187,7 +188,7 @@ pub async fn reopen_period(
     auth: TenantAuth,
     body: web::Json<PeriodInput>,
 ) -> Result<HttpResponse, ApiError> {
-    auth.require("accounting.period_lock")?;
+    auth.require_everywhere("accounting.period_lock")?;
     let mut tx = auth.begin(&state).await?;
     let period = periods::set_locked(&mut tx, &auth.ctx.meta, body.into_inner(), false).await?;
     tx.commit().await?;

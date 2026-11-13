@@ -40,6 +40,11 @@ impl TenantTx {
         self.branch_id = branch_id;
     }
 
+    /// The branches the member may work in (`None` = every branch).
+    pub fn allowed_branches(&self) -> Option<&[Uuid]> {
+        self.allowed_branches.as_deref()
+    }
+
     /// Limits records opened by id to these branches (`None` = every branch).
     pub fn set_allowed_branches(&mut self, branches: Option<Vec<Uuid>>) {
         self.allowed_branches = branches;

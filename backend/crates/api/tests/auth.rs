@@ -117,7 +117,7 @@ async fn registration_validates_input(pool: MySqlPool) {
 }
 
 #[sqlx::test(migrator = "pos_db::MIGRATOR")]
-async fn unverified_users_can_sign_in_but_not_create_a_business(pool: MySqlPool) {
+async fn unverified_users_cannot_sign_in(pool: MySqlPool) {
     let srv = test::init_service(app(AppState::new(pool, common::config()))).await;
     let reg = call(
         &srv,
@@ -130,20 +130,23 @@ async fn unverified_users_can_sign_in_but_not_create_a_business(pool: MySqlPool)
     .await;
     assert_eq!(reg.status, StatusCode::CREATED);
 
+    // The right password on an unverified number gets no session (someone
+    // could have registered a stranger's number); a wrong one gets the usual
+    // answer, so this reveals nothing to a guesser.
     let login = call(
         &srv,
         Req::post("/api/v1/auth/login", json!({ "identifier": "01811000003", "password": PASSWORD })).build(),
     )
     .await;
-    assert_eq!(login.status, StatusCode::OK);
-    let create = call(
+    assert_eq!((login.status, login.code()), (StatusCode::FORBIDDEN, "PHONE_NOT_VERIFIED"), "{}", login.body);
+    assert!(login.body.get("access_token").is_none());
+    assert!(login.headers.get("set-cookie").is_none(), "no refresh cookie");
+    let wrong = call(
         &srv,
-        Req::post("/api/v1/tenants", json!({ "name": "Karim Store", "business_type": "retail" }))
-            .bearer(&login.token())
-            .build(),
+        Req::post("/api/v1/auth/login", json!({ "identifier": "01811000003", "password": "not the password" })).build(),
     )
     .await;
-    assert_eq!((create.status, create.code()), (StatusCode::FORBIDDEN, "PHONE_NOT_VERIFIED"));
+    assert_eq!(wrong.status, StatusCode::UNAUTHORIZED);
 
     // Resending replaces the old code; the old one stops working.
     let resend =

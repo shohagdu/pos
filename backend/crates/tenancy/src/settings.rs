@@ -47,9 +47,19 @@ pub struct BusinessSettings {
     pub fiscal_year_start_month: u8,
     // invoice & tax
     pub invoice_prefix: String,
+    /// Automatic SKUs: this prefix + `sku_digits` zero-padded digits (`P0042`).
+    pub sku_prefix: String,
+    pub sku_digits: u8,
+    /// Automatic barcodes: this prefix + `barcode_digits` digits (`200000042`).
+    pub barcode_prefix: String,
+    pub barcode_digits: u8,
     pub receipt_paper: String,
     pub receipt_footer: Option<String>,
     pub auto_print_receipt: bool,
+    /// Show the product grid beside the cart on the POS screen.
+    pub show_product_panel: bool,
+    /// Show photos on the POS product cards (only matters with the panel on).
+    pub show_product_images: bool,
     pub is_vat_registered: bool,
     pub prices_include_tax: bool,
     /// Send back in `If-Match` when updating.
@@ -79,9 +89,15 @@ pub struct SettingsPatch {
     pub locale: Option<String>,
     pub fiscal_year_start_month: Option<u8>,
     pub invoice_prefix: Option<String>,
+    pub sku_prefix: Option<String>,
+    pub sku_digits: Option<u8>,
+    pub barcode_prefix: Option<String>,
+    pub barcode_digits: Option<u8>,
     pub receipt_paper: Option<String>,
     pub receipt_footer: Option<String>,
     pub auto_print_receipt: Option<bool>,
+    pub show_product_panel: Option<bool>,
+    pub show_product_images: Option<bool>,
     pub is_vat_registered: Option<bool>,
     pub prices_include_tax: Option<bool>,
 }
@@ -109,6 +125,8 @@ struct Row {
     receipt_paper: String,
     receipt_footer: Option<String>,
     auto_print_receipt: bool,
+    show_product_panel: bool,
+    show_product_images: bool,
     is_vat_registered: bool,
     prices_include_tax: bool,
     version: i32,
@@ -119,15 +137,17 @@ async fn load(tx: &mut TenantTx, lock: bool) -> AppResult<BusinessSettings> {
     let sql = if lock {
         "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.country_code, \
          t.bin_number, t.trade_license_no, t.tax_code, t.rea_number, t.registry_office, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
-         s.receipt_footer, s.auto_print_receipt, s.is_vat_registered, s.prices_include_tax, s.version \
+         s.receipt_footer, s.auto_print_receipt, s.show_product_panel, s.show_product_images, s.is_vat_registered, s.prices_include_tax, s.version \
          FROM tenant_settings s JOIN tenants t ON t.id = s.tenant_id WHERE s.tenant_id = ? FOR UPDATE"
     } else {
         "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.country_code, \
          t.bin_number, t.trade_license_no, t.tax_code, t.rea_number, t.registry_office, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
-         s.receipt_footer, s.auto_print_receipt, s.is_vat_registered, s.prices_include_tax, s.version \
+         s.receipt_footer, s.auto_print_receipt, s.show_product_panel, s.show_product_images, s.is_vat_registered, s.prices_include_tax, s.version \
          FROM tenant_settings s JOIN tenants t ON t.id = s.tenant_id WHERE s.tenant_id = ?"
     };
     let row: Row = sqlx::query_as(sql).bind(tenant_id).fetch_one(&mut **tx).await.map_err(map_db_error)?;
+    let (sku_prefix, sku_digits) = code_numbering(tx, "product", ("P", 6)).await?;
+    let (barcode_prefix, barcode_digits) = code_numbering(tx, "barcode", ("20", 7)).await?;
     let prefix: Option<String> = sqlx::query_scalar(
         "SELECT prefix FROM document_sequences d JOIN branches b ON b.tenant_id = d.tenant_id AND b.id = d.branch_id \
          WHERE d.tenant_id = ? AND d.doc_type = 'sale' AND b.is_default",
@@ -157,13 +177,53 @@ async fn load(tx: &mut TenantTx, lock: bool) -> AppResult<BusinessSettings> {
         locale: row.locale,
         fiscal_year_start_month: u8::try_from(row.fiscal_year_start_month).unwrap_or(7),
         invoice_prefix: prefix.unwrap_or_else(|| "INV".to_owned()),
+        sku_prefix,
+        sku_digits,
+        barcode_prefix,
+        barcode_digits,
         receipt_paper: row.receipt_paper,
         receipt_footer: row.receipt_footer,
         auto_print_receipt: row.auto_print_receipt,
+        show_product_panel: row.show_product_panel,
+        show_product_images: row.show_product_images,
         is_vat_registered: row.is_vat_registered,
         prices_include_tax: row.prices_include_tax,
         version: row.version,
     })
+}
+
+/// Prefix and digit count of a tenant-wide code sequence (`product`, `barcode`).
+async fn code_numbering(tx: &mut TenantTx, doc_type: &str, fallback: (&str, u8)) -> AppResult<(String, u8)> {
+    let row: Option<(String, i8)> = sqlx::query_as(
+        "SELECT prefix, padding FROM document_sequences WHERE tenant_id = ? AND branch_id IS NULL AND doc_type = ?",
+    )
+    .bind(tx.tenant_id())
+    .bind(doc_type)
+    .fetch_optional(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    Ok(row.map_or_else(
+        || (fallback.0.to_owned(), fallback.1),
+        |(prefix, padding)| (prefix, u8::try_from(padding).unwrap_or(fallback.1)),
+    ))
+}
+
+/// A code prefix: 1–10 letters or digits, kept in capitals.
+fn code_prefix(value: String, field: &str) -> AppResult<String> {
+    let v = value.trim().to_uppercase();
+    if v.is_empty() || v.chars().count() > 10 || !v.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()) {
+        return Err(AppError::field(field, "INVALID_PREFIX", "use 1–10 letters or digits"));
+    }
+    Ok(v)
+}
+
+/// Digits of the running number: 3–10 (the sequence table's limit).
+fn code_digits(value: u8, field: &str) -> AppResult<u8> {
+    if (3..=10).contains(&value) {
+        Ok(value)
+    } else {
+        Err(AppError::field(field, "INVALID_DIGITS", "choose 3 to 10 digits"))
+    }
 }
 
 pub async fn get(tx: &mut TenantTx) -> AppResult<BusinessSettings> {
@@ -250,6 +310,29 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
         }
         next.invoice_prefix = v;
     }
+    if let Some(v) = patch.sku_prefix {
+        next.sku_prefix = code_prefix(v, "sku_prefix")?;
+    }
+    if let Some(v) = patch.sku_digits {
+        next.sku_digits = code_digits(v, "sku_digits")?;
+    }
+    if let Some(v) = patch.barcode_prefix {
+        next.barcode_prefix = code_prefix(v, "barcode_prefix")?;
+    }
+    if let Some(v) = patch.barcode_digits {
+        next.barcode_digits = code_digits(v, "barcode_digits")?;
+    }
+    // An all-digit code 8, 12 or 13 long reads as a retail EAN/UPC, whose last
+    // digit must be a check digit: automatic codes of that length would not
+    // pass the barcode check when a product is saved.
+    let barcode_len = next.barcode_prefix.len() + usize::from(next.barcode_digits);
+    if next.barcode_prefix.bytes().all(|b| b.is_ascii_digit()) && matches!(barcode_len, 8 | 12 | 13) {
+        return Err(AppError::field(
+            "barcode_digits",
+            "RETAIL_LENGTH",
+            "an all-digit barcode of 8, 12 or 13 characters is a retail format; choose another number of digits",
+        ));
+    }
     if let Some(v) = patch.receipt_paper {
         next.receipt_paper = one_of(v, RECEIPT_PAPERS, "receipt_paper", "INVALID_PAPER")?;
     }
@@ -258,6 +341,12 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
     }
     if let Some(v) = patch.auto_print_receipt {
         next.auto_print_receipt = v;
+    }
+    if let Some(v) = patch.show_product_panel {
+        next.show_product_panel = v;
+    }
+    if let Some(v) = patch.show_product_images {
+        next.show_product_images = v;
     }
     if let Some(v) = patch.is_vat_registered {
         next.is_vat_registered = v;
@@ -389,13 +478,15 @@ pub async fn update(
     .map_err(map_db_error)?;
     sqlx::query(
         "UPDATE tenant_settings SET fiscal_year_start_month = ?, receipt_paper = ?, receipt_footer = ?, \
-         auto_print_receipt = ?, is_vat_registered = ?, prices_include_tax = ?, version = version + 1, updated_by = ? \
+         auto_print_receipt = ?, show_product_panel = ?, show_product_images = ?, is_vat_registered = ?, prices_include_tax = ?, version = version + 1, updated_by = ? \
          WHERE tenant_id = ?",
     )
     .bind(next.fiscal_year_start_month)
     .bind(&next.receipt_paper)
     .bind(&next.receipt_footer)
     .bind(next.auto_print_receipt)
+    .bind(next.show_product_panel)
+    .bind(next.show_product_images)
     .bind(next.is_vat_registered)
     .bind(next.prices_include_tax)
     .bind(user_id)
@@ -403,6 +494,22 @@ pub async fn update(
     .execute(&mut **tx)
     .await
     .map_err(map_db_error)?;
+    for (doc_type, prefix, digits) in
+        [("product", &next.sku_prefix, next.sku_digits), ("barcode", &next.barcode_prefix, next.barcode_digits)]
+    {
+        // The running number carries on; only how the next codes look changes.
+        sqlx::query(
+            "UPDATE document_sequences SET prefix = ?, padding = ? \
+             WHERE tenant_id = ? AND branch_id IS NULL AND doc_type = ?",
+        )
+        .bind(prefix)
+        .bind(digits)
+        .bind(tenant_id)
+        .bind(doc_type)
+        .execute(&mut **tx)
+        .await
+        .map_err(map_db_error)?;
+    }
     if next.invoice_prefix != current.invoice_prefix {
         sqlx::query("UPDATE document_sequences SET prefix = ? WHERE tenant_id = ? AND doc_type = 'sale'")
             .bind(&next.invoice_prefix)
@@ -449,9 +556,15 @@ mod tests {
             locale: "en".into(),
             fiscal_year_start_month: 7,
             invoice_prefix: "INV".into(),
+            sku_prefix: "P".into(),
+            sku_digits: 6,
+            barcode_prefix: "20".into(),
+            barcode_digits: 7,
             receipt_paper: "80mm".into(),
             receipt_footer: None,
             auto_print_receipt: true,
+            show_product_panel: true,
+            show_product_images: true,
             is_vat_registered: false,
             prices_include_tax: false,
             version: 1,
@@ -495,6 +608,31 @@ mod tests {
             Some("currency_code")
         );
         assert_eq!(field(SettingsPatch { name: Some("x".into()), ..Default::default() }).as_deref(), Some("name"));
+        assert_eq!(
+            field(SettingsPatch { sku_prefix: Some("P-1".into()), ..Default::default() }).as_deref(),
+            Some("sku_prefix")
+        );
+        assert_eq!(field(SettingsPatch { sku_digits: Some(2), ..Default::default() }).as_deref(), Some("sku_digits"));
+        // `20` + 6 digits is 8 digits: an EAN-8 look-alike.
+        assert_eq!(
+            field(SettingsPatch { barcode_digits: Some(6), ..Default::default() }).as_deref(),
+            Some("barcode_digits")
+        );
+    }
+
+    #[test]
+    fn sets_code_numbering() {
+        let patch = SettingsPatch {
+            sku_prefix: Some(" mir ".into()),
+            sku_digits: Some(4),
+            barcode_prefix: Some("b".into()),
+            barcode_digits: Some(6),
+            ..SettingsPatch::default()
+        };
+        let next = apply(&sample(), patch).expect("valid patch");
+        assert_eq!((next.sku_prefix.as_str(), next.sku_digits), ("MIR", 4));
+        // With a letter in front, 7 characters is not a retail format.
+        assert_eq!((next.barcode_prefix.as_str(), next.barcode_digits), ("B", 6));
     }
 
     #[test]

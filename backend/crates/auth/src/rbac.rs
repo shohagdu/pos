@@ -335,9 +335,10 @@ pub async fn load_access(
     user_id: Uuid,
     token_perms_version: i32,
 ) -> AppResult<TenantAccess> {
-    let row: Option<(String, i32, bool, String)> = sqlx::query_as(
-        "SELECT m.status, m.perms_version, m.is_owner, t.status FROM tenant_memberships m \
+    let row: Option<(String, i32, bool, String, String)> = sqlx::query_as(
+        "SELECT m.status, m.perms_version, m.is_owner, t.status, u.status FROM tenant_memberships m \
          JOIN tenants t ON t.id = m.tenant_id \
+         JOIN users u ON u.id = m.user_id \
          WHERE m.tenant_id = ? AND m.id = ? AND m.user_id = ?",
     )
     .bind(tenant_id)
@@ -347,9 +348,13 @@ pub async fn load_access(
     .await
     .map_err(map_db_error)?;
 
-    let Some((member_status, perms_version, is_owner, tenant_status)) = row else {
+    let Some((member_status, perms_version, is_owner, tenant_status, user_status)) = row else {
         return Err(AppError::AuthFailed { code: "MEMBERSHIP_INVALID", message: "you are no longer a member".into() });
     };
+    // A disabled account loses access at once, not when its token expires.
+    if user_status != "active" {
+        return Err(AppError::AuthFailed { code: "ACCOUNT_DISABLED", message: "this account is disabled".into() });
+    }
     check_tenant_status(&tenant_status)?;
     if member_status != "active" {
         return Err(AppError::AuthFailed { code: "MEMBERSHIP_INACTIVE", message: "your access was suspended".into() });

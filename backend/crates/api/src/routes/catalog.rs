@@ -7,8 +7,8 @@ use pos_catalog::{
     labels::{self, LabelInfo, LabelRequest},
     masters::{self, Brand, BrandInput, Category, CategoryInput, TaxRate, TaxRateInput, Unit, UnitInput},
     products::{
-        self, CodeLookup, CodeMatch, ImportOpeningStock, PriceChange, Product, ProductFilter, ProductImport,
-        ProductInput, ProductPage, Viewer,
+        self, CodeCheck, CodeCheckQuery, CodeLookup, CodeMatch, ImportOpeningStock, PriceChange, Product,
+        ProductFilter, ProductImport, ProductInput, ProductPage, Viewer,
     },
 };
 use pos_core::{AppError, FieldError};
@@ -39,6 +39,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(list_products)
         .service(create_product)
         .service(suggest_codes)
+        .service(check_codes)
         .service(import_products)
         .service(lookup_products)
         .service(get_product)
@@ -320,6 +321,25 @@ pub async fn suggest_codes(state: web::Data<AppState>, auth: TenantAuth) -> Resu
     let barcode = labels::suggest_in_store_code(&mut tx).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(CodeSuggestion { sku, barcode }))
+}
+
+/// Which typed SKU / barcodes another product already uses, so the product
+/// form can say so while typing. Saving checks again and decides.
+#[utoipa::path(get, path = "/api/v1/products/check-codes", tag = "catalog", params(CodeCheckQuery), security(("bearer" = [])),
+    responses((status = 200, body = CodeCheck)))]
+#[get("/products/check-codes")]
+pub async fn check_codes(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    query: web::Query<CodeCheckQuery>,
+) -> Result<HttpResponse, ApiError> {
+    if !auth.access.can("products.update") {
+        auth.require("products.create")?;
+    }
+    let mut tx = auth.begin(&state).await?;
+    let found = products::check_codes(&mut tx, &query).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(found))
 }
 
 /// Creates all products of a CSV file, or none: problems come back as field

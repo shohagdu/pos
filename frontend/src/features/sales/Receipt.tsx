@@ -26,6 +26,28 @@ function Row({ label, value, strong = false }: { label: ReactNode; value: ReactN
   )
 }
 
+/** Header over the item lines: serial number, item, total. */
+function ItemsHeader() {
+  const { t } = useTranslation()
+  return (
+    <div className="flex gap-1 font-semibold">
+      <span className="w-6 shrink-0">{t('sales.receipt.sl')}</span>
+      <span className="flex-1">{t('sales.receipt.item')}</span>
+      <span className="text-right">{t('sales.receipt.total')}</span>
+    </div>
+  )
+}
+
+/** One item line with its serial number hanging on the left. */
+function NumberedItem({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <div className="mb-1 flex gap-1">
+      <span className="w-6 shrink-0 tabular-nums">{n}.</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  )
+}
+
 function Rule() {
   return <hr className="my-1.5 border-0 border-t border-dashed border-ink" />
 }
@@ -92,8 +114,9 @@ export function SaleReceipt({ sale }: { sale: SaleDetail }) {
         <Row label={t('sales.receipt.customer')} value={[sale.customer_name, sale.customer_phone].filter(Boolean).join(' · ')} />
       )}
       <Rule />
-      {sale.items.map((item) => (
-        <div key={item.id} className="mb-1">
+      <ItemsHeader />
+      {sale.items.map((item, i) => (
+        <NumberedItem key={item.id} n={i + 1}>
           <div className="font-medium">{item.product_name}</div>
           <Row
             label={`${formatQuantity(item.quantity, lang, true)} ${item.unit_short_name} × ${money(item.unit_price)}`}
@@ -103,7 +126,7 @@ export function SaleReceipt({ sale }: { sale: SaleDetail }) {
           {item.warranty_expires_on && (
             <div>{t('sales.receipt.warranty', { tenure: warrantyTenure(item, t) ?? '', date: formatDate(item.warranty_expires_on, lang) })}</div>
           )}
-        </div>
+        </NumberedItem>
       ))}
       <Rule />
       <Row label={t('sales.receipt.subtotal')} value={money(sale.subtotal)} />
@@ -143,14 +166,15 @@ export function ReturnReceipt({ ret }: { ret: SaleReturnDetail }) {
       {ret.created_by_name && <Row label={t('sales.receipt.cashier')} value={ret.created_by_name} />}
       <Row label={t('sales.receipt.customer')} value={ret.customer_name} />
       <Rule />
-      {ret.items.map((item) => (
-        <div key={item.id} className="mb-1">
+      <ItemsHeader />
+      {ret.items.map((item, i) => (
+        <NumberedItem key={item.id} n={i + 1}>
           <div className="font-medium">{item.product_name}</div>
           <Row
             label={`${formatQuantity(item.quantity, lang, true)} ${item.unit_short_name} · ${t(`sales.conditions.${item.item_condition}`)}`}
             value={money(item.line_total)}
           />
-        </div>
+        </NumberedItem>
       ))}
       <Rule />
       {nonZero(ret.tax_total) && <Row label={t('sales.receipt.vat')} value={money(ret.tax_total)} />}

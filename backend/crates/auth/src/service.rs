@@ -211,7 +211,9 @@ impl Auth {
         }
 
         if existing.is_some() {
-            // An unverified account proves nothing yet; whoever verifies the phone owns it.
+            // An unverified account proves nothing yet; whoever verifies the
+            // phone owns it. Whoever started it loses any session it had.
+            session::revoke_all_for_user(&mut tx, user_id, "account_reclaimed").await?;
             sqlx::query("UPDATE users SET full_name = ?, email = ?, password_hash = ?, locale = ? WHERE id = ?")
                 .bind(&full_name)
                 .bind(&email)
@@ -287,6 +289,9 @@ impl Auth {
             .await
             .map_err(map_db_error)?;
         events::record(&mut tx, events::PHONE_VERIFIED, EventSubject::user(user_id), meta, json!({})).await?;
+        // The number is proven now: sessions from before (when the account
+        // proved nothing) must not carry over to its real owner.
+        session::revoke_all_for_user(&mut tx, user_id, "phone_verified").await?;
         let tenant = default_tenant(&mut tx, user_id).await?;
         let tokens = self.start_session(&mut tx, user_id, tenant, meta).await?;
         tx.commit().await.map_err(map_db_error)?;
@@ -306,6 +311,10 @@ impl Auth {
     ) -> AppResult<Tokens> {
         let identifier = Identifier::parse(raw_identifier, "identifier")?;
         let ip = meta.ip_bytes();
+        // One check per identifier at a time: the failure count is read before
+        // the (slow) password check and written after it, so parallel guesses
+        // would all see the old count and slip past the lockout.
+        let _in_flight = LoginInFlight::claim(identifier.as_str())?;
 
         let (failures, retry_after): (i64, Option<i64>) = sqlx::query_as(
             "SELECT COUNT(*), TIMESTAMPDIFF(SECOND, NOW(6), MAX(created_at) + INTERVAL ? MINUTE) FROM auth_events \
@@ -363,6 +372,28 @@ impl Auth {
         };
         if user.status != "active" {
             return Err(AppError::Denied { code: "ACCOUNT_DISABLED", message: "this account is disabled".into() });
+        }
+        // An unverified sign-up proves nothing about the number: it gets no
+        // session (else someone could register a stranger's number, sign in
+        // and keep that session after the real owner takes the number over).
+        // Only reached with the right password, so it reveals nothing to a
+        // guesser; a fresh code is sent so the holder can finish verifying.
+        if self.phone_verification && !user.phone_verified {
+            // Best effort: past the send limit the earlier code still works.
+            if let Some(phone) = user.phone.as_deref() {
+                match otp::issue(&mut tx, &self.otp_pepper, Some(user.id), phone, OtpPurpose::VerifyPhone).await {
+                    Ok(issued) => {
+                        tx.commit().await.map_err(map_db_error)?;
+                        self.deliver(phone, OtpPurpose::VerifyPhone, &issued);
+                    }
+                    // Usually the send limit; not an error for the caller.
+                    Err(err) => tracing::info!(user_id = %user.id, error = %err, "no fresh verification code on login"),
+                }
+            }
+            return Err(AppError::Denied {
+                code: "PHONE_NOT_VERIFIED",
+                message: "confirm your mobile number with the code we sent before signing in".into(),
+            });
         }
 
         // With phone verification off, signing in with the password is enough;
@@ -985,12 +1016,19 @@ struct UserRow {
     email: Option<String>,
     password_hash: String,
     status: String,
+    phone_verified: bool,
 }
 
 async fn find_user(pool: &MySqlPool, identifier: &Identifier) -> AppResult<Option<UserRow>> {
     let sql = match identifier {
-        Identifier::Phone(_) => "SELECT id, full_name, phone, email, password_hash, status FROM users WHERE phone = ?",
-        Identifier::Email(_) => "SELECT id, full_name, phone, email, password_hash, status FROM users WHERE email = ?",
+        Identifier::Phone(_) => {
+            "SELECT id, full_name, phone, email, password_hash, status, phone_verified_at IS NOT NULL AS phone_verified \
+             FROM users WHERE phone = ?"
+        }
+        Identifier::Email(_) => {
+            "SELECT id, full_name, phone, email, password_hash, status, phone_verified_at IS NOT NULL AS phone_verified \
+             FROM users WHERE email = ?"
+        }
     };
     sqlx::query_as(sql).bind(identifier.as_str()).fetch_optional(pool).await.map_err(map_db_error)
 }
@@ -1122,4 +1160,31 @@ pub async fn memberships(pool: &MySqlPool, user_id: Uuid) -> AppResult<Vec<Membe
             is_owner,
         })
         .collect())
+}
+
+/// Identifiers whose login is being checked right now (see [`Auth::login`]).
+static LOGINS_IN_FLIGHT: std::sync::LazyLock<std::sync::Mutex<std::collections::HashSet<String>>> =
+    std::sync::LazyLock::new(Default::default);
+
+/// Holds an identifier in [`LOGINS_IN_FLIGHT`] until dropped.
+struct LoginInFlight(String);
+
+impl LoginInFlight {
+    fn claim(identifier: &str) -> AppResult<Self> {
+        let mut busy = LOGINS_IN_FLIGHT.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        if !busy.insert(identifier.to_owned()) {
+            return Err(AppError::RateLimited {
+                code: "LOGIN_IN_PROGRESS",
+                message: "a sign-in for this account is already being checked; try again".into(),
+                retry_after_secs: 1,
+            });
+        }
+        Ok(Self(identifier.to_owned()))
+    }
+}
+
+impl Drop for LoginInFlight {
+    fn drop(&mut self) {
+        LOGINS_IN_FLIGHT.lock().unwrap_or_else(std::sync::PoisonError::into_inner).remove(&self.0);
+    }
 }

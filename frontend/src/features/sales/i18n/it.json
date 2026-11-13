@@ -137,7 +137,10 @@
       "warranty": "Garanzia {{tenure}}, fino al {{date}}",
       "partitaIva": "P.IVA {{value}}",
       "taxCode": "C.F. {{value}}",
-      "rea": "REA {{office}} {{number}}"
+      "rea": "REA {{office}} {{number}}",
+      "sl": "N.",
+      "item": "Articolo",
+      "total": "Totale"
     },
     "warrantyUntil": "Garanzia fino al {{date}}",
     "warrantyExpired": "Garanzia scaduta il {{date}}",

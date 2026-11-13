@@ -22,6 +22,8 @@ export const posContext: PosContext = {
   branch_id: 'b1',
   location_id: 'l1',
   business_date: '2026-10-18',
+  show_product_panel: true,
+  show_product_images: true,
   receipt,
 }
 

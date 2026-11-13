@@ -53,6 +53,19 @@ describe('sign-in', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
     expect(await screen.findByText('Too many failed attempts. Try again in 14 minutes.')).toBeInTheDocument()
   })
+
+  it('sends an unverified number to the code screen instead of signing in', async () => {
+    mockApi({ ...anonymous, 'POST /api/v1/auth/login': () => problem(403, 'PHONE_NOT_VERIFIED') })
+    const { router } = renderRoute('/login')
+    await userEvent.type(await screen.findByLabelText('Mobile number or email'), '01711000001')
+    await userEvent.type(screen.getByLabelText('Password'), 'correct horse battery')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/verify'))
+    // The number is carried over, so only the code is asked for.
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument()
+    expect(screen.queryByLabelText(/^Mobile number/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send a new code' })).toBeEnabled()
+  })
 })
 
 describe('sign-up and onboarding', () => {
@@ -107,7 +120,7 @@ describe('sign-up and onboarding', () => {
         name: 'Rahim Store', slug: 'rahim-store', legal_name: null, business_type: 'grocery', phone: null, email: null,
         address: null, district: null, bin_number: null, trade_license_no: null, currency_code: 'BDT', timezone: 'Asia/Dhaka',
         locale: 'en', fiscal_year_start_month: 7, invoice_prefix: 'INV', receipt_paper: '80mm', receipt_footer: null,
-        auto_print_receipt: true, is_vat_registered: false, prices_include_tax: false, version: 1,
+        auto_print_receipt: true, show_product_panel: true, show_product_images: true, is_vat_registered: false, prices_include_tax: false, version: 1,
       },
       'PATCH /api/v1/settings': (call) => Response.json({ ...(call.body as object), version: 2 }),
       'POST /api/v1/onboarding/steps/regional': { steps: [], dismissed: false, complete: false },

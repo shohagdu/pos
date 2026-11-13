@@ -39,6 +39,8 @@ function signedIn(perms = managerPerms) {
     'GET /api/v1/categories': categories,
     'GET /api/v1/brands': [],
     'GET /api/v1/products/next-codes': { sku: 'P000002', barcode: '2000000000015' },
+    // Where a new product's "saved" pop-up leads.
+    'GET /api/v1/products': { data: [], next_cursor: null },
   }
 }
 
@@ -75,7 +77,15 @@ describe('products', () => {
     await userEvent.type(screen.getByLabelText('Purchase price (cost)'), '170')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-    await waitFor(() => expect(router.state.location.pathname).toBe('/products/p2'))
+    // A "saved" pop-up, then the products list.
+    const alert = await screen.findByRole('alertdialog', { name: 'Product saved' })
+    expect(alert).toHaveAccessibleDescription('“Soybean Oil” has been added to your products.')
+    // Only the pop-up says so, not a banner behind it as well.
+    expect(screen.queryByText('Product saved.')).not.toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/products/new')
+    await userEvent.click(within(alert).getByRole('button', { name: 'Go to products' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/products'))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/products')?.body).toEqual({
       product_type: 'standard',
       name: 'Soybean Oil',
@@ -88,6 +98,78 @@ describe('products', () => {
       purchase_price: '170',
       selling_price: '190',
     })
+  })
+
+  it('says while typing when the SKU or a barcode already belongs to another product', async () => {
+    const calls = mockApi({
+      ...signedIn(),
+      'GET /api/v1/products/check-codes': (call) => {
+        const q = new URLSearchParams(call.search)
+        const taken = (code: string) => ({ code, product_name: 'Miniket Rice 5kg' })
+        return Response.json({
+          sku: q.get('sku') === 'P000001' ? taken('P000001') : null,
+          barcodes: (q.get('barcodes') ?? '').split(',').map((c) => c.trim()).filter((c) => c === 'RICE-5').map(taken),
+        })
+      },
+    })
+    renderRoute('/products/new')
+    const sku = await screen.findByLabelText('SKU')
+    await userEvent.clear(sku)
+    await userEvent.type(sku, 'P000001')
+    await waitFor(() => expect(sku).toHaveAccessibleDescription('This SKU is already used by “Miniket Rice 5kg”.'))
+    expect(sku).toHaveAttribute('aria-invalid', 'true')
+    await userEvent.type(screen.getByLabelText('Barcodes'), ', RICE-5')
+    await waitFor(() =>
+      expect(screen.getByLabelText('Barcodes')).toHaveAccessibleDescription('Barcode RICE-5 is already used by “Miniket Rice 5kg”.'),
+    )
+    // A free SKU clears the message.
+    await userEvent.type(sku, '9')
+    await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/products/check-codes' && c.search.includes('sku=P0000019'))).toBe(true))
+    await waitFor(() => expect(sku).not.toHaveAttribute('aria-invalid'))
+  })
+
+  it('keeps the description folded until asked for and shows the profit per unit', async () => {
+    mockApi(signedIn())
+    renderRoute('/products/new')
+    const toggle = await screen.findByRole('button', { name: 'Description (optional)' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('textbox', { name: 'Description (optional)' })).not.toBeInTheDocument()
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Description (optional)' })).toHaveFocus())
+
+    await userEvent.type(screen.getByLabelText('Selling price'), '250')
+    await userEvent.type(screen.getByLabelText('Purchase price (cost)'), '190')
+    expect(screen.getByText(/Profit per unit: .*60\.00 \(24\.0%\)/)).toBeInTheDocument()
+    await userEvent.clear(screen.getByLabelText('Selling price'))
+    await userEvent.type(screen.getByLabelText('Selling price'), '150')
+    expect(screen.getByText(/Loss per unit: .*40\.00/)).toBeInTheDocument()
+  })
+
+  it('saves and opens a new, empty form with Save & Add Product', async () => {
+    let next = 2
+    const calls = mockApi({
+      ...signedIn(),
+      'GET /api/v1/products/next-codes': () => Response.json({ sku: `P00000${next}`, barcode: `20000000000${next}5` }),
+      'POST /api/v1/products': (call) => {
+        next += 1
+        return Response.json({ ...rice, id: 'p2', ...(call.body as object) }, { status: 201 })
+      },
+    })
+    const { router } = renderRoute('/products/new')
+    await userEvent.type(await screen.findByLabelText('Name'), 'Soybean Oil')
+    await userEvent.type(screen.getByLabelText('Selling price'), '190')
+    await userEvent.click(screen.getByRole('button', { name: 'Save & Add Product' }))
+
+    const alert = await screen.findByRole('alertdialog', { name: 'Product saved' })
+    await userEvent.click(within(alert).getByRole('button', { name: 'Add another product' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(router.state.location.pathname).toBe('/products/new')
+    // A fresh form with the next automatic codes.
+    expect(await screen.findByLabelText('SKU')).toHaveValue('P000003')
+    expect(screen.getByLabelText('Name')).toHaveValue('')
+    expect(screen.getByLabelText('Selling price')).toHaveValue('')
+    expect(calls.filter((c) => c.method === 'POST' && c.path === '/api/v1/products')).toHaveLength(1)
   })
 
   describe('product image', () => {
@@ -129,15 +211,13 @@ describe('products', () => {
       await userEvent.type(screen.getByLabelText('Selling price'), '190')
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-      await waitFor(() => expect(router.state.location.pathname).toBe('/products/p2'))
+      expect(await screen.findByRole('alertdialog', { name: 'Product saved' })).toHaveAccessibleDescription(/has been added to your products/)
       const upload = calls.find((c) => c.method === 'PUT' && c.path === '/api/v1/products/p2/image')
       expect(upload?.headers.get('Content-Type')).toBe('image/png')
       expect(upload?.body).toBeInstanceOf(File)
       expect(upload?.headers.get('X-File-Name')).toBe('oil.png')
-      // The saved photo is fetched with the access token for the preview.
-      await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/files/f1')).toBe(true))
-      expect(calls.find((c) => c.path === '/api/v1/files/f1')?.headers.get('Authorization')).toBe('Bearer token-t1')
-      expect(await screen.findByRole('button', { name: 'Remove image' })).toBeInTheDocument()
+      await userEvent.keyboard('{Enter}')
+      await waitFor(() => expect(router.state.location.pathname).toBe('/products'))
     })
 
     it('keeps the product when the image upload fails and says so', async () => {
@@ -154,8 +234,13 @@ describe('products', () => {
       await screen.findByRole('img', { name: 'Product image' })
       await userEvent.type(screen.getByLabelText('Selling price'), '190')
       await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-      await waitFor(() => expect(router.state.location.pathname).toBe('/products/p2'))
-      expect(await screen.findByText(/The product was saved, but the image could not be uploaded: The image contains hidden code/)).toBeInTheDocument()
+      const alert = await screen.findByRole('alertdialog', { name: 'Product saved' })
+      expect(alert).toHaveAccessibleDescription(/“Soybean Oil” has been added, but the photo could not be uploaded: The image contains hidden code/)
+      // No auto-close for a warning: it waits for the button.
+      await new Promise((r) => setTimeout(r, 2700))
+      expect(router.state.location.pathname).toBe('/products/new')
+      await userEvent.click(within(alert).getByRole('button', { name: 'Go to products' }))
+      await waitFor(() => expect(router.state.location.pathname).toBe('/products'))
     })
 
     it('removes the photo of a saved product at once', async () => {
@@ -205,10 +290,10 @@ describe('products', () => {
     await userEvent.type(screen.getByLabelText(/Warranty length/), '3')
     expect(screen.getByLabelText('Warranty in')).toHaveValue('month')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(router.state.location.pathname).toBe('/products/p4'))
+    expect(await screen.findByRole('alertdialog', { name: 'Product saved' })).toBeInTheDocument()
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/products')?.body).toMatchObject({ warranty_period: 3, warranty_unit: 'month' })
-    // The saved product opens with the warranty shown.
-    expect(await screen.findByLabelText(/Warranty length/)).toHaveValue(3)
+    // The pop-up closes by itself and the list opens.
+    await waitFor(() => expect(router.state.location.pathname).toBe('/products'), { timeout: 4000 })
   })
 
   it('never sends the cost for users who cannot see it', async () => {
@@ -255,7 +340,8 @@ describe('products', () => {
     await userEvent.type(screen.getByLabelText('Barcodes'), 'SAMPLE')
     await userEvent.type(screen.getByLabelText('Selling price'), '0.00')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(router.state.location.pathname).toBe('/products/p4'))
+    expect(await screen.findByRole('alertdialog', { name: 'Product saved' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/products/new')
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/products')?.body).toMatchObject({ sku: 'SAMPLE-1', barcodes: ['SAMPLE'], selling_price: '0.00' })
   })
 
@@ -283,9 +369,13 @@ describe('products', () => {
     })
     renderRoute('/products/p1')
     expect(await screen.findByLabelText('Selling price')).toHaveValue('450.5')
+    // Price history is folded at the foot of the Prices card.
+    await userEvent.click(screen.getByRole('button', { name: /Price history/ }))
     expect(screen.getByText(/Selling price: .*440\.00.*450\.50/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByText(/Someone else changed this/)).toBeInTheDocument()
+    // A failed save stays on the form: no pop-up.
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     const put = calls.find((c) => c.method === 'PUT')
     expect(put?.headers.get('If-Match')).toBe('"1"')
     expect(put?.body).toMatchObject({ sku: 'P000001', barcodes: ['4006381333931'], tax_rate_id: 't0', purchase_price: '400' })
@@ -298,12 +388,19 @@ describe('products', () => {
       'GET /api/v1/products/p1/price-history': [],
       'PUT /api/v1/products/p1': { ...rice, barcodes: ['2000000000015'], version: 2 },
     })
-    renderRoute('/products/p1')
+    const { router } = renderRoute('/products/p1')
     expect(await screen.findByLabelText('Barcodes')).toHaveValue('2000000000015')
     expect(screen.getByText(/A new in-store barcode is filled in/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true))
     expect(calls.find((c) => c.method === 'PUT')?.body).toMatchObject({ barcodes: [], generate_barcode: true })
+    // Adding another product is only offered on the New product form.
+    expect(screen.queryByRole('button', { name: 'Save & Add Product' })).not.toBeInTheDocument()
+    // Edits get the same "saved" pop-up, then the products list.
+    const alert = await screen.findByRole('alertdialog', { name: 'Product updated' })
+    expect(alert).toHaveAccessibleDescription('Your changes to “Miniket Rice 5kg” have been saved.')
+    await userEvent.click(within(alert).getByRole('button', { name: 'Go to products' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/products'))
   })
 
   it('adds a sub-category and only offers parents with room below', async () => {

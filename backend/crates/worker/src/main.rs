@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use chrono::Utc;
-use pos_core::config::{AppConfig, LogFormat, load_dotenv};
+use pos_core::config::{AppConfig, AppEnv, LogFormat, load_dotenv};
 use pos_worker::{cleanup, partitions, reconcile};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
@@ -16,6 +16,11 @@ async fn main() -> anyhow::Result<()> {
     load_dotenv();
     let config = AppConfig::from_env().context("invalid configuration")?;
     init_tracing(&config);
+    if config.env == AppEnv::Production {
+        // Same rule as pos-api: without an SMS gateway, codes and messages
+        // would only reach the log.
+        anyhow::bail!("no SMS gateway is integrated yet; pos-worker cannot run in production");
+    }
 
     let tick_secs: u64 = std::env::var("WORKER_TICK_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(3600);
     // Notification checks and email/SMS delivery need a shorter cycle (NOT-R02 retries).

@@ -58,9 +58,19 @@ export interface BusinessSettings {
   locale: string
   fiscal_year_start_month: number
   invoice_prefix: string
+  /** Automatic SKUs: prefix + `sku_digits` zero-padded digits (`P0042`). */
+  sku_prefix: string
+  sku_digits: number
+  /** Automatic barcodes: prefix + `barcode_digits` digits (`200000042`). */
+  barcode_prefix: string
+  barcode_digits: number
   receipt_paper: (typeof RECEIPT_PAPERS)[number]
   receipt_footer: string | null
   auto_print_receipt: boolean
+  /** Show the product grid beside the cart on the POS screen. */
+  show_product_panel: boolean
+  /** Show photos on the POS product cards (only matters with the panel on). */
+  show_product_images: boolean
   is_vat_registered: boolean
   prices_include_tax: boolean
   version: number

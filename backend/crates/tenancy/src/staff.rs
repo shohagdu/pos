@@ -3,9 +3,12 @@
 //! The account works at once; whoever added it hands over the password.
 //!
 //! The adder vouches for the number, so it is marked verified. A number that
-//! already has a verified account is added to the business as it is: its
-//! password stays the one its owner chose (the typed one is ignored), so
-//! adding staff can never take over somebody else's account.
+//! already has a verified account is NOT added directly: it gets an
+//! invitation, sent to that number, which its holder accepts while signed in
+//! (`invitations::accept` checks the account owns the number). So adding
+//! staff can neither take over somebody's account nor put an account into a
+//! business without its holder's consent, and a number someone else
+//! registered first cannot be slipped into the business as "the employee".
 
 use pos_audit::AuditEntry;
 use pos_auth::{
@@ -21,6 +24,7 @@ use uuid::Uuid;
 
 use crate::{
     entitlements,
+    invitations::{self, Invitation, IssuedInvitation, NewInvitation},
     members::{self, Member, RoleAssignment},
     onboarding,
 };
@@ -45,9 +49,20 @@ pub struct NewMember {
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
 pub struct CreatedMember {
-    pub member: Member,
-    /// The number already had an account: it signs in with its own password.
+    /// The new member; absent when the number already had an account and an
+    /// invitation was sent instead.
+    pub member: Option<Member>,
+    /// The number already had an account: it was invited, not added.
     pub existing_account: bool,
+    /// The invitation sent to that account (it joins once accepted).
+    pub invitation: Option<Invitation>,
+}
+
+/// What adding staff did: added a new account, or invited an existing one.
+pub enum StaffAdded {
+    Created(Member),
+    /// The plain token is sent by the caller (`deliver`), never returned.
+    Invited(IssuedInvitation),
 }
 
 pub async fn create(
@@ -55,7 +70,7 @@ pub async fn create(
     actor: &TenantAccess,
     meta: &RequestMeta,
     input: NewMember,
-) -> AppResult<CreatedMember> {
+) -> AppResult<StaffAdded> {
     let full_name = input.full_name.trim().to_owned();
     if !(2..=150).contains(&full_name.chars().count()) {
         return Err(AppError::field("full_name", "INVALID_NAME", "enter the full name (2–150 characters)"));
@@ -91,10 +106,19 @@ pub async fn create(
         return Err(AppError::field("phone", "ACCOUNT_DISABLED", "this number's account is disabled"));
     }
     let existing_account = existing.as_ref().is_some_and(|(_, verified, _)| *verified);
+    if existing_account {
+        // Their account, their consent: invite rather than add.
+        let issued = invitations::create(
+            tx,
+            actor,
+            meta,
+            NewInvitation { destination: phone, role_ids: input.role_ids, branch_ids: input.branch_ids },
+        )
+        .await?;
+        return Ok(StaffAdded::Invited(issued));
+    }
 
-    let user_id = if existing_account {
-        existing.as_ref().map(|(id, _, _)| *id).unwrap_or_default()
-    } else {
+    let user_id = {
         // A new account, or an unverified sign-up nobody completed (it
         // proves nothing yet, so it is taken over like `register` does).
         let personal = [full_name.as_str(), phone.as_str(), email.as_deref().unwrap_or("")];
@@ -116,6 +140,8 @@ pub async fn create(
             }
         }
         if existing.is_some() {
+            // Whoever started that sign-up loses any session it had.
+            pos_auth::session::revoke_all_for_user(tx, user_id, "account_reclaimed").await?;
             sqlx::query(
                 "UPDATE users SET full_name = ?, email = ?, password_hash = ?, phone_verified_at = NOW(6) WHERE id = ?",
             )
@@ -210,12 +236,11 @@ pub async fn create(
     pos_audit::record(
         tx,
         meta,
-        AuditEntry::new("member.created").entity("membership", membership_id).change(
-            None,
-            Some(json!({ "phone": mask(&phone), "existing_account": existing_account, "roles": assignments })),
-        ),
+        AuditEntry::new("member.created")
+            .entity("membership", membership_id)
+            .change(None, Some(json!({ "phone": mask(&phone), "roles": assignments }))),
     )
     .await?;
     let member = members::get(tx, membership_id).await?;
-    Ok(CreatedMember { member, existing_account })
+    Ok(StaffAdded::Created(member))
 }

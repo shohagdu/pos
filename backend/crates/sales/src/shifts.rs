@@ -318,6 +318,7 @@ const SHIFT_SELECT: &str = "SELECT s.id, s.register_id, r.name AS register_name,
      WHERE s.tenant_id = ";
 
 pub async fn get_shift(tx: &mut TenantTx, id: Uuid) -> AppResult<Shift> {
+    tx.ensure_row_branch("register_shifts", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SHIFT_SELECT);
     q.push_bind(tenant_id).push(" AND s.id = ").push_bind(id);

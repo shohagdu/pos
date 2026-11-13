@@ -78,7 +78,21 @@ pub(crate) const SEQUENCES: &[(&str, &str, bool, bool)] = &[
     ("customer", "C", false, false),
     ("supplier", "S", false, false),
     ("product", "P", false, false),
+    ("barcode", "20", false, false),
 ];
+
+/// Digits of the running number: documents `INV-2610-00042`, product codes
+/// `P0042` (Settings → Product codes can change both), barcodes `200000042`
+/// (7 digits keep a numeric code clear of the 8/12/13-digit retail formats),
+/// party codes `C000042`.
+pub(crate) fn default_padding(doc_type: &str, with_period: bool) -> i8 {
+    match doc_type {
+        _ if with_period => 5,
+        "product" => 4,
+        "barcode" => 7,
+        _ => 6,
+    }
+}
 
 pub(crate) fn clean(value: Option<String>, field: &str, max: usize) -> AppResult<Option<String>> {
     let Some(value) = value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty()) else {
@@ -370,8 +384,7 @@ async fn provision_tx(
         .bind(doc_type)
         .bind(prefix)
         .bind(with_period)
-        // Documents `INV-2610-00042`; codes `P000042` (Requirement Analysis §7.5).
-        .bind(if *with_period { 5 } else { 6 })
+        .bind(default_padding(doc_type, *with_period))
         .execute(&mut *tx)
         .await
         .map_err(map_db_error)?;

@@ -137,7 +137,10 @@
       "warranty": "ওয়ারেন্টি {{tenure}}, {{date}} পর্যন্ত",
       "partitaIva": "P.IVA {{value}}",
       "taxCode": "C.F. {{value}}",
-      "rea": "REA {{office}} {{number}}"
+      "rea": "REA {{office}} {{number}}",
+      "sl": "ক্রম",
+      "item": "পণ্য",
+      "total": "মোট"
     },
     "warrantyUntil": "ওয়ারেন্টি {{date}} পর্যন্ত",
     "warrantyExpired": "ওয়ারেন্টি শেষ {{date}}",

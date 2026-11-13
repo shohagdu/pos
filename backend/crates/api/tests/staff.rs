@@ -8,7 +8,7 @@
 mod common;
 
 use actix_web::{http::StatusCode, test};
-use common::{PASSWORD, Req, call, create_business, role_id, sign_up, switch};
+use common::{PASSWORD, Req, call, create_business, role_id, sign_up, switch, token_of};
 use pos_api::{AppState, app};
 use serde_json::json;
 use sqlx::MySqlPool;
@@ -105,7 +105,9 @@ async fn owner_adds_staff_with_a_password(pool: MySqlPool) {
     .await;
     assert_eq!(new.status, StatusCode::OK, "{}", new.body);
 
-    // Someone who already has an account joins with their own password; the typed one is ignored.
+    // Someone who already has an account is invited, not added: the link
+    // goes to their number and they join only by accepting it. The typed
+    // password is ignored and their own one stays.
     let mut rina = sign_up(&srv, "Rina", "01711000973").await;
     let joined = call(
         &srv,
@@ -114,6 +116,28 @@ async fn owner_adds_staff_with_a_password(pool: MySqlPool) {
     .await;
     assert_eq!(joined.status, StatusCode::CREATED, "{}", joined.body);
     assert_eq!(joined.body["existing_account"], true);
+    assert!(joined.body["member"].is_null(), "not a member yet: {}", joined.body);
+    assert_eq!(joined.body["invitation"]["status"], "pending");
+    let not_yet = call(
+        &srv,
+        Req::post("/api/v1/auth/switch-tenant", json!({ "tenant_id": &tenant_id })).cookie(&rina.cookie).build(),
+    )
+    .await;
+    assert_ne!(not_yet.status, StatusCode::OK, "no access before accepting: {}", not_yet.body);
+    // The holder accepts with the link sent to the number (a fresh one here).
+    let invitation_id = joined.body["invitation"]["id"].as_str().expect("invitation id").to_owned();
+    let resent = call(
+        &srv,
+        Req::post(&format!("/api/v1/invitations/{invitation_id}/resend"), json!({})).bearer(&owner.token).build(),
+    )
+    .await;
+    assert_eq!(resent.status, StatusCode::OK, "{}", resent.body);
+    let accepted = call(
+        &srv,
+        Req::post("/api/v1/invitations/accept", json!({ "token": token_of(&resent.body) })).bearer(&rina.token).build(),
+    )
+    .await;
+    assert_eq!(accepted.status, StatusCode::OK, "{}", accepted.body);
     let typed = call(
         &srv,
         Req::post("/api/v1/auth/login", json!({ "identifier": "01711000973", "password": "Owner-chosen-1" })).build(),

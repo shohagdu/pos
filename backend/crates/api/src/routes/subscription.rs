@@ -94,6 +94,8 @@ pub async fn submit_claim(
     Ok(HttpResponse::Created().json(claim))
 }
 
+static EXPORT_SLOTS: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(2);
+
 /// The owner's full data export: a ZIP of CSV files, one per table
 /// (NFR-PRIV-01). Also available while read-only or suspended.
 #[utoipa::path(get, path = "/api/v1/subscription/export", tag = "billing", security(("bearer" = [])),
@@ -101,11 +103,20 @@ pub async fn submit_claim(
 #[get("/subscription/export")]
 pub async fn export_data(state: web::Data<AppState>, auth: TenantAuth) -> Result<HttpResponse, ApiError> {
     auth.require("subscription.manage")?;
+    // The export is built in memory and holds a DB connection while it reads
+    // every table: run at most two at once across the server so repeated or
+    // parallel requests cannot starve the pool or exhaust memory.
+    let _slot = EXPORT_SLOTS.try_acquire().map_err(|_| AppError::RateLimited {
+        code: "EXPORT_BUSY",
+        message: "another data export is being prepared; try again in a minute".into(),
+        retry_after_secs: 60,
+    })?;
     let mut tx = auth.begin(&state).await?;
     let files = pos_platform::export::build(&mut tx, &auth.ctx.meta).await?;
     tx.commit().await?;
-    let mut buffer = std::io::Cursor::new(Vec::new());
-    {
+    // Compressing is CPU work: keep it off the request threads.
+    let zipped = web::block(move || -> Result<Vec<u8>, AppError> {
+        let mut buffer = std::io::Cursor::new(Vec::new());
         let mut zip = zip::ZipWriter::new(&mut buffer);
         let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         for file in &files {
@@ -113,10 +124,13 @@ pub async fn export_data(state: web::Data<AppState>, auth: TenantAuth) -> Result
             zip.write_all(file.content.as_bytes()).map_err(AppError::internal)?;
         }
         zip.finish().map_err(AppError::internal)?;
-    }
+        Ok(buffer.into_inner())
+    })
+    .await
+    .map_err(AppError::internal)??;
     let date = chrono::Utc::now().format("%Y%m%d");
     Ok(HttpResponse::Ok()
         .content_type("application/zip")
         .insert_header((header::CONTENT_DISPOSITION, format!("attachment; filename=\"pos-export-{date}.zip\"")))
-        .body(buffer.into_inner()))
+        .body(zipped))
 }

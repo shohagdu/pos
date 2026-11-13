@@ -25,10 +25,19 @@ export interface PosItem {
   tax_rate_pct: string
   /** Stock at the sale location; `null` for services. */
   stock: string | null
+  /** At or below this stock the product is running low; missing on older held carts. */
+  reorder_level?: string | null
   /** The product photo (`GET /files/{id}`); missing on carts held before photos were shown. */
   image_file_id?: string | null
   /** The search text matched a barcode or SKU exactly (scan → add). */
   exact: boolean
+}
+
+/** A top-level category for the POS grid filter (`GET /pos/categories`). */
+export interface PosCategory {
+  id: string
+  name: string
+  product_count: number
 }
 
 /** Settings the POS needs to price and print (`GET /pos/context`). */
@@ -37,6 +46,10 @@ export interface PosContext {
   /** "0.00" = none, else the step ("0.50", "1.00"). */
   cash_rounding: string
   allow_negative_stock: boolean
+  /** Show the product grid beside the cart (Settings → Invoice, tax & POS). */
+  show_product_panel: boolean
+  /** Show photos on the product cards. */
+  show_product_images: boolean
   /** Discounts above this % need `pos.discount_over_limit`. */
   cashier_max_discount_pct: string
   walk_in_customer_id: string
@@ -333,7 +346,9 @@ export interface CollectionInput {
 
 export const salesApi = {
   posContext: () => apiFetch<PosContext>('/api/v1/pos/context'),
-  posProducts: (q: string, limit = 20) => apiFetch<PosItem[]>(`/api/v1/pos/products${queryString({ q, limit })}`),
+  posProducts: (q: string, limit = 20, offset = 0, categoryId: string | null = null) =>
+    apiFetch<PosItem[]>(`/api/v1/pos/products${queryString({ q, limit, offset: offset || undefined, category_id: categoryId })}`),
+  posCategories: () => apiFetch<PosCategory[]>('/api/v1/pos/categories'),
   createSale: (input: SaleInput, idempotencyKey: string) =>
     apiFetch<SaleDetail>('/api/v1/sales', { method: 'POST', body: input, idempotencyKey }),
   sales: (filter: SaleFilter, cursor: string | null) =>
@@ -363,6 +378,8 @@ export const salesKeys = {
   all: (tenantId: string) => ['sales', tenantId] as const,
   posContext: (tenantId: string) => ['sales', tenantId, 'pos-context'] as const,
   posProducts: (tenantId: string, q: string) => ['sales', tenantId, 'pos-products', q] as const,
+  posCatalog: (tenantId: string, categoryId: string | null, q: string) => ['sales', tenantId, 'pos-catalog', categoryId, q] as const,
+  posCategories: (tenantId: string) => ['sales', tenantId, 'pos-categories'] as const,
   list: (tenantId: string, filter: SaleFilter) => ['sales', tenantId, 'list', filter] as const,
   sale: (tenantId: string, id: string) => ['sales', tenantId, 'sale', id] as const,
   returns: (tenantId: string, filter: ReturnFilter) => ['sales', tenantId, 'returns', filter] as const,
@@ -375,6 +392,23 @@ export const usePosContext = (tenantId: string) =>
   useQuery({ queryKey: salesKeys.posContext(tenantId), queryFn: salesApi.posContext, staleTime: 5 * 60_000 })
 export const usePosProducts = (tenantId: string, q: string, enabled = true) =>
   useQuery({ queryKey: salesKeys.posProducts(tenantId, q), queryFn: () => salesApi.posProducts(q), enabled, staleTime: 10_000 })
+/** Page size of the POS product grid (the API allows at most 50). */
+export const POS_CATALOG_PAGE = 48
+/**
+ * Active products for the POS grid, a page at a time by name: optionally one
+ * category, and `q` matching name or SKU (partial, case-insensitive).
+ */
+export const usePosCatalog = (tenantId: string, categoryId: string | null, q = '') =>
+  useInfiniteQuery({
+    queryKey: salesKeys.posCatalog(tenantId, categoryId, q),
+    queryFn: ({ pageParam }) => salesApi.posProducts(q, POS_CATALOG_PAGE, pageParam, categoryId),
+    placeholderData: (previous) => previous,
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) => (last.length < POS_CATALOG_PAGE ? undefined : pages.length * POS_CATALOG_PAGE),
+    staleTime: 30_000,
+  })
+export const usePosCategories = (tenantId: string) =>
+  useQuery({ queryKey: salesKeys.posCategories(tenantId), queryFn: salesApi.posCategories, staleTime: 5 * 60_000 })
 export const useSales = (tenantId: string, filter: SaleFilter) =>
   useInfiniteQuery({
     queryKey: salesKeys.list(tenantId, filter),

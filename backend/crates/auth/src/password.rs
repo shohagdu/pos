@@ -1,6 +1,6 @@
 //! Password policy and Argon2id hashing (AUTH-R01, AUTH-R02).
 
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 
 use argon2::{
     Algorithm, Argon2, Params, Version,
@@ -20,6 +20,14 @@ const LANES: u32 = 1;
 /// Hash of a throwaway password, verified for unknown users so that a login
 /// for a missing account takes as long as one with a wrong password.
 static DUMMY_HASH: OnceLock<String> = OnceLock::new();
+
+/// Argon2 runs at most this many at once (each takes ~19 MiB and a CPU for
+/// tens of ms). Without a cap a flood of logins or sign-ups fills the
+/// blocking pool (up to 512 threads, ~10 GB); extra callers wait their turn.
+static HASH_SLOTS: LazyLock<tokio::sync::Semaphore> = LazyLock::new(|| {
+    let cpus = std::thread::available_parallelism().map_or(2, std::num::NonZeroUsize::get);
+    tokio::sync::Semaphore::new((cpus * 2).clamp(2, 16))
+});
 
 /// Frequently used passwords (subset of public breach lists), compared case-insensitively.
 const COMMON: &[&str] = &[
@@ -143,6 +151,7 @@ fn dummy_hash() -> AppResult<&'static str> {
 
 /// Hashes on the blocking pool: Argon2 takes tens of milliseconds by design.
 pub async fn hash(password: String) -> AppResult<String> {
+    let _slot = HASH_SLOTS.acquire().await.map_err(AppError::internal)?;
     tokio::task::spawn_blocking(move || {
         let hash = hasher()?.hash_password(password.as_bytes()).map_err(AppError::internal)?;
         Ok(hash.to_string())
@@ -153,6 +162,7 @@ pub async fn hash(password: String) -> AppResult<String> {
 
 /// `false` for a wrong password; errors only for a malformed stored hash.
 pub async fn verify(password: String, stored: Option<String>) -> AppResult<bool> {
+    let _slot = HASH_SLOTS.acquire().await.map_err(AppError::internal)?;
     tokio::task::spawn_blocking(move || {
         let known = stored.is_some();
         let stored = match stored {

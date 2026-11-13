@@ -8,7 +8,7 @@ use pos_money::payments::PaymentDetail;
 use pos_sales::{
     collections::{self, CollectionInput},
     held::{self, HeldCart, HoldInput},
-    lookup::{self, LookupQuery, PosContext, PosItem},
+    lookup::{self, LookupQuery, PosCategory, PosContext, PosItem},
     returns::{self, ReturnFilter, ReturnInput, ReturnPage, SaleReturnDetail},
     sales::{self, SaleDetail, SaleFilter, SaleInput, SalePage, Seller},
     warranties::{self, WarrantyFilter, WarrantyPage},
@@ -25,6 +25,7 @@ use crate::{
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(pos_context)
         .service(pos_products)
+        .service(pos_categories)
         .service(create_sale)
         .service(list_sales)
         .service(get_sale)
@@ -102,6 +103,18 @@ pub async fn pos_products(
     let items = lookup::search(&mut tx, ctx.location_id, &query).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(items))
+}
+
+/// Categories for the POS product grid filter (cashiers need no `products.view`).
+#[utoipa::path(get, path = "/api/v1/pos/categories", tag = "sales", security(("bearer" = [])),
+    responses((status = 200, body = Vec<PosCategory>)))]
+#[get("/pos/categories")]
+pub async fn pos_categories(state: web::Data<AppState>, auth: TenantAuth) -> Result<HttpResponse, ApiError> {
+    auth.require("pos.sell")?;
+    let mut tx = auth.begin(&state).await?;
+    let list = lookup::categories(&mut tx).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(list))
 }
 
 /// Completes a sale atomically (DB design §10.1). Requires an `Idempotency-Key`

@@ -151,6 +151,11 @@
       "footer": "Receipt footer (optional)",
       "footerHint": "For example: Thank you! Exchange within 7 days with receipt.",
       "autoPrint": "Print the receipt automatically after each sale",
+      "showProductPanel": "Show product panel on POS screen",
+      "showProductPanelHint": "A grid of products cashiers can tap to add to the cart. Turn it off if you sell mostly by scanning barcodes; the cart then uses the full width.",
+      "showProductImages": "Show product images on POS",
+      "showProductImagesHint": "Small photos on the product cards. Turn off for smaller cards, for example if most products have no photo.",
+      "showProductImagesPanelOff": "Only applies when the product panel is shown.",
       "vatRegistered": "The business is VAT registered",
       "vatHint": "Shows VAT on invoices. Check the invoice format with your VAT adviser.",
       "pricesIncludeTax": "Selling prices include VAT",
@@ -191,10 +196,11 @@
       "profile": "Business",
       "regional": "Regional",
       "branch": "Branch",
-      "invoice": "Invoice & tax",
+      "invoice": "Invoice, tax & POS",
       "branches": "Branches",
       "registers": "Registers",
-      "data": "Data"
+      "data": "Data",
+      "codes": "Product codes"
     },
     "legalName": "Legal name (optional)",
     "address": "Business address: {{slug}}",
@@ -241,6 +247,21 @@
         "journal_entries": "Journals",
         "register_shifts": "Shifts"
       }
+    },
+    "codes": {
+      "intro": "New products get these codes automatically when the SKU or barcode is left as suggested. Codes you type yourself are kept as typed.",
+      "sku": "SKU",
+      "barcode": "Barcode",
+      "prefix": "Starts with",
+      "prefixHint": "1–10 letters or digits, for example P or MIR.",
+      "digits": "Number of digits",
+      "digitsOption_one": "{{count}} digit",
+      "digitsOption_other": "{{count}} digits",
+      "example": "Next codes look like",
+      "barcodeHint": "Printed on labels as Code 128, which any barcode scanner reads.",
+      "carryOn": "Numbering carries on from the last code; products that already have codes keep them.",
+      "prefixInvalid": "Use 1–10 letters or digits.",
+      "retailLength": "An all-digit barcode of 8, 12 or 13 digits is a retail format (EAN/UPC). Choose another number of digits or add a letter."
     }
   },
   "subscription": {
@@ -338,6 +359,7 @@
     "none": "Nothing here yet.",
     "noResults": "No matches.",
     "optional": "optional",
+    "moreInfo": "More info",
     "view": "View",
     "apply": "Apply",
     "clear": "Clear",
@@ -357,6 +379,9 @@
     "PHONE_TAKEN": "This mobile number is already registered. Sign in or reset your password.",
     "EMAIL_TAKEN": "This email address is already registered.",
     "PHONE_NOT_VERIFIED": "Verify your mobile number first.",
+    "BRANCH_SCOPE_TOO_NARROW": "This covers the whole business, so it needs this permission for all branches.",
+    "LOGIN_IN_PROGRESS": "A sign-in for this account is already being checked. Try again in a moment.",
+    "EXPORT_BUSY": "Another data export is being prepared. Try again in a minute.",
     "OTP_INVALID": "The code is wrong or has expired.",
     "OTP_ATTEMPTS_EXCEEDED": "Too many wrong codes. Request a new one.",
     "OTP_RATE_LIMITED": "Too many codes requested. Try again in {{minutes}} minutes.",
@@ -597,11 +622,13 @@
     "submit": "Add staff",
     "doneTitle": "{{name}} was added",
     "doneNew": "They can sign in now with {{phone}} and the password you set. Give it to them in person.",
-    "doneExisting": "{{phone}} already had an account, so they sign in with their own password. This business is now in their list.",
+    "doneExisting": "{{phone}} already has an account, so we sent them an invitation instead of adding them. They join this business when they accept it; the password you typed was not used.",
     "another": "Add someone else",
     "viewMember": "View member",
     "seats": "{{used}} of {{max}} user seats used.",
-    "seatsFull": "Remove someone or upgrade the plan to add more."
+    "seatsFull": "Remove someone or upgrade the plan to add more.",
+    "invitedTitle": "{{name}} was invited",
+    "viewInvitations": "See invitations"
   },
   "invitation": {
     "title": "Join {{business}}",
@@ -864,7 +891,14 @@
     "minSellingPrice": "Minimum selling price (optional)",
     "reorderLevel": "Reorder level (optional)",
     "reorderLevelHint": "Shown as low stock at or below this quantity.",
-    "saved": "Product saved.",
+    "createdTitle": "Product saved",
+    "createdMessage": "“{{name}}” has been added to your products.",
+    "createdImageFailed": "“{{name}}” has been added, but the photo could not be uploaded: {{reason}} Open the product to choose it again.",
+    "createdOk": "Go to products",
+    "saveAndAdd": "Save & Add Product",
+    "addAnotherOk": "Add another product",
+    "updatedTitle": "Product updated",
+    "updatedMessage": "Your changes to “{{name}}” have been saved.",
     "archivedHint": "This product is archived: it is hidden from the POS and kept in past sales.",
     "archive": "Archive",
     "restore": "Restore",
@@ -913,7 +947,13 @@
     },
     "codes": "Codes",
     "classification": "Classification",
-    "stockWarranty": "Stock & warranty"
+    "stockWarranty": "Stock & warranty",
+    "skuTaken": "This SKU is already used by “{{name}}”.",
+    "barcodeTaken": "Barcode {{code}} is already used by “{{name}}”.",
+    "barcodesTaken": "These barcodes are already used: {{list}}.",
+    "descriptionHint": "Details for staff or the receipt, e.g. size, colour, how to use.",
+    "profitPerUnit": "Profit per unit: {{amount}} ({{pct}})",
+    "lossPerUnit": "Loss per unit: {{amount}} ({{pct}}) — the selling price is below the cost."
   },
   "catalog": {
     "name": "Name",

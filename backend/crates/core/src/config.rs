@@ -153,6 +153,26 @@ impl AppConfig {
             });
         }
 
+        // The old key keeps verifying tokens during a rotation, so it gets the
+        // same checks as the current one.
+        let jwt_secret_previous = env::var("JWT_SECRET_PREVIOUS").ok().filter(|v| !v.is_empty());
+        if let Some(previous) = &jwt_secret_previous
+            && (previous.len() < 32 || (!local && looks_like_placeholder(previous)))
+        {
+            return Err(ConfigError::Invalid {
+                key: "JWT_SECRET_PREVIOUS",
+                message: "must be a real secret of at least 32 bytes (or left empty)".into(),
+            });
+        }
+        // Outside development the refresh cookie must never travel over plain HTTP.
+        let cookie_secure: bool = parse_or("AUTH_COOKIE_SECURE", true)?;
+        if !cookie_secure && !local {
+            return Err(ConfigError::Invalid {
+                key: "AUTH_COOKIE_SECURE",
+                message: "can only be turned off in development and test".into(),
+            });
+        }
+
         let phone_verification: bool = parse_or("AUTH_PHONE_VERIFICATION", env == AppEnv::Production)?;
         if !phone_verification && env == AppEnv::Production {
             return Err(ConfigError::Invalid {
@@ -183,10 +203,10 @@ impl AppConfig {
             },
             auth: AuthConfig {
                 jwt_secret: Secret::new(jwt_secret),
-                jwt_secret_previous: env::var("JWT_SECRET_PREVIOUS").ok().filter(|v| !v.is_empty()).map(Secret::new),
+                jwt_secret_previous: jwt_secret_previous.map(Secret::new),
                 access_token_ttl_secs: parse_or("ACCESS_TOKEN_TTL_SECS", 900)?,
                 refresh_token_ttl_days: parse_or("REFRESH_TOKEN_TTL_DAYS", 30)?,
-                cookie_secure: parse_or("AUTH_COOKIE_SECURE", true)?,
+                cookie_secure,
                 expose_otp,
                 phone_verification,
             },

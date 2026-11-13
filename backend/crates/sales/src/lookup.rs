@@ -17,6 +17,10 @@ pub struct LookupQuery {
     pub q: Option<String>,
     /// 1–50 (default 20).
     pub limit: Option<u32>,
+    /// Rows to skip, for paging through the product grid (default 0).
+    pub offset: Option<u32>,
+    /// Only products in this category or its sub-categories.
+    pub category_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
@@ -42,6 +46,9 @@ pub struct PosItem {
     /// Stock at the sale location (`null` for services).
     #[schema(value_type = Option<String>)]
     pub stock: Option<Decimal>,
+    /// At or below this stock the product counts as running low.
+    #[schema(value_type = Option<String>)]
+    pub reorder_level: Option<Decimal>,
     /// The product photo (`GET /files/{id}`), if any.
     pub image_file_id: Option<Uuid>,
     /// The search text matched a barcode or SKU exactly (scan → add to cart).
@@ -52,6 +59,10 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
     let limit = query.limit.unwrap_or(20);
     if !(1..=50).contains(&limit) {
         return Err(AppError::field("limit", "OUT_OF_RANGE", "limit must be between 1 and 50"));
+    }
+    let offset = query.offset.unwrap_or(0);
+    if offset > 100_000 {
+        return Err(AppError::field("offset", "OUT_OF_RANGE", "offset must be at most 100000"));
     }
     let text = query.q.as_deref().map(str::trim).unwrap_or_default();
     if text.chars().count() > 100 {
@@ -65,7 +76,7 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
          u.short_name AS unit_short_name, u.allow_fraction, p.track_inventory, p.warranty_period, p.warranty_unit, \
          v.selling_price, v.min_selling_price, \
          COALESCE(t.rate_pct, 0) AS tax_rate_pct, \
-         IF(p.track_inventory, COALESCE(sb.quantity, 0), NULL) AS stock, p.image_file_id, ",
+         IF(p.track_inventory, COALESCE(sb.quantity, 0), NULL) AS stock, v.reorder_level, p.image_file_id, ",
     );
     q.push("(v.sku = ").push_bind(text.to_owned());
     q.push(" OR EXISTS (SELECT 1 FROM product_barcodes x WHERE x.tenant_id = v.tenant_id AND x.variant_id = v.id AND x.barcode = ")
@@ -82,6 +93,20 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
     q.push(" WHERE v.tenant_id = ")
         .push_bind(tenant_id)
         .push(" AND v.deleted_at IS NULL AND p.deleted_at IS NULL AND p.status = 'active' AND v.status = 'active'");
+    if let Some(category_id) = query.category_id {
+        // Categories are at most three levels deep (depth 0–2).
+        q.push(
+            " AND p.category_id IN (SELECT c.id FROM categories c \
+               LEFT JOIN categories c1 ON c1.tenant_id = c.tenant_id AND c1.id = c.parent_id \
+               WHERE c.tenant_id = p.tenant_id AND (c.id = ",
+        )
+        .push_bind(category_id)
+        .push(" OR c.parent_id = ")
+        .push_bind(category_id)
+        .push(" OR c1.parent_id = ")
+        .push_bind(category_id)
+        .push("))");
+    }
     if !text.is_empty() {
         let escaped = text.replace('\\', "\\\\").replace('%', "\\%").replace('_', "\\_");
         q.push(" AND (v.search_text LIKE ")
@@ -90,8 +115,40 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
             .push_bind(text.to_owned())
             .push("))");
     }
-    q.push(" ORDER BY exact DESC, p.name LIMIT ").push_bind(limit);
+    // v.id breaks name ties so pages never overlap or skip rows.
+    q.push(" ORDER BY exact DESC, p.name, v.id LIMIT ").push_bind(limit).push(" OFFSET ").push_bind(offset);
     q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)
+}
+
+/// A top-level category for the POS product grid filter.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
+pub struct PosCategory {
+    pub id: Uuid,
+    pub name: String,
+    /// Active products in it and its sub-categories.
+    pub product_count: i64,
+}
+
+/// Active top-level categories that hold at least one active product
+/// (counting sub-categories), in the shop's order.
+pub async fn categories(tx: &mut TenantTx) -> AppResult<Vec<PosCategory>> {
+    let tenant_id = tx.tenant_id();
+    sqlx::query_as(
+        "SELECT tc.id, tc.name, COUNT(DISTINCT p.id) AS product_count \
+         FROM categories tc \
+         JOIN categories c ON c.tenant_id = tc.tenant_id AND c.deleted_at IS NULL \
+         LEFT JOIN categories c1 ON c1.tenant_id = c.tenant_id AND c1.id = c.parent_id \
+         JOIN products p ON p.tenant_id = c.tenant_id AND p.category_id = c.id \
+              AND p.deleted_at IS NULL AND p.status = 'active' \
+         WHERE tc.tenant_id = ? AND tc.parent_id IS NULL AND tc.deleted_at IS NULL AND tc.status = 'active' \
+           AND (c.id = tc.id OR c.parent_id = tc.id OR c1.parent_id = tc.id) \
+         GROUP BY tc.id, tc.name, tc.sort_order \
+         ORDER BY tc.sort_order, tc.name",
+    )
+    .bind(tenant_id)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(map_db_error)
 }
 
 /// What the POS screen needs to price and print (§7.6): tax mode, cash
@@ -110,14 +167,19 @@ pub struct PosContext {
     pub branch_id: Uuid,
     pub location_id: Uuid,
     pub business_date: chrono::NaiveDate,
+    /// Show the product grid beside the cart (Settings → Invoice & POS).
+    pub show_product_panel: bool,
+    /// Show photos on the product cards.
+    pub show_product_images: bool,
     pub receipt: crate::sales::ReceiptInfo,
 }
 
 pub async fn pos_context(tx: &mut TenantTx) -> AppResult<PosContext> {
     let ctx = context::load(tx).await?;
     let tenant_id = tx.tenant_id();
-    let max_discount: Decimal =
-        sqlx::query_scalar("SELECT cashier_max_discount_pct FROM tenant_settings WHERE tenant_id = ?")
+    let (max_discount, show_product_panel, show_product_images): (Decimal, bool, bool) = sqlx::query_as(
+        "SELECT cashier_max_discount_pct, show_product_panel, show_product_images FROM tenant_settings WHERE tenant_id = ?",
+    )
             .bind(tenant_id)
             .fetch_one(&mut **tx)
             .await
@@ -133,6 +195,8 @@ pub async fn pos_context(tx: &mut TenantTx) -> AppResult<PosContext> {
         branch_id: ctx.branch_id,
         location_id: ctx.location_id,
         business_date: ctx.business_date,
+        show_product_panel,
+        show_product_images,
         receipt,
     })
 }

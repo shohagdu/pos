@@ -1,0 +1,1 @@
+{"rustc":5391851738765093524,"features":"","declared_features":"","target":0,"profile":0,"path":0,"deps":[[18221426934447757967,"build_script_build",false,13861166601909845187]],"local":[{"RerunIfChanged":{"output":"debug/build/pos-db-da3b7737f748a24a/output","paths":["../../migrations"]}}],"rustflags":[],"config":0,"compile_kind":0}

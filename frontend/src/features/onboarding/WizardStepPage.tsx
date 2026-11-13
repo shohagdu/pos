@@ -218,6 +218,8 @@ function InvoiceForm({ settings, tenantId, mode }: { settings: BusinessSettings;
     receipt_paper: settings.receipt_paper as string,
     receipt_footer: settings.receipt_footer ?? '',
     auto_print_receipt: settings.auto_print_receipt,
+    show_product_panel: settings.show_product_panel,
+    show_product_images: settings.show_product_images,
     is_vat_registered: settings.is_vat_registered,
     prices_include_tax: settings.prices_include_tax,
   })
@@ -231,6 +233,9 @@ function InvoiceForm({ settings, tenantId, mode }: { settings: BusinessSettings;
       receipt_paper: values.receipt_paper as BusinessSettings['receipt_paper'],
       receipt_footer: values.receipt_footer,
       auto_print_receipt: values.auto_print_receipt,
+      show_product_panel: values.show_product_panel,
+      // Saved even while the panel is off, so it applies once it is back.
+      show_product_images: values.show_product_images,
       is_vat_registered: values.is_vat_registered,
       prices_include_tax: values.prices_include_tax,
     })
@@ -254,6 +259,18 @@ function InvoiceForm({ settings, tenantId, mode }: { settings: BusinessSettings;
         />
         <TextField label={t('onboarding.invoice.footer')} maxLength={500} error={errors.receipt_footer} hint={t('onboarding.invoice.footerHint')} {...bind('receipt_footer')} />
         <Checkbox label={t('onboarding.invoice.autoPrint')} {...bindCheck('auto_print_receipt')} />
+        <Checkbox
+          label={t('onboarding.invoice.showProductPanel')}
+          hint={t('onboarding.invoice.showProductPanelHint')}
+          {...bindCheck('show_product_panel')}
+        />
+        <Checkbox
+          className="ml-8"
+          label={t('onboarding.invoice.showProductImages')}
+          hint={values.show_product_panel ? t('onboarding.invoice.showProductImagesHint') : t('onboarding.invoice.showProductImagesPanelOff')}
+          disabled={!values.show_product_panel}
+          {...bindCheck('show_product_images')}
+        />
         <Checkbox label={t('onboarding.invoice.vatRegistered')} hint={t('onboarding.invoice.vatHint')} {...bindCheck('is_vat_registered')} />
         <Checkbox label={t('onboarding.invoice.pricesIncludeTax')} hint={t('onboarding.invoice.pricesIncludeTaxHint')} {...bindCheck('prices_include_tax')} />
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}

@@ -139,6 +139,10 @@ async fn target(tx: &mut TenantTx, actor: &TenantAccess, membership_id: Uuid) ->
     if !actor.is_owner && member.roles.iter().any(|r| r.code == ADMIN_ROLE) {
         return Err(AppError::Denied { code: "ADMIN_PROTECTED", message: "only the owner can change an admin".into() });
     }
+    // A member the actor could not have set up (roles in branches outside
+    // the actor's reach) is not theirs to re-wire, suspend or remove either.
+    let current: Vec<(Uuid, Option<Uuid>)> = member.roles.iter().map(|r| (r.role_id, r.branch_id)).collect();
+    grants::ensure_assignments_grantable(tx, actor, &current).await?;
     Ok(member)
 }
 
@@ -205,6 +209,9 @@ pub(crate) async fn validate_assignments(
     grants::ensure_branches(tx, &branch_ids).await?;
     let permissions = grants::role_permissions(tx, &role_ids).await?;
     grants::ensure_grantable(actor, &permissions)?;
+    // ...and only in branches where the actor holds those permissions.
+    let pairs: Vec<(Uuid, Option<Uuid>)> = unique.iter().map(|a| (a.role_id, a.branch_id)).collect();
+    grants::ensure_assignments_grantable(tx, actor, &pairs).await?;
     if !actor.is_owner && roles.iter().any(|r| r.code == ADMIN_ROLE) {
         return Err(AppError::Denied {
             code: "ADMIN_PROTECTED",

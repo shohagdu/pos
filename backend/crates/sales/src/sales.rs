@@ -573,12 +573,28 @@ pub async fn create(
         return Err(AppError::field("payments", "TOO_MANY", "use at most 10 payment lines"));
     }
     let ctx = context::load(tx).await?;
-    let max_discount_pct: Decimal =
+    let business_max_discount_pct: Decimal =
         sqlx::query_scalar("SELECT cashier_max_discount_pct FROM tenant_settings WHERE tenant_id = ?")
             .bind(tx.tenant_id())
             .fetch_one(&mut **tx)
             .await
             .map_err(map_db_error)?;
+    // A role can set its own cap (Users → Roles); with several roles in this
+    // branch the highest applies, like permissions. Roles without one leave
+    // the business-wide cap.
+    let role_max_discount_pct: Option<Decimal> = sqlx::query_scalar(
+        "SELECT MAX(r.max_discount_pct) FROM membership_roles mr \
+         JOIN tenant_memberships m ON m.tenant_id = mr.tenant_id AND m.id = mr.membership_id \
+         JOIN roles r ON r.tenant_id = mr.tenant_id AND r.id = mr.role_id \
+         WHERE mr.tenant_id = ? AND m.user_id = ? AND (mr.branch_id IS NULL OR mr.branch_id = ?)",
+    )
+    .bind(tx.tenant_id())
+    .bind(tx.user_id())
+    .bind(tx.branch_id())
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    let max_discount_pct = role_max_discount_pct.unwrap_or(business_max_discount_pct);
 
     // Products and prices (the price snapshot comes from this read).
     let ids: Vec<Uuid> = input.lines.iter().map(|l| l.variant_id).collect();

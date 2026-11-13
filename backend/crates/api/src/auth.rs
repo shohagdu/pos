@@ -196,6 +196,23 @@ impl TenantAuth {
         Ok(self.access.require(permission)?)
     }
 
+    /// [`Self::require`] for business-wide data (the books, journals,
+    /// periods): the permission must cover every branch, since the data
+    /// cannot be split by branch.
+    pub fn require_everywhere(&self, permission: &'static str) -> Result<(), ApiError> {
+        if self.access.is_owner
+            || matches!(self.access.permissions.get(permission), Some(pos_auth::rbac::BranchScope::All))
+        {
+            return Ok(());
+        }
+        self.require(permission)?;
+        Err(pos_core::AppError::Denied {
+            code: "BRANCH_SCOPE_TOO_NARROW",
+            message: "this covers the whole business; it needs this permission for all branches".into(),
+        }
+        .into())
+    }
+
     pub async fn begin(&self, state: &AppState) -> Result<pos_db::TenantTx, ApiError> {
         Ok(self.begin_tx(state).await?)
     }
@@ -229,6 +246,25 @@ impl TenantAuth {
         Some(ids)
     }
 
+    /// Drops the permissions the member does not hold in the selected branch.
+    /// Roles are granted per branch, so "Manager in A" plus "Cashier
+    /// everywhere" must not let manager actions run in B or across the whole
+    /// business (no branch selected): a permission limited to some branches
+    /// only counts while one of them is selected. Every `require`/`can` and
+    /// the transaction's branch scope then follow from what is left.
+    /// (`/auth/me` keeps the full list, so the app can show the pages that
+    /// work once the right branch is picked.)
+    fn keep_branch_permissions(&mut self) {
+        if self.access.is_owner {
+            return;
+        }
+        let selected = self.branch_id;
+        self.access.permissions.retain(|_, scope| match scope {
+            pos_auth::rbac::BranchScope::All => true,
+            pos_auth::rbac::BranchScope::Branches(ids) => selected.is_some_and(|b| ids.contains(&b)),
+        });
+    }
+
     /// Loads the member without the subscription checks, for `/auth/me`, which
     /// must work when suspended so the app can show the renewal screen.
     pub async fn load_unchecked(req: &HttpRequest) -> Result<Self, ApiError> {
@@ -256,6 +292,9 @@ impl TenantAuth {
             branch_id: None,
         };
         auth.branch_id = selected_branch(req, &state, &auth).await?;
+        if enforce {
+            auth.keep_branch_permissions();
+        }
         Ok(auth)
     }
 }

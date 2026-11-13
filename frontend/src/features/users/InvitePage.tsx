@@ -63,15 +63,21 @@ export function InvitePage() {
   }
 
   if (add.isSuccess) {
-    const { member, existing_account } = add.data
+    const { member } = add.data
     return (
       <Card className="flex max-w-xl flex-col gap-4">
-        <h1 className="text-xl font-bold">{t('addMember.doneTitle', { name: member.full_name })}</h1>
-        <p className="text-sm">
-          {existing_account
-            ? t('addMember.doneExisting', { phone: member.phone ?? values.phone })
-            : t('addMember.doneNew', { phone: member.phone ?? values.phone })}
-        </p>
+        {member ? (
+          <>
+            <h1 className="text-xl font-bold">{t('addMember.doneTitle', { name: member.full_name })}</h1>
+            <p className="text-sm">{t('addMember.doneNew', { phone: member.phone ?? values.phone })}</p>
+          </>
+        ) : (
+          // The number already had an account: it was invited, not added.
+          <>
+            <h1 className="text-xl font-bold">{t('addMember.invitedTitle', { name: values.full_name })}</h1>
+            <p className="text-sm">{t('addMember.doneExisting', { phone: values.phone })}</p>
+          </>
+        )}
         <div className="flex flex-wrap gap-2">
           <Button
             variant="secondary"
@@ -85,10 +91,10 @@ export function InvitePage() {
             {t('addMember.another')}
           </Button>
           <Link
-            to={`/users/members/${member.id}`}
+            to={member ? `/users/members/${member.id}` : '/users/invitations'}
             className="inline-flex min-h-11 items-center px-4 text-sm font-semibold text-brand-700 hover:underline"
           >
-            {t('addMember.viewMember')}
+            {member ? t('addMember.viewMember') : t('addMember.viewInvitations')}
           </Link>
         </div>
       </Card>

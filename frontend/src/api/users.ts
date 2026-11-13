@@ -34,9 +34,11 @@ export interface NewMember {
 }
 
 export interface CreatedMember {
-  member: Member
-  /** The number already had an account: it signs in with its own password. */
+  /** The new member; `null` when the number already had an account and was invited instead. */
+  member: Member | null
+  /** The number already had an account: an invitation was sent to it (it joins once accepted). */
   existing_account: boolean
+  invitation?: Invitation | null
 }
 
 export interface RoleAssignment {

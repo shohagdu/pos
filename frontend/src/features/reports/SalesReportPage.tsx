@@ -11,12 +11,19 @@ import { downloadCsv } from '../../lib/csv'
 import { formatQuantity } from '../../lib/format'
 import { useSession } from '../auth/session'
 import { reportAccess } from './access'
+import { type RankedProduct, rankProducts } from './ranking'
 import { formatPeriod, money, pct, total, usePeriodLabel, useRange } from './format'
 import { type ExportAction, Loaded, ReportFrame, Section } from './shared'
 
-type Tab = 'summary' | 'product' | 'category' | 'cashier'
+type Tab = 'summary' | 'product' | 'best' | 'profit' | 'category' | 'cashier'
 
-/** Sales reports (REP-01…04): summary by day/month, by product, category and cashier. */
+const TOP_SIZES = [10, 20, 50] as const
+
+/**
+ * Sales reports (REP-01…04): summary by day/month, by product, category and
+ * cashier, plus the best-selling and most profitable products (both ranked
+ * from the by-product figures, net of returns).
+ */
 export function SalesReportPage() {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
@@ -27,10 +34,21 @@ export function SalesReportPage() {
   const [tab, setTab] = useState<Tab>('summary')
   const [group, setGroup] = useState<'day' | 'month'>('day')
   const [categoryId, setCategoryId] = useState('')
+  const [topN, setTopN] = useState<number>(10)
+  const [bestBy, setBestBy] = useState<'quantity' | 'net_sales'>('quantity')
+  // Profit needs the cost, like the profit columns elsewhere.
+  const canSeeProfit = can('products.view_cost')
+  const tabs: Tab[] = ['summary', 'product', 'best', ...(canSeeProfit ? (['profit'] as const) : []), 'category', 'cashier']
   const periodLabel = usePeriodLabel()
 
   const summary = useReport(tenantId, 'salesSummary', { ...range, group }, allowed && tab === 'summary')
-  const byProduct = useReport(tenantId, 'salesByProduct', { ...range, category_id: categoryId || undefined }, allowed && tab === 'product')
+  // The rankings use the same figures (and cache) as the by-product tab.
+  const byProduct = useReport(
+    tenantId,
+    'salesByProduct',
+    { ...range, category_id: categoryId || undefined },
+    allowed && (tab === 'product' || tab === 'best' || tab === 'profit'),
+  )
   const byCategory = useReport(tenantId, 'salesByCategory', range, allowed && tab === 'category')
   const byCashier = useReport(tenantId, 'salesByCashier', range, allowed && tab === 'cashier')
   const categories = useCategories(tenantId)
@@ -78,6 +96,60 @@ export function SalesReportPage() {
           { key: 'margin', header: t('reports.sales.margin'), align: 'right', render: (r) => pct(r.margin_pct) },
         ] satisfies Column<ProductSalesRow>[])
       : []),
+  ]
+
+  const productCell = (r: ProductSalesRow) => (
+    <>
+      <span className="font-medium">{r.product_name}</span>
+      <span className="block font-mono text-xs text-ink-muted">{r.sku}</span>
+    </>
+  )
+  // The ranked figure, with a bar for its share of the top product.
+  const rankedValue = (x: RankedProduct, text: string) => (
+    <span className="inline-flex min-w-28 flex-col items-end gap-1">
+      <span className="font-semibold tabular-nums">{text}</span>
+      <span aria-hidden="true" className="block h-1.5 w-full rounded-full bg-canvas print:hidden">
+        <span className="block h-full rounded-full bg-brand-500" style={{ width: `${x.share}%` }} />
+      </span>
+    </span>
+  )
+  const rankColumn: Column<RankedProduct> = {
+    key: 'rank',
+    header: t('reports.sales.rank'),
+    align: 'right',
+    render: (x) => <span className="font-semibold tabular-nums">{x.rank}</span>,
+  }
+  const bestColumns = (showCost: boolean): Column<RankedProduct>[] => [
+    rankColumn,
+    { key: 'product', header: t('reports.sales.product'), render: (x) => productCell(x.row) },
+    { key: 'category', header: t('reports.sales.category'), render: (x) => x.row.category_name ?? t('reports.uncategorised') },
+    {
+      key: 'qty',
+      header: t('reports.sales.qtySold'),
+      align: 'right',
+      render: (x) => {
+        const text = `${formatQuantity(x.row.quantity, lang, true)} ${x.row.unit_short_name}`
+        return bestBy === 'quantity' ? rankedValue(x, text) : text
+      },
+    },
+    {
+      key: 'net',
+      header: t('reports.sales.netSales'),
+      align: 'right',
+      render: (x) => (bestBy === 'net_sales' ? rankedValue(x, money(x.row.net_sales, lang)) : money(x.row.net_sales, lang)),
+    },
+    ...(showCost
+      ? ([{ key: 'gp', header: t('reports.sales.grossProfit'), align: 'right', render: (x) => money(x.row.gross_profit, lang) }] satisfies Column<RankedProduct>[])
+      : []),
+  ]
+  const profitColumns: Column<RankedProduct>[] = [
+    rankColumn,
+    { key: 'product', header: t('reports.sales.product'), render: (x) => productCell(x.row) },
+    { key: 'category', header: t('reports.sales.category'), render: (x) => x.row.category_name ?? t('reports.uncategorised') },
+    { key: 'qty', header: t('reports.sales.qtySold'), align: 'right', render: (x) => `${formatQuantity(x.row.quantity, lang, true)} ${x.row.unit_short_name}` },
+    { key: 'net', header: t('reports.sales.netSales'), align: 'right', render: (x) => money(x.row.net_sales, lang) },
+    { key: 'gp', header: t('reports.sales.grossProfit'), align: 'right', render: (x) => rankedValue(x, money(x.row.gross_profit, lang)) },
+    { key: 'margin', header: t('reports.sales.margin'), align: 'right', render: (x) => pct(x.row.margin_pct) },
   ]
 
   const categoryColumns = (showCost: boolean): Column<CategorySalesRow>[] => [
@@ -140,6 +212,23 @@ export function SalesReportPage() {
           { header: t('reports.sales.margin'), value: (r) => r.margin_pct },
         ]),
     })
+  } else if ((tab === 'best' || tab === 'profit') && byProduct.data) {
+    const ranked = rankProducts(byProduct.data.rows, tab === 'best' ? bestBy : 'gross_profit', topN)
+    updatedAt = byProduct.dataUpdatedAt
+    exports.push({
+      run: () =>
+        downloadCsv(name(tab === 'best' ? 'best-selling-products' : 'most-profitable-products'), ranked, [
+          { header: t('reports.sales.rank'), value: (x) => x.rank },
+          { header: t('reports.sales.product'), value: (x) => x.row.product_name },
+          { header: t('reports.sku'), value: (x) => x.row.sku },
+          { header: t('reports.sales.category'), value: (x) => x.row.category_name },
+          { header: t('reports.sales.qtySold'), value: (x) => x.row.quantity },
+          { header: t('reports.unit'), value: (x) => x.row.unit_short_name },
+          { header: t('reports.sales.netSales'), value: (x) => x.row.net_sales },
+          { header: t('reports.sales.grossProfit'), value: (x) => x.row.gross_profit },
+          { header: t('reports.sales.margin'), value: (x) => x.row.margin_pct },
+        ]),
+    })
   } else if (tab === 'category' && byCategory.data) {
     const d = byCategory.data
     updatedAt = byCategory.dataUpdatedAt
@@ -191,7 +280,26 @@ export function SalesReportPage() {
               ]}
             />
           )}
-          {tab === 'product' && (
+          {(tab === 'best' || tab === 'profit') && (
+            <Select
+              label={t('reports.sales.show')}
+              value={String(topN)}
+              onChange={(e) => setTopN(Number(e.target.value))}
+              options={TOP_SIZES.map((n) => ({ value: String(n), label: t('reports.sales.topN', { count: n }) }))}
+            />
+          )}
+          {tab === 'best' && (
+            <Select
+              label={t('reports.sales.rankBy')}
+              value={bestBy}
+              onChange={(e) => setBestBy(e.target.value as 'quantity' | 'net_sales')}
+              options={[
+                { value: 'quantity', label: t('reports.sales.byQuantity') },
+                { value: 'net_sales', label: t('reports.sales.byNetSales') },
+              ]}
+            />
+          )}
+          {(tab === 'product' || tab === 'best' || tab === 'profit') && (
             <Select
               label={t('reports.sales.category')}
               value={categoryId}
@@ -210,7 +318,7 @@ export function SalesReportPage() {
           label={t('reports.sales.title')}
           value={tab}
           onChange={setTab}
-          items={(['summary', 'product', 'category', 'cashier'] as const).map((v) => ({ value: v, label: t(`reports.sales.tabs.${v}`) }))}
+          items={tabs.map((v) => ({ value: v, label: t(`reports.sales.tabs.${v}`) }))}
         />
       </div>
 
@@ -275,6 +383,40 @@ export function SalesReportPage() {
               />
             )
           }}
+        </Loaded>
+      )}
+
+      {tab === 'best' && (
+        <Loaded query={byProduct}>
+          {(d) => (
+            <>
+              <p className="text-sm text-ink-muted">{bestBy === 'quantity' ? t('reports.sales.bestHintQty') : t('reports.sales.bestHintNet')}</p>
+              <DataTable
+                caption={t('reports.sales.tabs.best')}
+                columns={bestColumns(d.total_cogs !== null)}
+                rows={rankProducts(d.rows, bestBy, topN)}
+                rowKey={(x) => x.row.variant_id}
+                empty={t('reports.sales.noSales')}
+              />
+            </>
+          )}
+        </Loaded>
+      )}
+
+      {tab === 'profit' && (
+        <Loaded query={byProduct}>
+          {(d) => (
+            <>
+              <p className="text-sm text-ink-muted">{t('reports.sales.profitHint')}</p>
+              <DataTable
+                caption={t('reports.sales.tabs.profit')}
+                columns={profitColumns}
+                rows={rankProducts(d.rows, 'gross_profit', topN)}
+                rowKey={(x) => x.row.variant_id}
+                empty={t('reports.sales.noProfit')}
+              />
+            </>
+          )}
         </Loaded>
       )}
 

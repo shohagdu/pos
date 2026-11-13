@@ -129,6 +129,14 @@ pub async fn list(tx: &mut TenantTx, filter: &ReconciliationFilter) -> AppResult
     if let Some(account_id) = filter.account_id {
         q.push(" AND r.account_id = ").push_bind(account_id);
     }
+    // Members limited to some branches: shared accounts and their own only.
+    if let Some(allowed) = tx.allowed_branches().map(<[Uuid]>::to_vec) {
+        q.push(" AND EXISTS (SELECT 1 FROM payment_accounts pa WHERE pa.tenant_id = r.tenant_id AND pa.id = r.account_id AND (pa.branch_id IS NULL");
+        for id in allowed {
+            q.push(" OR pa.branch_id = ").push_bind(id);
+        }
+        q.push("))");
+    }
     q.push(" ORDER BY r.statement_date DESC, r.created_at DESC LIMIT 200");
     q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)
 }
@@ -140,8 +148,16 @@ async fn summary(tx: &mut TenantTx, id: Uuid) -> AppResult<ReconciliationSummary
     q.build_query_as().fetch_optional(&mut **tx).await.map_err(map_db_error)?.ok_or(AppError::NotFound)
 }
 
+/// Refuses a reconciliation of an account in a branch outside the member's scope.
+async fn ensure_scope(tx: &mut TenantTx, id: Uuid) -> AppResult<()> {
+    let account_id = summary(tx, id).await?.account_id;
+    tx.ensure_row_branch("payment_accounts", account_id).await
+}
+
 pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<Reconciliation> {
     let summary = summary(tx, id).await?;
+    // The account's branch must be in scope (refused otherwise).
+    crate::accounts::get(tx, summary.account_id).await?;
     let tenant_id = tx.tenant_id();
     let lines: Vec<ReconciliationLine> = if summary.status == "in_progress" {
         // Lines not cleared by another reconciliation, up to the statement date.
@@ -240,6 +256,7 @@ fn not_in_progress() -> AppError {
 
 /// Starts a reconciliation for one statement.
 pub async fn start(tx: &mut TenantTx, meta: &RequestMeta, input: &ReconciliationInput) -> AppResult<Reconciliation> {
+    tx.ensure_row_branch("payment_accounts", input.account_id).await?;
     let tenant_id = tx.tenant_id();
     let ctx = context::load(tx).await?;
     let account: Option<(String, String)> =
@@ -320,6 +337,7 @@ pub async fn start(tx: &mut TenantTx, meta: &RequestMeta, input: &Reconciliation
 
 /// Ticks and unticks book lines.
 pub async fn set_cleared(tx: &mut TenantTx, id: Uuid, input: &ClearInput) -> AppResult<Reconciliation> {
+    ensure_scope(tx, id).await?;
     let (account_id, status, statement_date) = lock(tx, id).await?;
     if status != "in_progress" {
         return Err(not_in_progress());
@@ -386,6 +404,7 @@ pub async fn set_cleared(tx: &mut TenantTx, id: Uuid, input: &ClearInput) -> App
 
 /// Completes a reconciliation whose cleared balance equals the statement.
 pub async fn complete(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResult<Reconciliation> {
+    ensure_scope(tx, id).await?;
     let (_, status, _) = lock(tx, id).await?;
     if status != "in_progress" {
         return Err(not_in_progress());
@@ -423,6 +442,7 @@ pub async fn complete(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppRes
 
 /// Cancels a reconciliation in progress; its ticks are dropped.
 pub async fn cancel(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResult<Reconciliation> {
+    ensure_scope(tx, id).await?;
     let (_, status, _) = lock(tx, id).await?;
     if status != "in_progress" {
         return Err(not_in_progress());
@@ -449,6 +469,7 @@ pub async fn cancel(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid) -> AppResul
 
 /// Reopens the account's latest completed reconciliation to correct it.
 pub async fn reopen(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid, reason: &str) -> AppResult<Reconciliation> {
+    ensure_scope(tx, id).await?;
     let (account_id, status, _) = lock(tx, id).await?;
     if status != "completed" {
         return Err(AppError::Unprocessable {

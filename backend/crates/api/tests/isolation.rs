@@ -75,7 +75,9 @@ fn access(method: &str, path: &str) -> Option<Access> {
         ("post", "/api/v1/auth/open-business") => Platform,
         // The caller's own password (checked in tests/auth.rs).
         ("post", "/api/v1/auth/password/change") => Public,
-        ("get", "/api/v1/products/next-codes" | "/api/v1/sale-warranties") => TenantRead,
+        ("get", "/api/v1/products/next-codes" | "/api/v1/products/check-codes" | "/api/v1/sale-warranties") => {
+            TenantRead
+        }
         // Label facts and in-store barcodes by variant id; product lookup by SKU/barcode.
         ("post", "/api/v1/labels" | "/api/v1/labels/generate-barcodes" | "/api/v1/products/lookup") => BodyRead,
         ("post", "/api/v1/members" | "/api/v1/products/import") => TenantWrite,
@@ -118,6 +120,7 @@ fn access(method: &str, path: &str) -> Option<Access> {
             | "/api/v1/expenses"
             | "/api/v1/pos/context"
             | "/api/v1/pos/products"
+            | "/api/v1/pos/categories"
             | "/api/v1/sales"
             | "/api/v1/sale-returns"
             | "/api/v1/held-carts"

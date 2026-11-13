@@ -29,3 +29,17 @@ describe('receipt header', () => {
     expect(printed.queryByText(/^BIN:/)).not.toBeInTheDocument()
   })
 })
+
+describe('receipt items', () => {
+  it('numbers the item lines under an SL header', () => {
+    const [first] = sale.items
+    if (!first) throw new Error('fixture has no items')
+    const second = { ...first, id: 'si2', line_no: 2, product_name: 'Soybean Oil 1L' }
+    render(<SaleReceipt sale={{ ...sale, items: [first, second] }} />)
+    const printed = within(screen.getByTestId('receipt'))
+    expect(printed.getByText('SL')).toBeInTheDocument()
+    expect(printed.getByText('Item')).toBeInTheDocument()
+    expect(printed.getByText('1.').parentElement).toHaveTextContent(first.product_name)
+    expect(printed.getByText('2.').parentElement).toHaveTextContent('Soybean Oil 1L')
+  })
+})

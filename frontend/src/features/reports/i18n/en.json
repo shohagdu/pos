@@ -113,6 +113,8 @@
       "tabs": {
         "summary": "Summary",
         "product": "By product",
+        "best": "Best sellers",
+        "profit": "Top profit",
         "category": "By category",
         "cashier": "By cashier"
       },
@@ -135,7 +137,20 @@
       "cancelledCol": "Cancelled",
       "paymentsByMethod": "Payments by method",
       "cancelledNote_one": "{{count}} cancelled invoice is not included.",
-      "cancelledNote_other": "{{count}} cancelled invoices are not included."
+      "cancelledNote_other": "{{count}} cancelled invoices are not included.",
+      "rank": "#",
+      "qtySold": "Qty sold",
+      "show": "Show",
+      "topN_one": "Top {{count}}",
+      "topN_other": "Top {{count}}",
+      "rankBy": "Rank by",
+      "byQuantity": "Quantity sold",
+      "byNetSales": "Net sales",
+      "bestHintQty": "Products that sold the most units in this period, after returns.",
+      "bestHintNet": "Products that brought in the most sales in this period, after discounts and returns (VAT excluded).",
+      "profitHint": "Products that earned the most gross profit in this period: net sales minus their cost, after returns.",
+      "noSales": "Nothing was sold in this period.",
+      "noProfit": "No product made a profit in this period."
     },
     "purchases": {
       "title": "Purchase report",

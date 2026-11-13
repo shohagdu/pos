@@ -619,6 +619,83 @@ async fn resolve_sku(tx: &mut TenantTx, wanted: Option<&str>, except_variant: Op
     Err(AppError::Conflict { code: "DUPLICATE_SKU", message: "could not find a free SKU; enter one".into() })
 }
 
+/// Codes a product form wants checked while typing (`GET /products/check-codes`).
+#[derive(Debug, Clone, Default, Deserialize, utoipa::IntoParams)]
+#[serde(deny_unknown_fields)]
+#[into_params(parameter_in = Query)]
+pub struct CodeCheckQuery {
+    pub sku: Option<String>,
+    /// Comma-separated, as typed in the Barcodes field.
+    pub barcodes: Option<String>,
+    /// The product being edited: its own codes are not "taken".
+    pub product_id: Option<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
+pub struct TakenCode {
+    pub code: String,
+    /// The product that already uses it.
+    pub product_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
+pub struct CodeCheck {
+    /// Set when another product already has this SKU.
+    pub sku: Option<TakenCode>,
+    /// The typed barcodes another product already has.
+    pub barcodes: Vec<TakenCode>,
+}
+
+/// Which of the typed codes another product already uses (case as stored;
+/// the save checks the same rules and stays the final word).
+pub async fn check_codes(tx: &mut TenantTx, query: &CodeCheckQuery) -> AppResult<CodeCheck> {
+    let tenant_id = tx.tenant_id();
+    let sku = query.sku.as_deref().map(str::trim).filter(|s| !s.is_empty() && s.len() <= 64);
+    let sku = match sku {
+        Some(code) => sqlx::query_as(
+            "SELECT v.live_sku AS code, p.name AS product_name FROM product_variants v \
+             JOIN products p ON p.tenant_id = v.tenant_id AND p.id = v.product_id \
+             WHERE v.tenant_id = ? AND v.live_sku = ? AND NOT (v.product_id <=> ?) LIMIT 1",
+        )
+        .bind(tenant_id)
+        .bind(code)
+        .bind(query.product_id)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(map_db_error)?,
+        None => None,
+    };
+    let codes: Vec<&str> = query
+        .barcodes
+        .as_deref()
+        .unwrap_or_default()
+        .split(',')
+        .map(str::trim)
+        .filter(|c| !c.is_empty() && c.len() <= 64)
+        .take(MAX_BARCODES)
+        .collect();
+    let barcodes = if codes.is_empty() {
+        Vec::new()
+    } else {
+        let mut q: QueryBuilder<MySql> = QueryBuilder::new(
+            "SELECT b.barcode AS code, p.name AS product_name FROM product_barcodes b \
+             JOIN product_variants v ON v.tenant_id = b.tenant_id AND v.id = b.variant_id \
+             JOIN products p ON p.tenant_id = v.tenant_id AND p.id = v.product_id WHERE b.tenant_id = ",
+        );
+        q.push_bind(tenant_id)
+            .push(" AND NOT (v.product_id <=> ")
+            .push_bind(query.product_id)
+            .push(") AND b.barcode IN (");
+        let mut list = q.separated(", ");
+        for code in &codes {
+            list.push_bind(*code);
+        }
+        q.push(") ORDER BY b.barcode");
+        q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?
+    };
+    Ok(CodeCheck { sku, barcodes })
+}
+
 /// The SKU a new product would get automatically, for the form to show.
 pub async fn suggest_sku(tx: &mut TenantTx) -> AppResult<Option<String>> {
     for code in sequences::preview(tx, "product", None, Utc::now().date_naive(), 20).await? {
@@ -629,11 +706,16 @@ pub async fn suggest_sku(tx: &mut TenantTx) -> AppResult<Option<String>> {
     Ok(None)
 }
 
-/// With `generate_barcode`, puts a new in-store EAN-13 first (the primary).
+/// With `generate_barcode`, puts a new barcode from the business's numbering
+/// first (the primary).
 async fn add_generated_barcode(tx: &mut TenantTx, v: &mut Valid) -> AppResult<()> {
     if v.generate_barcode {
         let code = crate::labels::take_in_store_code(tx).await?;
-        v.barcodes.insert(0, (code, "ean13"));
+        let kind = match crate::barcode::symbology(&code) {
+            "other" => "code128",
+            kind => kind,
+        };
+        v.barcodes.insert(0, (code, kind));
     }
     Ok(())
 }

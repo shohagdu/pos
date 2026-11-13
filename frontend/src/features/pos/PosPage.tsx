@@ -6,7 +6,7 @@ import { Link } from 'react-router'
 import { ApiError } from '../../api/client'
 import { usePaymentMethods } from '../../api/money'
 import { newKey } from '../../api/query'
-import { type HeldCart, type PosContext, type SaleDetail, type SaleInput, salesApi, salesKeys, useHeldCarts, usePosContext } from '../../api/sales'
+import { type HeldCart, type PosContext, type PosItem, type SaleDetail, type SaleInput, salesApi, salesKeys, useHeldCarts, usePosContext } from '../../api/sales'
 import { LanguageSwitcher } from '../../components/LanguageSwitcher'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
@@ -25,6 +25,7 @@ import { NewCustomerDialog } from './CustomerDialog'
 import { useOnline } from './hooks'
 import { HeldCartsDialog, HoldDialog } from './HoldDialogs'
 import { PaymentDialog } from './PaymentDialog'
+import { ProductGrid } from './ProductGrid'
 import { ProductSearch } from './ProductSearch'
 import { ReceiptDialog } from './ReceiptDialog'
 import { Shortcuts } from './Shortcuts'
@@ -97,6 +98,7 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
   // One Idempotency-Key per cart, kept until that sale succeeds (POS-R06).
   const [saleKey, setSaleKey] = useState(newKey)
   const [lastSale, setLastSale] = useState<SaleDetail | null>(null)
+  const [flash, setFlash] = useState<{ id: string; n: number } | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const customerRef = useRef<HTMLInputElement>(null)
   const discountRef = useRef<HTMLInputElement>(null)
@@ -106,6 +108,9 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
   const held = useHeldCarts(tenantId)
   const canDiscountOverLimit = can('pos.discount_over_limit')
 
+  // Off in Settings → Invoice, tax & POS; missing on older API builds = shown.
+  const showProducts = ctx.show_product_panel !== false
+  const inCart = useMemo(() => Object.fromEntries(cart.lines.map((l) => [l.item.variant_id, l.quantity])), [cart.lines])
   const priced = useMemo(() => priceCart(cart, ctx, canDiscountOverLimit), [cart, ctx, canDiscountOverLimit])
   const activeMethods = useMemo(
     () => (methods.data ?? []).filter((m) => m.is_active).sort((a, b) => a.sort_order - b.sort_order),
@@ -162,6 +167,12 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
     mutationFn: (h: HeldCart) => salesApi.removeHeldCart(h.id),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: salesKeys.heldCarts(tenantId) }),
   })
+
+  function addItem(item: PosItem) {
+    dispatch({ type: 'add', item })
+    setSelected(item.variant_id)
+    setFlash((f) => ({ id: item.variant_id, n: (f?.n ?? 0) + 1 }))
+  }
 
   function openPay() {
     if (!canPay) return
@@ -244,28 +255,40 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
         )}
 
         <main className="grid flex-1 gap-3 p-3 lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <section className="flex flex-col gap-3 lg:min-h-0" aria-label={t('pos.cart')}>
-            <ProductSearch
-              tenantId={tenantId}
-              inputRef={searchRef}
-              onAdd={(item) => {
-                dispatch({ type: 'add', item })
-                setSelected(item.variant_id)
-              }}
-            />
-            <div className="flex flex-col lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-              <CartTable
-                lines={cart.lines}
-                results={priced.totals?.lines ?? null}
-                problems={priced.lineProblems}
-                selected={selected}
-                onSelect={setSelected}
-                dispatch={dispatch}
-                canOverridePrice={can('pos.price_override')}
-                businessDate={ctx.business_date}
-              />
+          <div className="flex flex-col gap-3 lg:min-h-0">
+            <ProductSearch tenantId={tenantId} inputRef={searchRef} onAdd={addItem} />
+            {/* Products 35% / cart 65% side by side from xl; stacked (products
+                on top, capped) on tablets and phones. Without the panel the
+                cart takes the whole width. */}
+            <div
+              className={`flex flex-col gap-3 lg:min-h-0 lg:flex-1 ${showProducts ? 'xl:grid xl:grid-cols-[minmax(0,35fr)_minmax(0,65fr)]' : ''}`}
+            >
+              {showProducts && (
+                <div className="flex flex-col lg:max-h-[45%] lg:min-h-0 xl:max-h-none">
+                  <ProductGrid
+                    tenantId={tenantId}
+                    onAdd={addItem}
+                    inCart={inCart}
+                    allowNegativeStock={ctx.allow_negative_stock}
+                    showImages={ctx.show_product_images !== false}
+                  />
+                </div>
+              )}
+              <div className="flex flex-col lg:min-h-0 lg:flex-1">
+                <CartTable
+                  lines={cart.lines}
+                  results={priced.totals?.lines ?? null}
+                  problems={priced.lineProblems}
+                  selected={selected}
+                  onSelect={setSelected}
+                  dispatch={dispatch}
+                  canOverridePrice={can('pos.price_override')}
+                  businessDate={ctx.business_date}
+                  flash={flash}
+                />
+              </div>
             </div>
-          </section>
+          </div>
 
           <aside className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4 lg:overflow-y-auto">
             <CustomerPanel

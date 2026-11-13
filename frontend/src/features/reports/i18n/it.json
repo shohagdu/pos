@@ -113,6 +113,8 @@
       "tabs": {
         "summary": "Riepilogo",
         "product": "Per prodotto",
+        "best": "Più venduti",
+        "profit": "Più redditizi",
         "category": "Per categoria",
         "cashier": "Per cassiere"
       },
@@ -135,7 +137,20 @@
       "cancelledCol": "Annullate",
       "paymentsByMethod": "Pagamenti per metodo",
       "cancelledNote_one": "{{count}} fattura annullata non è inclusa.",
-      "cancelledNote_other": "{{count}} fatture annullate non sono incluse."
+      "cancelledNote_other": "{{count}} fatture annullate non sono incluse.",
+      "rank": "#",
+      "qtySold": "Qtà venduta",
+      "show": "Mostra",
+      "topN_one": "Primi {{count}}",
+      "topN_other": "Primi {{count}}",
+      "rankBy": "Ordina per",
+      "byQuantity": "Quantità venduta",
+      "byNetSales": "Vendite nette",
+      "bestHintQty": "I prodotti venduti in maggiore quantità nel periodo, al netto dei resi.",
+      "bestHintNet": "I prodotti con più vendite nel periodo, al netto di sconti e resi (IVA esclusa).",
+      "profitHint": "I prodotti con il maggiore utile lordo nel periodo: vendite nette meno il costo, al netto dei resi.",
+      "noSales": "Nessuna vendita in questo periodo.",
+      "noProfit": "Nessun prodotto ha generato utile in questo periodo."
     },
     "purchases": {
       "title": "Report acquisti",

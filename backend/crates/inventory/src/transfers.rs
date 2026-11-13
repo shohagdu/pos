@@ -223,6 +223,10 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, can_view_cost: bool) -> AppResult<
     q.push_bind(tenant_id).push(" AND t.id = ").push_bind(id);
     let mut summary: TransferSummary =
         q.build_query_as().fetch_optional(&mut **tx).await.map_err(map_db_error)?.ok_or(AppError::NotFound)?;
+    // Either end of the transfer must be a branch the member works in.
+    if tx.ensure_branch(summary.from_branch_id).is_err() {
+        tx.ensure_branch(summary.to_branch_id)?;
+    }
     let mut items: Vec<TransferItem> = sqlx::query_as(
         "SELECT i.id, i.variant_id, p.name AS product_name, v.sku, u.short_name AS unit_short_name, \
          i.quantity_sent, i.quantity_received, i.unit_cost FROM stock_transfer_items i \
@@ -599,6 +603,14 @@ pub async fn receive(
 /// Cancels a draft (nothing has moved yet).
 pub async fn cancel(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid, can_view_cost: bool) -> AppResult<Transfer> {
     let (from_branch, ..) = lock(tx, id, "draft").await?;
+    // Like dispatching: only the sending branch may cancel its draft.
+    tx.ensure_branch(from_branch)?;
+    if tx.branch_id().is_some_and(|b| b != from_branch) {
+        return Err(AppError::Denied {
+            code: "BRANCH_NOT_ALLOWED",
+            message: "switch to the sending branch to cancel this transfer".into(),
+        });
+    }
     let tenant_id = tx.tenant_id();
     let user_id = tx.user_id();
     sqlx::query(

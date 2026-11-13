@@ -1,11 +1,13 @@
 //! Barcode label printing (Roadmap 6.4, PROD-R05): the facts a shelf label
-//! shows for a set of variants, and in-store EAN-13 barcodes for variants that
-//! have none, so freshly purchased goods can be labelled and scanned.
+//! shows for a set of variants, and in-store barcodes for variants that have
+//! none, so freshly purchased goods can be labelled and scanned.
 //!
-//! Generated codes use the GS1 restricted-circulation prefix `20` (valid only
-//! inside the shop): `20` + a 10-digit running number + the check digit. The
-//! running number continues from the tenant's highest `20…` EAN-13, so codes
-//! never repeat; `uq_barcodes` guards the rare race between two terminals.
+//! Generated codes follow the business's barcode numbering (Settings →
+//! Product codes): its prefix + a zero-padded running number from the
+//! `barcode` document sequence, e.g. `200000001`; labels print them as
+//! Code 128. Numbers somebody already typed in are skipped, and so are codes
+//! that would read as a retail EAN/UPC without a valid check digit;
+//! `uq_barcodes` guards the rare race between two terminals.
 
 use std::collections::BTreeMap;
 
@@ -17,11 +19,14 @@ use serde::{Deserialize, Serialize};
 use sqlx::{MySql, QueryBuilder};
 use uuid::Uuid;
 
+use pos_tenancy::sequences;
+
 use crate::masters::duplicate;
 
 /// At most this many variants per request (a large purchase bill fits).
 pub const MAX_VARIANTS: usize = 500;
-const IN_STORE_PREFIX: &str = "20";
+/// How many sequence numbers to try before giving up on a free code.
+const ATTEMPTS: i64 = 50;
 
 #[derive(Debug, Clone, PartialEq, Serialize, sqlx::FromRow, utoipa::ToSchema)]
 pub struct LabelInfo {
@@ -81,43 +86,45 @@ pub async fn info(tx: &mut TenantTx, ids: &[Uuid]) -> AppResult<Vec<LabelInfo>> 
     Ok(ids.iter().filter(|id| seen.insert(**id)).filter_map(|id| by_id.remove(id)).collect())
 }
 
-/// GS1 check digit for a 12-digit body.
-fn ean13_check(body: &str) -> u32 {
-    let sum: u32 =
-        body.bytes().rev().enumerate().map(|(i, b)| u32::from(b - b'0') * if i % 2 == 0 { 3 } else { 1 }).sum();
-    (10 - sum % 10) % 10
-}
-
-/// The in-store EAN-13 for running number `n`.
-fn in_store_code(n: u64) -> String {
-    let body = format!("{IN_STORE_PREFIX}{n:010}");
-    format!("{body}{}", ean13_check(&body))
-}
-
-/// The next free in-store running number. With `lock`, the in-store range is
-/// locked so two terminals do not pick the same number; without it the
-/// answer is only a suggestion.
-async fn next_in_store(tx: &mut TenantTx, lock: bool) -> AppResult<u64> {
-    const HIGHEST: &str = "SELECT MAX(barcode) FROM product_barcodes WHERE tenant_id = ? AND barcode LIKE '20%' \
-                           AND CHAR_LENGTH(barcode) = 13 AND barcode REGEXP '^[0-9]+$'";
-    const HIGHEST_LOCKED: &str = "SELECT MAX(barcode) FROM product_barcodes WHERE tenant_id = ? AND barcode LIKE '20%' \
-                                  AND CHAR_LENGTH(barcode) = 13 AND barcode REGEXP '^[0-9]+$' FOR UPDATE";
-    let highest: Option<String> = sqlx::query_scalar(if lock { HIGHEST_LOCKED } else { HIGHEST })
+async fn barcode_taken(tx: &mut TenantTx, code: &str) -> AppResult<bool> {
+    sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM product_barcodes WHERE tenant_id = ? AND barcode = ?)")
         .bind(tx.tenant_id())
+        .bind(code)
         .fetch_one(&mut **tx)
         .await
-        .map_err(map_db_error)?;
-    Ok(highest.and_then(|c| c.get(2..12).and_then(|n| n.parse::<u64>().ok())).map_or(1, |n| n + 1))
+        .map_err(map_db_error)
 }
 
-/// A new in-store EAN-13 to put on a product being saved (range locked).
+/// A generated code must also pass the barcode check a product save runs.
+fn usable(code: &str) -> bool {
+    crate::barcode::validate(code).is_ok()
+}
+
+fn today() -> chrono::NaiveDate {
+    // Codes have no period, so the date does not matter.
+    chrono::Utc::now().date_naive()
+}
+
+/// Takes the next free barcode from the business's numbering (row lock on the
+/// sequence, so two terminals never get the same number).
 pub(crate) async fn take_in_store_code(tx: &mut TenantTx) -> AppResult<String> {
-    Ok(in_store_code(next_in_store(tx, true).await?))
+    for _ in 0..ATTEMPTS {
+        let code = sequences::next(tx, "barcode", None, today()).await?;
+        if usable(&code) && !barcode_taken(tx, &code).await? {
+            return Ok(code);
+        }
+    }
+    Err(AppError::Conflict { code: "DUPLICATE_BARCODE", message: "could not find a free barcode; enter one".into() })
 }
 
-/// The in-store EAN-13 a product form can offer (not reserved).
+/// The barcode a product form can offer (not reserved).
 pub async fn suggest_in_store_code(tx: &mut TenantTx) -> AppResult<String> {
-    Ok(in_store_code(next_in_store(tx, false).await?))
+    for code in sequences::preview(tx, "barcode", None, today(), ATTEMPTS).await? {
+        if usable(&code) && !barcode_taken(tx, &code).await? {
+            return Ok(code);
+        }
+    }
+    Err(AppError::Conflict { code: "DUPLICATE_BARCODE", message: "could not find a free barcode; enter one".into() })
 }
 
 /// Gives every listed variant without a barcode a new in-store EAN-13 and
@@ -132,19 +139,17 @@ pub async fn generate_barcodes(tx: &mut TenantTx, meta: &RequestMeta, ids: &[Uui
         return Ok(current);
     }
 
-    let mut next = next_in_store(tx, true).await?;
-
     for label in missing {
-        let code = in_store_code(next);
-        next += 1;
+        let code = take_in_store_code(tx).await?;
         sqlx::query(
             "INSERT INTO product_barcodes (tenant_id, id, variant_id, barcode, symbology, is_primary) \
-             VALUES (?, ?, ?, ?, 'ean13', TRUE)",
+             VALUES (?, ?, ?, ?, ?, TRUE)",
         )
         .bind(tenant_id)
         .bind(new_id())
         .bind(label.variant_id)
         .bind(&code)
+        .bind(symbology_for(&code))
         .execute(&mut **tx)
         .await
         .map_err(duplicate("DUPLICATE_BARCODE", "a barcode belongs to another product; try again"))?;
@@ -167,19 +172,28 @@ pub async fn generate_barcodes(tx: &mut TenantTx, meta: &RequestMeta, ids: &[Uui
     info(tx, ids).await
 }
 
+/// Stored symbology of a generated code: retail formats keep their name,
+/// anything else is printed as Code 128.
+fn symbology_for(code: &str) -> &'static str {
+    match crate::barcode::symbology(code) {
+        "other" => "code128",
+        kind => kind,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::barcode;
 
     #[test]
-    fn in_store_codes_are_valid_ean13() {
-        for n in [1, 42, 9_999_999_999] {
-            let code = in_store_code(n);
-            assert_eq!(code.len(), 13);
-            assert!(code.starts_with("20"));
-            assert_eq!(barcode::validate(&code).ok(), Some((code.clone(), "ean13")), "{code}");
-        }
-        assert_eq!(in_store_code(1), "2000000000015");
+    fn generated_codes_are_checked_like_typed_ones() {
+        // Business numbering such as `20` + 7 digits is free format (Code 128).
+        assert!(usable("200000001"));
+        assert_eq!(symbology_for("200000001"), "code128");
+        assert_eq!(symbology_for("MIR0001"), "code128");
+        // Eight digits read as EAN-8: only usable with a valid check digit.
+        assert!(!usable("20000001"));
+        assert!(usable("96385074"));
+        assert_eq!(symbology_for("96385074"), "ean8");
     }
 }

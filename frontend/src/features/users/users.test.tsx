@@ -126,18 +126,23 @@ describe('users & roles', () => {
     expect(screen.queryByRole('button', { name: 'Sign in as' })).not.toBeInTheDocument()
   })
 
-  it('tells when the number already had an account', async () => {
-    const member = {
-      id: 'm8', user_id: 'u8', full_name: 'Rina', phone: '+8801711000203', email: null, status: 'active', is_owner: false,
-      roles: [], joined_at: null, last_login_at: null,
+  it('invites instead of adding when the number already had an account', async () => {
+    const invitation = {
+      id: 'i8', destination: '+8801711000203', roles: [{ id: 'r-cashier', name: 'Cashier' }], branch_ids: [], status: 'pending',
+      expires_at: '2026-11-20T00:00:00Z', created_at: '2026-11-13T00:00:00Z', invited_by: 'Rahim Uddin',
     }
-    mockApi({ ...signedIn(), 'POST /api/v1/members': () => Response.json({ member, existing_account: true }, { status: 201 }) })
+    mockApi({
+      ...signedIn(),
+      'POST /api/v1/members': () => Response.json({ member: null, existing_account: true, invitation }, { status: 201 }),
+    })
     renderRoute('/users/invite')
     await userEvent.type(await screen.findByLabelText(/Full name/), 'Rina')
     await userEvent.type(screen.getByLabelText(/Mobile number/), '01711000203')
     await userEvent.click(screen.getByLabelText('Cashier'))
     await userEvent.click(screen.getByRole('button', { name: 'Add staff' }))
-    expect(await screen.findByText(/already had an account, so they sign in with their own password/)).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Rina was invited' })).toBeInTheDocument()
+    expect(screen.getByText(/already has an account, so we sent them an invitation instead of adding them/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'See invitations' })).toHaveAttribute('href', '/users/invitations')
   })
 
   it('does not offer the admin role to non-owners', async () => {

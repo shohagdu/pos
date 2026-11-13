@@ -1,4 +1,4 @@
-import { type DragEvent, useId, useRef, useState } from 'react'
+import { type DragEvent, type ReactNode, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useObjectUrl } from '../../api/files'
@@ -16,6 +16,7 @@ export function ProductImageField({
   busy = false,
   disabled = false,
   error,
+  compact = false,
   onPick,
 }: {
   imageUrl: string | null
@@ -24,6 +25,8 @@ export function ProductImageField({
   busy?: boolean
   disabled?: boolean
   error?: string
+  /** A small square with the buttons beside it (forms that fit on one screen). */
+  compact?: boolean
   onPick: (file: File | null) => void
 }) {
   const { t } = useTranslation()
@@ -54,6 +57,100 @@ export function ProductImageField({
     e.preventDefault()
     setDragging(false)
     if (!locked) void choose(e.dataTransfer.files[0])
+  }
+
+  const dropZone = (sizeClass: string, body: ReactNode) => (
+    // Mouse/drag target only (not focusable); the "Choose image" button is the keyboard control.
+    <div
+      onClick={() => {
+        if (!locked) input.current?.click()
+      }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        if (!locked) setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={onDrop}
+      className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-xl border-2 border-dashed bg-canvas transition-colors ${sizeClass} ${
+        locked ? 'cursor-not-allowed' : 'cursor-pointer'
+      } ${dragging ? 'border-brand-500 bg-brand-50' : 'border-border hover:border-brand-500'}`}
+    >
+      {shown ? <img src={shown} alt={t('products.image.preview')} className="size-full object-cover" /> : body}
+      {(busy || checking) && (
+        <span className="absolute inset-0 flex items-center justify-center bg-surface/70 text-sm font-medium">{t('common.pleaseWait')}</span>
+      )}
+    </div>
+  )
+  const fileInput = (
+    <input
+      ref={input}
+      id={id}
+      type="file"
+      accept={IMAGE_TYPES.join(',')}
+      className="sr-only"
+      aria-labelledby={`${id}-label`}
+      disabled={locked}
+      onChange={(e) => void choose(e.target.files?.[0])}
+    />
+  )
+  const picture = (
+    <svg viewBox="0 0 24 24" className="size-8" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="2" />
+      <path d="m21 16-5-5-9 9" />
+    </svg>
+  )
+
+  if (compact) {
+    return (
+      <div className="flex items-start gap-3">
+        {dropZone(
+          'size-24 shrink-0',
+          <span className="flex flex-col items-center gap-1 px-2 text-center text-xs text-ink-muted">
+            {picture}
+            <span>{t('products.image.dropHint')}</span>
+          </span>,
+        )}
+        {fileInput}
+        <div className="flex min-w-0 flex-col items-start gap-1.5">
+          <span id={`${id}-label`} className="text-[0.8125rem] font-medium">
+            {t('products.image.label')} <span className="font-normal text-ink-muted">({t('common.optional')})</span>
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="whitespace-nowrap"
+            disabled={locked}
+            aria-describedby={`${id}-hint`}
+            onClick={() => input.current?.click()}
+          >
+            {shown ? t('products.image.change') : t('products.image.choose')}
+          </Button>
+          {shown && (
+            <Button
+              variant="ghost"
+              className="px-2"
+              disabled={locked}
+              onClick={() => {
+                setLocalError(null)
+                onPick(null)
+              }}
+            >
+              {t('products.image.remove')}
+            </Button>
+          )}
+          <span id={`${id}-hint`} className="text-xs text-ink-muted">
+            {t('products.image.hint')}
+          </span>
+          {!shown && <span className="sr-only">{t('products.image.none')}</span>}
+          {message && (
+            <span role="alert" className="text-xs text-danger">
+              {message}
+            </span>
+          )}
+        </div>
+      </div>
+    )
   }
 
   return (

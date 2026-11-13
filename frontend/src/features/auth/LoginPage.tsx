@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 
 import { authApi } from '../../api/auth'
+import { ApiError } from '../../api/client'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -16,10 +17,21 @@ export function LoginPage() {
   const { t } = useTranslation()
   const { signIn } = useSession()
   const location = useLocation()
+  const navigate = useNavigate()
   const notice = (location.state as { notice?: string } | null)?.notice
   const { values, bind } = useFields({ identifier: '', password: '' })
   // GuestOnly redirects once the session is loaded.
-  const login = useMutation({ mutationFn: () => authApi.login(values.identifier, values.password), onSuccess: signIn })
+  const login = useMutation({
+    mutationFn: () => authApi.login(values.identifier, values.password),
+    onSuccess: signIn,
+    onError: (err) => {
+      // Right password, number not confirmed yet: a fresh code was sent.
+      if (err instanceof ApiError && err.problem.code === 'PHONE_NOT_VERIFIED') {
+        const phone = values.identifier.includes('@') ? undefined : values.identifier
+        navigate('/verify', { state: { phone } })
+      }
+    },
+  })
   const errors = fieldErrors(login.error, t)
 
   function onSubmit(e: FormEvent) {

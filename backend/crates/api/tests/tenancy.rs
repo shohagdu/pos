@@ -60,8 +60,8 @@ async fn provisioning_creates_all_defaults(pool: MySqlPool) {
         ),
         ("SELECT COUNT(*) FROM tenant_memberships WHERE tenant_id = ? AND is_owner AND status = 'active'", 1),
         ("SELECT COUNT(*) FROM membership_roles WHERE tenant_id = ? AND branch_id IS NULL", 1),
-        ("SELECT COUNT(*) FROM document_sequences WHERE tenant_id = ?", 16),
-        ("SELECT COUNT(*) FROM document_sequences WHERE tenant_id = ? AND branch_id IS NULL AND NOT include_period", 3),
+        ("SELECT COUNT(*) FROM document_sequences WHERE tenant_id = ?", 17),
+        ("SELECT COUNT(*) FROM document_sequences WHERE tenant_id = ? AND branch_id IS NULL AND NOT include_period", 4),
         (
             "SELECT COUNT(*) FROM subscriptions WHERE tenant_id = ? AND status = 'trialing' \
           AND trial_ends_at BETWEEN NOW(6) + INTERVAL 13 DAY AND NOW(6) + INTERVAL 15 DAY",

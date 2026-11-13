@@ -114,7 +114,9 @@ impl Gateways {
         match d.channel.as_str() {
             "sms" => match &self.sms {
                 Sms::Log => {
-                    tracing::info!(to = %mask(&d.destination), message = %text, "SMS (no gateway configured)");
+                    // Title only: bodies carry customer names and amounts, which do
+                    // not belong in logs.
+                    tracing::info!(to = %mask(&d.destination), title = %d.title, "SMS (no gateway configured)");
                     Ok(None)
                 }
                 Sms::Http { client, url, api_key, sender_id } => {
@@ -149,7 +151,8 @@ impl Gateways {
                     let message = Message::builder()
                         .from(from.clone())
                         .to(to)
-                        .subject(format!("{} — {}", d.title, d.business_name))
+                        // One line: no CR/LF from tenant-entered names in a header.
+                        .subject(one_line(&format!("{} — {}", d.title, d.business_name)))
                         .body(text)
                         .map_err(|e| e.to_string())?;
                     let response = transport.send(message).await.map_err(|e| e.to_string())?;
@@ -303,6 +306,11 @@ pub async fn dispatch(pool: &MySqlPool, gateways: &Gateways, now: DateTime<Utc>)
     }
     tx.commit().await?;
     Ok(outcome)
+}
+
+/// Header values stay on one line whatever the tenant typed.
+fn one_line(value: &str) -> String {
+    value.chars().map(|c| if c.is_control() { ' ' } else { c }).collect()
 }
 
 #[cfg(test)]

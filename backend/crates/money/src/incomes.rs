@@ -277,6 +277,7 @@ pub async fn list(tx: &mut TenantTx, filter: &IncomeFilter) -> AppResult<IncomeP
 }
 
 pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<Income> {
+    tx.ensure_row_branch("other_incomes", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SELECT);
     q.push_bind(tenant_id).push(" AND i.id = ").push_bind(id);
@@ -406,6 +407,7 @@ pub async fn void(tx: &mut TenantTx, meta: &RequestMeta, id: Uuid, reason: &str)
     if reason.is_empty() {
         return Err(AppError::field("reason", "REQUIRED", "enter a reason"));
     }
+    tx.ensure_row_branch("other_incomes", id).await?;
     let tenant_id = tx.tenant_id();
     let row: Option<(String, Option<Uuid>)> =
         sqlx::query_as("SELECT status, payment_id FROM other_incomes WHERE tenant_id = ? AND id = ? FOR UPDATE")

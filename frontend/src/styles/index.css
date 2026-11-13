@@ -20,6 +20,34 @@
   --color-success: oklch(0.6 0.15 150);
   --color-warning: oklch(0.75 0.15 75);
   --color-danger: oklch(0.58 0.2 27);
+
+  /* Result alert (components/ui/ResultAlert.tsx) */
+  --animate-alert-pop: alert-pop 0.25s ease-out;
+  --animate-alert-draw: alert-draw 0.45s ease-out 0.15s both;
+  --animate-alert-countdown: alert-countdown linear forwards;
+}
+
+@keyframes alert-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes alert-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes alert-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }
 
 @layer base {

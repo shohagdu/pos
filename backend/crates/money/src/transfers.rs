@@ -81,6 +81,7 @@ const SELECT: &str = "SELECT t.id, t.transfer_no, t.from_account_id, f.name AS f
      WHERE t.tenant_id = ";
 
 pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<Transfer> {
+    tx.ensure_row_branch("account_transfers", id).await?;
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SELECT);
     q.push_bind(tenant_id).push(" AND t.id = ").push_bind(id);
@@ -93,6 +94,10 @@ pub async fn list(tx: &mut TenantTx, filter: &TransferFilter) -> AppResult<Trans
     let tenant_id = tx.tenant_id();
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(SELECT);
     q.push_bind(tenant_id);
+    // Like every other list: the selected branch's transfers only.
+    if let Some(branch_id) = tx.branch_id() {
+        q.push(" AND t.branch_id = ").push_bind(branch_id);
+    }
     if let Some(account_id) = filter.account_id {
         q.push(" AND (t.from_account_id = ")
             .push_bind(account_id)

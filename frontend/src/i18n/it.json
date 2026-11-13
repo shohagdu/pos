@@ -151,6 +151,11 @@
       "footer": "Piè di pagina dello scontrino (facoltativo)",
       "footerHint": "Ad esempio: Grazie! Cambio entro 7 giorni con scontrino.",
       "autoPrint": "Stampa automaticamente lo scontrino dopo ogni vendita",
+      "showProductPanel": "Mostra il pannello prodotti nella schermata cassa",
+      "showProductPanelHint": "Una griglia di prodotti da toccare per aggiungerli al carrello. Disattivalo se vendi soprattutto scansionando i codici a barre: il carrello occuperà tutta la larghezza.",
+      "showProductImages": "Mostra le immagini dei prodotti in cassa",
+      "showProductImagesHint": "Piccole foto sulle schede prodotto. Disattivale per schede più compatte, ad esempio se la maggior parte dei prodotti non ha foto.",
+      "showProductImagesPanelOff": "Vale solo quando il pannello prodotti è visibile.",
       "vatRegistered": "L'attività è registrata ai fini IVA",
       "vatHint": "Mostra l'IVA sulle fatture. Verifica il formato della fattura con il tuo consulente fiscale.",
       "pricesIncludeTax": "I prezzi di vendita includono l'IVA",
@@ -191,10 +196,11 @@
       "profile": "Attività",
       "regional": "Impostazioni locali",
       "branch": "Filiale",
-      "invoice": "Fattura e IVA",
+      "invoice": "Fattura, IVA e cassa",
       "branches": "Filiali",
       "registers": "Casse",
-      "data": "Dati"
+      "data": "Dati",
+      "codes": "Codici prodotto"
     },
     "legalName": "Ragione sociale (facoltativa)",
     "address": "Indirizzo dell'attività: {{slug}}",
@@ -241,6 +247,21 @@
         "journal_entries": "Registrazioni",
         "register_shifts": "Turni"
       }
+    },
+    "codes": {
+      "intro": "I nuovi prodotti ricevono questi codici automaticamente se SKU o codice a barre restano quelli proposti. I codici scritti a mano restano come scritti.",
+      "sku": "SKU",
+      "barcode": "Codice a barre",
+      "prefix": "Inizia con",
+      "prefixHint": "1–10 lettere o cifre, ad esempio P o MIR.",
+      "digits": "Numero di cifre",
+      "digitsOption_one": "{{count}} cifra",
+      "digitsOption_other": "{{count}} cifre",
+      "example": "I prossimi codici saranno come",
+      "barcodeHint": "Stampato sulle etichette come Code 128, leggibile da qualsiasi scanner.",
+      "carryOn": "La numerazione prosegue dall'ultimo codice; i prodotti che hanno già un codice lo mantengono.",
+      "prefixInvalid": "Usa 1–10 lettere o cifre.",
+      "retailLength": "Un codice a barre di sole cifre lungo 8, 12 o 13 è un formato commerciale (EAN/UPC). Scegli un altro numero di cifre o aggiungi una lettera."
     }
   },
   "subscription": {
@@ -338,6 +359,7 @@
     "none": "Ancora niente qui.",
     "noResults": "Nessun risultato.",
     "optional": "facoltativo",
+    "moreInfo": "Maggiori informazioni",
     "view": "Visualizza",
     "apply": "Applica",
     "clear": "Cancella",
@@ -357,6 +379,9 @@
     "PHONE_TAKEN": "Questo numero di cellulare è già registrato. Accedi o reimposta la password.",
     "EMAIL_TAKEN": "Questo indirizzo email è già registrato.",
     "PHONE_NOT_VERIFIED": "Prima verifica il tuo numero di cellulare.",
+    "BRANCH_SCOPE_TOO_NARROW": "Riguarda l'intera attività, quindi serve questo permesso per tutte le filiali.",
+    "LOGIN_IN_PROGRESS": "È già in corso la verifica di un accesso per questo account. Riprova tra un attimo.",
+    "EXPORT_BUSY": "È in preparazione un'altra esportazione dei dati. Riprova tra un minuto.",
     "OTP_INVALID": "Il codice è errato o scaduto.",
     "OTP_ATTEMPTS_EXCEEDED": "Troppi codici errati. Richiedine uno nuovo.",
     "OTP_RATE_LIMITED": "Troppi codici richiesti. Riprova tra {{minutes}} minuti.",
@@ -597,11 +622,13 @@
     "submit": "Aggiungi",
     "doneTitle": "{{name}} è stato aggiunto",
     "doneNew": "Può accedere ora con {{phone}} e la password che hai scelto. Comunicala di persona.",
-    "doneExisting": "{{phone}} aveva già un account: accede con la propria password. Questa attività ora è nel suo elenco.",
+    "doneExisting": "{{phone}} ha già un account, quindi gli abbiamo inviato un invito invece di aggiungerlo. Entrerà in questa attività quando lo accetterà; la password che hai scritto non è stata usata.",
     "another": "Aggiungi un'altra persona",
     "viewMember": "Vedi membro",
     "seats": "{{used}} di {{max}} posti utente usati.",
-    "seatsFull": "Rimuovi qualcuno o passa a un piano superiore per aggiungerne altri."
+    "seatsFull": "Rimuovi qualcuno o passa a un piano superiore per aggiungerne altri.",
+    "invitedTitle": "{{name}} è stato invitato",
+    "viewInvitations": "Vedi inviti"
   },
   "invitation": {
     "title": "Unisciti a {{business}}",
@@ -864,7 +891,14 @@
     "minSellingPrice": "Prezzo minimo di vendita (facoltativo)",
     "reorderLevel": "Livello di riordino (facoltativo)",
     "reorderLevelHint": "Segnalato come scorta bassa a questa quantità o meno.",
-    "saved": "Prodotto salvato.",
+    "createdTitle": "Prodotto salvato",
+    "createdMessage": "“{{name}}” è stato aggiunto ai tuoi prodotti.",
+    "createdImageFailed": "“{{name}}” è stato aggiunto, ma non è stato possibile caricare la foto: {{reason}} Apri il prodotto per sceglierla di nuovo.",
+    "createdOk": "Vai ai prodotti",
+    "saveAndAdd": "Salva e aggiungi prodotto",
+    "addAnotherOk": "Aggiungi un altro prodotto",
+    "updatedTitle": "Prodotto aggiornato",
+    "updatedMessage": "Le modifiche a “{{name}}” sono state salvate.",
     "archivedHint": "Questo prodotto è archiviato: è nascosto nella cassa e resta nelle vendite passate.",
     "archive": "Archivia",
     "restore": "Ripristina",
@@ -913,7 +947,13 @@
     },
     "codes": "Codici",
     "classification": "Classificazione",
-    "stockWarranty": "Magazzino e garanzia"
+    "stockWarranty": "Magazzino e garanzia",
+    "skuTaken": "Questo SKU è già usato da “{{name}}”.",
+    "barcodeTaken": "Il codice a barre {{code}} è già usato da “{{name}}”.",
+    "barcodesTaken": "Questi codici a barre sono già usati: {{list}}.",
+    "descriptionHint": "Dettagli per il personale o lo scontrino, ad es. taglia, colore, modo d'uso.",
+    "profitPerUnit": "Utile per unità: {{amount}} ({{pct}})",
+    "lossPerUnit": "Perdita per unità: {{amount}} ({{pct}}) — il prezzo di vendita è sotto il costo."
   },
   "catalog": {
     "name": "Nome",

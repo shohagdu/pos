@@ -268,6 +268,140 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     let owner_view = send(&srv, &owner, "get", &format!("/api/v1/sales/{mir_sale}"), None, Some(&main)).await;
     assert_eq!(owner_view.status, StatusCode::OK, "{}", owner_view.body);
 
+    // --- no branch escalation: someone who may add staff only in the main
+    // branch cannot hand out the same role for all branches or for Mirpur.
+    let hr_role = call(
+        &srv,
+        Req::post(
+            "/api/v1/roles",
+            json!({ "name": "Branch HR", "permissions": ["users.view", "users.invite", "users.manage_roles", "sales.view"] }),
+        )
+        .bearer(&owner.token)
+        .build(),
+    )
+    .await;
+    assert_eq!(hr_role.status, StatusCode::CREATED, "{}", hr_role.body);
+    let hr_role = s(&hr_role.body, "id");
+    let hr_added = call(
+        &srv,
+        Req::post(
+            "/api/v1/members",
+            json!({ "full_name": "Main HR", "phone": "01711000982", "password": "Shop-pass-2026",
+                    "role_ids": [&hr_role], "branch_ids": [&main] }),
+        )
+        .bearer(&owner.token)
+        .build(),
+    )
+    .await;
+    assert_eq!(hr_added.status, StatusCode::CREATED, "{}", hr_added.body);
+    let hr_login = call(
+        &srv,
+        Req::post("/api/v1/auth/login", json!({ "identifier": "01711000982", "password": "Shop-pass-2026" })).build(),
+    )
+    .await;
+    let mut hr = Session { token: hr_login.token(), cookie: hr_login.cookie(), phone: "01711000982".into() };
+    switch(&srv, &mut hr, Some(&tenant_id)).await;
+    let grant = |phone: &str, branches: serde_json::Value| {
+        Req::post(
+            "/api/v1/members",
+            json!({ "full_name": "New Staff", "phone": phone, "password": "Shop-pass-2026",
+                    "role_ids": [&hr_role], "branch_ids": branches }),
+        )
+        .bearer(&hr.token)
+        .build()
+    };
+    let everywhere = call(&srv, grant("01711000983", json!([]))).await;
+    assert_eq!(
+        (everywhere.status, everywhere.code()),
+        (StatusCode::FORBIDDEN, "BRANCH_ESCALATION"),
+        "{}",
+        everywhere.body
+    );
+    let other_branch = call(&srv, grant("01711000983", json!([&mirpur]))).await;
+    assert_eq!(other_branch.code(), "BRANCH_ESCALATION", "{}", other_branch.body);
+    let own_branch = call(&srv, grant("01711000983", json!([&main]))).await;
+    assert_eq!(own_branch.status, StatusCode::CREATED, "{}", own_branch.body);
+    // Nor widen a role that someone holds in every branch: the new
+    // permission would reach branches outside the editor's own.
+    let floor = call(
+        &srv,
+        Req::post("/api/v1/roles", json!({ "name": "Floor", "permissions": ["sales.view"] })).bearer(&owner.token).build(),
+    )
+    .await;
+    assert_eq!(floor.status, StatusCode::CREATED, "{}", floor.body);
+    let (floor_id, floor_version) = (s(&floor.body, "id"), floor.body["version"].as_i64().expect("version"));
+    let floor_staff = call(
+        &srv,
+        Req::post(
+            "/api/v1/members",
+            json!({ "full_name": "Floor Staff", "phone": "01711000984", "password": "Shop-pass-2026",
+                    "role_ids": [&floor_id], "branch_ids": [] }),
+        )
+        .bearer(&owner.token)
+        .build(),
+    )
+    .await;
+    assert_eq!(floor_staff.status, StatusCode::CREATED, "{}", floor_staff.body);
+    let widen = |permissions: serde_json::Value| {
+        Req::put(&format!("/api/v1/roles/{floor_id}"), json!({ "name": "Floor", "permissions": permissions }))
+            .bearer(&hr.token)
+            .if_match(floor_version)
+            .build()
+    };
+    let widened = call(&srv, widen(json!(["sales.view", "users.view"]))).await;
+    assert_eq!(
+        (widened.status, widened.code()),
+        (StatusCode::FORBIDDEN, "BRANCH_ESCALATION"),
+        "{}",
+        widened.body
+    );
+    // ...or suspend a member who works in other branches.
+    let floor_member = s(&floor_staff.body["member"], "id");
+    let suspended = call(
+        &srv,
+        Req::post(&format!("/api/v1/members/{floor_member}/suspend"), json!({})).bearer(&hr.token).build(),
+    )
+    .await;
+    assert_eq!(suspended.code(), "BRANCH_ESCALATION", "{}", suspended.body);
+    let own_member = s(&own_branch.body["member"], "id");
+    let own_suspended = call(
+        &srv,
+        Req::post(&format!("/api/v1/members/{own_member}/suspend"), json!({})).bearer(&hr.token).build(),
+    )
+    .await;
+    assert_eq!(own_suspended.status, StatusCode::OK, "{}", own_suspended.body);
+
+    // --- per-branch permissions: "Floor everywhere" + "Branch HR in main".
+    // The HR permissions work in main only, not in Mirpur and not across the
+    // whole business (no branch selected).
+    let rewired = call(
+        &srv,
+        Req::put(
+            &format!("/api/v1/members/{floor_member}/roles"),
+            json!({ "assignments": [{ "role_id": &floor_id, "branch_id": null }, { "role_id": &hr_role, "branch_id": &main }] }),
+        )
+        .bearer(&owner.token)
+        .build(),
+    )
+    .await;
+    assert_eq!(rewired.status, StatusCode::OK, "{}", rewired.body);
+    let floor_login = call(
+        &srv,
+        Req::post("/api/v1/auth/login", json!({ "identifier": "01711000984", "password": "Shop-pass-2026" })).build(),
+    )
+    .await;
+    let mut floor_user = Session { token: floor_login.token(), cookie: floor_login.cookie(), phone: "01711000984".into() };
+    switch(&srv, &mut floor_user, Some(&tenant_id)).await;
+    let in_main = send(&srv, &floor_user, "get", "/api/v1/members", None, Some(&main)).await;
+    assert_eq!(in_main.status, StatusCode::OK, "{}", in_main.body);
+    let in_mirpur = send(&srv, &floor_user, "get", "/api/v1/members", None, Some(&mirpur)).await;
+    assert_eq!(in_mirpur.status, StatusCode::FORBIDDEN, "{}", in_mirpur.body);
+    let business_wide = send(&srv, &floor_user, "get", "/api/v1/members", None, None).await;
+    assert_eq!(business_wide.status, StatusCode::FORBIDDEN, "{}", business_wide.body);
+    // The everywhere role still works in Mirpur.
+    let sales_in_mirpur = send(&srv, &floor_user, "get", "/api/v1/sales", None, Some(&mirpur)).await;
+    assert_eq!(sales_in_mirpur.status, StatusCode::OK, "{}", sales_in_mirpur.body);
+
     // --- a register shift: float 500, one cash sale of 100, counted 590
     let register =
         send(&srv, &owner, "post", "/api/v1/registers", Some(json!({ "name": "Till 1" })), Some(&mirpur)).await;

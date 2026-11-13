@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 
 import { apiFetch } from './client'
+import { queryString } from './query'
 
 export interface TaxRate {
   id: string
@@ -114,10 +115,10 @@ export interface ProductInput {
   name: string
   name_bn?: string
   description?: string
-  /** Blank = next automatic code (P000001); on update, blank keeps the SKU. */
+  /** Blank = next automatic code (Settings → Product codes); on update, blank keeps the SKU. */
   sku?: string
   barcodes: string[]
-  /** Adds a new in-store EAN-13 (`20…`) as the primary barcode. */
+  /** Adds a new barcode from the business numbering (Settings → Product codes) as the primary. */
   generate_barcode?: boolean
   category_id?: string
   brand_id?: string
@@ -195,6 +196,17 @@ export interface LabelInfo {
   unit_short_name: string
 }
 
+/** A code another product already uses (`GET /products/check-codes`). */
+export interface TakenCode {
+  code: string
+  product_name: string
+}
+
+export interface CodeCheck {
+  sku: TakenCode | null
+  barcodes: TakenCode[]
+}
+
 export const catalogApi = {
   taxRates: () => apiFetch<TaxRate[]>('/api/v1/tax-rates'),
   createTaxRate: (input: TaxRateInput) => apiFetch<TaxRate>('/api/v1/tax-rates', { method: 'POST', body: input }),
@@ -220,6 +232,9 @@ export const catalogApi = {
   product: (id: string) => apiFetch<Product>(`/api/v1/products/${id}`),
   /** The SKU a new product would get automatically and a new in-store barcode (neither reserved). */
   nextCodes: () => apiFetch<{ sku: string | null; barcode: string }>('/api/v1/products/next-codes'),
+  /** Which typed codes another product already uses (the save checks again). */
+  checkCodes: (query: { sku?: string; barcodes?: string; product_id?: string }) =>
+    apiFetch<CodeCheck>(`/api/v1/products/check-codes${queryString(query)}`),
   /** Creates every product or none; problems come back as `products[i].<field>` errors. */
   /** All products or none; `opening_stock` rows (indexes into `products`) are posted with them. */
   importProducts: (products: ProductInput[], opening_stock: ImportOpeningStock[] = []) =>

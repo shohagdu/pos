@@ -7,7 +7,7 @@ use pos_tenancy::{
     invitations::{self, AcceptedInvitation, Invitation, InvitationPreview, IssuedInvitation, NewInvitation},
     members::{self, Member, RoleAssignment},
     roles::{self, Permission, Role, RoleInput},
-    staff::{self, CreatedMember, NewMember},
+    staff::{self, CreatedMember, NewMember, StaffAdded},
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -157,7 +157,8 @@ pub async fn accept_invitation(
 
 /// Adds staff directly with a mobile number and password, no invitation
 /// needed; the account can sign in at once. A number that already has an
-/// account joins with its own password. Counts against `users.max`.
+/// account is invited instead (the link goes to that number; the holder
+/// accepts while signed in). Counts against `users.max`.
 #[utoipa::path(post, path = "/api/v1/members", tag = "users", request_body = NewMember, security(("bearer" = [])),
     responses((status = 201, body = CreatedMember), (status = 402, body = crate::error::Problem),
               (status = 409, body = crate::error::Problem)))]
@@ -169,8 +170,17 @@ pub async fn create_member(
 ) -> Result<HttpResponse, ApiError> {
     auth.require("users.invite")?;
     let mut tx = auth.begin(&state).await?;
-    let created = staff::create(&mut tx, &auth.access, &auth.ctx.meta, body.into_inner()).await?;
+    let added = staff::create(&mut tx, &auth.access, &auth.ctx.meta, body.into_inner()).await?;
     tx.commit().await?;
+    let created = match added {
+        StaffAdded::Created(member) => {
+            CreatedMember { member: Some(member), existing_account: false, invitation: None }
+        }
+        StaffAdded::Invited(issued) => {
+            let sent = deliver(&state, issued);
+            CreatedMember { member: None, existing_account: true, invitation: Some(sent.invitation) }
+        }
+    };
     Ok(HttpResponse::Created().json(created))
 }
 

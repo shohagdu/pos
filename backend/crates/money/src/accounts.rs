@@ -61,18 +61,27 @@ const COLUMNS: &str = "id, account_type, name, account_number, bank_name, openin
 
 pub async fn list(tx: &mut TenantTx, include_inactive: bool) -> AppResult<Vec<PaymentAccount>> {
     let tenant_id = tx.tenant_id();
-    sqlx::query_as(sqlx::AssertSqlSafe(format!(
-        "SELECT {COLUMNS} FROM payment_accounts WHERE tenant_id = ? AND (? OR status = 'active') \
-         ORDER BY is_default DESC, FIELD(account_type, 'cash', 'mobile_wallet', 'bank', 'card'), name"
-    )))
-    .bind(tenant_id)
-    .bind(include_inactive)
-    .fetch_all(&mut **tx)
-    .await
-    .map_err(map_db_error)
+    let mut q: sqlx::QueryBuilder<sqlx::MySql> =
+        sqlx::QueryBuilder::new(format!("SELECT {COLUMNS} FROM payment_accounts WHERE tenant_id = "));
+    q.push_bind(tenant_id).push(" AND (").push_bind(include_inactive).push(" OR status = 'active')");
+    // Members limited to some branches see the shared accounts (no branch)
+    // and their own branches' drawers, not other branches' money.
+    if let Some(allowed) = tx.allowed_branches().map(<[Uuid]>::to_vec) {
+        q.push(" AND (branch_id IS NULL");
+        for id in allowed {
+            q.push(" OR branch_id = ").push_bind(id);
+        }
+        q.push(")");
+    }
+    q.push(" ORDER BY is_default DESC, FIELD(account_type, 'cash', 'mobile_wallet', 'bank', 'card'), name");
+    q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)
 }
 
+/// One account. An account that belongs to a branch outside the member's
+/// scope is refused, so its book cannot be read and it cannot be paid from,
+/// paid into or transferred from by id (every use goes through here).
 pub async fn get(tx: &mut TenantTx, id: Uuid) -> AppResult<PaymentAccount> {
+    tx.ensure_row_branch("payment_accounts", id).await?;
     let tenant_id = tx.tenant_id();
     sqlx::query_as(sqlx::AssertSqlSafe(format!(
         "SELECT {COLUMNS} FROM payment_accounts WHERE tenant_id = ? AND id = ?"

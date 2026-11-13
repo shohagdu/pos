@@ -16,7 +16,7 @@ use pos_catalog::{
 use pos_core::{
     AppError, AppResult, RequestMeta,
     id::new_id,
-    money::{amount, price, quantity},
+    money::{amount, price, quantity, round2},
     page::{self, Keyset},
 };
 use pos_db::{TenantTx, map_db_error};
@@ -651,6 +651,20 @@ pub async fn create(
             code: "TOTAL_MISMATCH",
             message: format!("the total is {}, not {expected}; prices may have changed", totals.grand_total),
         });
+    }
+    // Minimum price on what the customer actually pays: the check above sees
+    // only the unit price, so a line or invoice discount could otherwise take
+    // the line below its minimum.
+    if !seller.can_sell_below_min {
+        for (l, t) in lines.iter().zip(&totals.lines) {
+            let Some(min) = l.info.min_selling_price else { continue };
+            if t.net_before_invoice - t.invoice_discount < round2(min * l.quantity) {
+                return Err(AppError::Denied {
+                    code: "BELOW_MIN_PRICE",
+                    message: format!("discounts would sell {} below its minimum price", l.info.product_name),
+                });
+            }
+        }
     }
     // Discount limit (POS-R03): line and invoice discounts as a share of gross.
     if !seller.can_discount_over_limit {

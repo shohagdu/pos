@@ -1,6 +1,8 @@
 # Rust (target-run: the dev server's separate build dir)
 backend/target/
 backend/target-run/
+# Any other separate build dir (target-review, ...)
+backend/target-*/
 
 # Uploaded files in development (STORAGE_DIR)
 backend/storage/

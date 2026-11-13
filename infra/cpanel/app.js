@@ -249,7 +249,8 @@ function proxy(req, res) {
   const upstream = http.request(
     { host: '127.0.0.1', port: apiPort, method: req.method, path: req.url, headers },
     (up) => {
-      res.writeHead(up.statusCode, up.headers)
+      // Same as the static files: browsers keep to HTTPS for this host.
+      res.writeHead(up.statusCode, { ...up.headers, 'strict-transport-security': 'max-age=31536000; includeSubDomains' })
       up.pipe(res)
     },
   )

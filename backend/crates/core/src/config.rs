@@ -131,7 +131,11 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn from_env() -> Result<Self, ConfigError> {
-        let env: AppEnv = parse_or("APP_ENV", AppEnv::Development)?;
+        // Required: a server started without it must not fall back to
+        // development, which relaxes cookies, secrets and OTP handling.
+        let env: AppEnv = required("APP_ENV")?
+            .parse()
+            .map_err(|e: <AppEnv as FromStr>::Err| ConfigError::Invalid { key: "APP_ENV", message: e.to_string() })?;
         let default_format = if env == AppEnv::Development { LogFormat::Pretty } else { LogFormat::Json };
         let local = matches!(env, AppEnv::Development | AppEnv::Test);
 

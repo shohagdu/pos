@@ -50,7 +50,15 @@ async fn main() -> anyhow::Result<()> {
                 pos_platform::staff::grant(&pool, &identifier, role).await.map_err(|e| anyhow::anyhow!("{e}"))?;
             tracing::info!(%user_id, role = role.as_str(), "platform staff role granted");
         }
-        "serve" => serve(config).await?,
+        "serve" => {
+            if !config.auth.phone_verification && config.env == pos_core::config::AppEnv::Staging {
+                tracing::warn!(
+                    "AUTH_PHONE_VERIFICATION is off: anyone can sign up with any phone number, including a \
+                     future employee's; confirm staff accounts in person until an SMS gateway is set up"
+                );
+            }
+            serve(config).await?
+        }
         other => {
             anyhow::bail!("unknown command '{other}' (expected serve|migrate|check-schema|openapi|platform-staff)")
         }

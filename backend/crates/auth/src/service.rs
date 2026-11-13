@@ -498,18 +498,13 @@ impl Auth {
         if current.impersonator_id.is_some() && matches!(choice, TenantChoice::Switch(_)) {
             return Err(impersonating());
         }
-        if let Some(owner_id) = current.impersonator_id {
-            if !impersonation_still_valid(&mut tx, &current, owner_id).await? {
-                session::revoke_family(
-                    &mut tx,
-                    current.family_id,
-                    current.user_id,
-                    session::REASON_IMPERSONATION_ENDED,
-                )
+        if let Some(owner_id) = current.impersonator_id
+            && !impersonation_still_valid(&mut tx, &current, owner_id).await?
+        {
+            session::revoke_family(&mut tx, current.family_id, current.user_id, session::REASON_IMPERSONATION_ENDED)
                 .await?;
-                tx.commit().await.map_err(map_db_error)?;
-                return Err(session::invalid());
-            }
+            tx.commit().await.map_err(map_db_error)?;
+            return Err(session::invalid());
         }
 
         let status: Option<String> = sqlx::query_scalar("SELECT status FROM users WHERE id = ?")

@@ -83,7 +83,9 @@ The OpenAPI document at `/api/v1/openapi.json` lists every route.
   `auth.require("settings.manage")?` and open `auth.begin(&state)` for a `TenantTx`.
 - **OTP codes in development.** There is no SMS gateway yet. With
   `AUTH_EXPOSE_OTP=true` (development/test only) responses include `dev_code`
-  and the screens show it; codes are also logged. `pos-api serve` refuses to
+  and the screens show it; codes are also logged. `.env.example` ships it as
+  `false`, so set it in your own `.env` when you need it. `APP_ENV` is required
+  (no fallback to development). `pos-api serve` refuses to
   start with `APP_ENV=production` until a gateway implements `pos_auth::otp::OtpSender`.
 - **Lockout.** 5 failed logins per identifier + IP in 15 minutes return `429`
   with `Retry-After`. Behind Nginx set `HTTP_TRUST_PROXY_HEADERS=true`, otherwise

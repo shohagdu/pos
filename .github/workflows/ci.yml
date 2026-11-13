@@ -58,6 +58,7 @@ jobs:
         env:
           DATABASE_URL: mysql://root:root@127.0.0.1:3306/pos_ci
           # Required by AppConfig; CI never issues tokens.
+          APP_ENV: test
           JWT_SECRET: ci-only-secret-not-used-for-real-tokens-0000
         run: |
           docker exec mysql mysql -uroot -proot -e "CREATE DATABASE pos_ci"

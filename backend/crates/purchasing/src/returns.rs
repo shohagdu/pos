@@ -245,6 +245,9 @@ pub async fn create(
         returned_total: returned,
         due_total: due,
     } = purchase.ok_or_else(|| AppError::field("purchase_id", "NOT_FOUND", "the bill was not found"))?;
+    // Like sale returns: a member limited to some branches may only return
+    // their own branches' bills (BRN-R02).
+    tx.ensure_branch(branch_id)?;
     if status != "received" && status != "partially_received" {
         return Err(AppError::Unprocessable {
             code: "PURCHASE_NOT_RECEIVED",

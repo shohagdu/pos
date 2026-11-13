@@ -264,6 +264,145 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     assert_eq!(adjust.code(), "BRANCH_NOT_ALLOWED", "{}", adjust.body);
     let own = send(&srv, &manager, "get", "/api/v1/sales", None, None).await;
     assert_eq!(own.status, StatusCode::OK, "{}", own.body);
+
+    // --- the minimum price holds after discounts too: the manager may give
+    // discounts but not sell below the minimum (no pos.below_min_price).
+    let bulb = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/products",
+        Some(json!({ "name": "Bulb", "unit_id": pcs, "selling_price": "100", "purchase_price": "60",
+                     "min_selling_price": "80" })),
+        None,
+    )
+    .await;
+    assert_eq!(bulb.status, StatusCode::CREATED, "{}", bulb.body);
+    let bulb = s(&bulb.body, "variant_id");
+    let bulb_stock = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/stock-adjustments",
+        Some(json!({ "reason": "opening", "lines": [{ "variant_id": bulb, "quantity": "5", "unit_cost": "60" }] })),
+        Some(&main),
+    )
+    .await;
+    assert_eq!(bulb_stock.status, StatusCode::CREATED, "{}", bulb_stock.body);
+    let sell_bulb = |extra: Value| {
+        let mut body = json!({ "lines": [{ "variant_id": bulb, "quantity": "1" }],
+                               "payments": [{ "method_id": cash, "amount": "100" }] });
+        for (k, v) in extra.as_object().expect("object") {
+            if k == "line" {
+                for (lk, lv) in v.as_object().expect("line") {
+                    body["lines"][0][lk] = lv.clone();
+                }
+            } else {
+                body[k] = v.clone();
+            }
+        }
+        body
+    };
+    let line_disc = send(
+        &srv,
+        &manager,
+        "post",
+        "/api/v1/sales",
+        Some(sell_bulb(json!({ "line": { "discount_type": "percent", "discount_value": "30" } }))),
+        None,
+    )
+    .await;
+    assert_eq!(line_disc.code(), "BELOW_MIN_PRICE", "{}", line_disc.body);
+    let invoice_disc = send(
+        &srv,
+        &manager,
+        "post",
+        "/api/v1/sales",
+        Some(sell_bulb(json!({ "invoice_discount_type": "amount", "invoice_discount_value": "25" }))),
+        None,
+    )
+    .await;
+    assert_eq!(invoice_disc.code(), "BELOW_MIN_PRICE", "{}", invoice_disc.body);
+    let within = send(
+        &srv,
+        &manager,
+        "post",
+        "/api/v1/sales",
+        Some(sell_bulb(json!({ "line": { "discount_type": "amount", "discount_value": "20" } }))),
+        None,
+    )
+    .await;
+    assert_eq!(within.status, StatusCode::CREATED, "{}", within.body);
+    // The owner may sell below the minimum.
+    let owner_below = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/sales",
+        Some(sell_bulb(json!({ "line": { "discount_type": "percent", "discount_value": "30" } }))),
+        Some(&main),
+    )
+    .await;
+    assert_eq!(owner_below.status, StatusCode::CREATED, "{}", owner_below.body);
+
+    // --- returns to the supplier stay in the member's branches: a buyer
+    // limited to the main branch cannot return a Mirpur bill.
+    let supplier = send(&srv, &owner, "post", "/api/v1/suppliers", Some(json!({ "name": "Mirpur Wholesale" })), None)
+        .await;
+    assert_eq!(supplier.status, StatusCode::CREATED, "{}", supplier.body);
+    let mir_bill = send(
+        &srv,
+        &owner,
+        "post",
+        "/api/v1/purchases",
+        Some(json!({ "supplier_id": s(&supplier.body, "id"),
+                     "lines": [{ "variant_id": bulb, "quantity": "2", "unit_cost": "60" }] })),
+        Some(&mirpur),
+    )
+    .await;
+    assert_eq!(mir_bill.status, StatusCode::CREATED, "{}", mir_bill.body);
+    let mir_bill =
+        send(&srv, &owner, "post", &format!("/api/v1/purchases/{}/post", s(&mir_bill.body, "id")), None, Some(&mirpur))
+            .await;
+    assert_eq!(mir_bill.body["status"], "received", "{}", mir_bill.body);
+    let buyer_role = call(
+        &srv,
+        Req::post("/api/v1/roles", json!({ "name": "Buyer", "permissions": ["purchases.view", "purchases.return"] }))
+            .bearer(&owner.token)
+            .build(),
+    )
+    .await;
+    assert_eq!(buyer_role.status, StatusCode::CREATED, "{}", buyer_role.body);
+    let buyer_added = call(
+        &srv,
+        Req::post(
+            "/api/v1/members",
+            json!({ "full_name": "Main Buyer", "phone": "01711000985", "password": "Shop-pass-2026",
+                    "role_ids": [s(&buyer_role.body, "id")], "branch_ids": [&main] }),
+        )
+        .bearer(&owner.token)
+        .build(),
+    )
+    .await;
+    assert_eq!(buyer_added.status, StatusCode::CREATED, "{}", buyer_added.body);
+    let buyer_login = call(
+        &srv,
+        Req::post("/api/v1/auth/login", json!({ "identifier": "01711000985", "password": "Shop-pass-2026" })).build(),
+    )
+    .await;
+    let mut buyer = Session { token: buyer_login.token(), cookie: buyer_login.cookie(), phone: "01711000985".into() };
+    switch(&srv, &mut buyer, Some(&tenant_id)).await;
+    let foreign_return = send(
+        &srv,
+        &buyer,
+        "post",
+        "/api/v1/purchase-returns",
+        Some(json!({ "purchase_id": s(&mir_bill.body, "id"), "reason": "Damaged",
+                     "lines": [{ "purchase_item_id": s(&mir_bill.body["items"][0], "id"), "quantity": "1" }] })),
+        None,
+    )
+    .await;
+    assert_eq!(foreign_return.code(), "BRANCH_NOT_ALLOWED", "{}", foreign_return.body);
     // The owner, whatever branch is selected, still opens it.
     let owner_view = send(&srv, &owner, "get", &format!("/api/v1/sales/{mir_sale}"), None, Some(&main)).await;
     assert_eq!(owner_view.status, StatusCode::OK, "{}", owner_view.body);

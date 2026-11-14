@@ -101,6 +101,9 @@ pub struct SaleReturnItem {
     pub tax_amount: Decimal,
     #[schema(value_type = String)]
     pub line_total: Decimal,
+    /// Cross-product Buy X Get Y: the free item charged (+) or given back (−) on this line.
+    #[schema(value_type = String)]
+    pub promo_charge: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, utoipa::ToSchema)]
@@ -216,7 +219,7 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, can_view_cost: bool) -> AppResult<
     }
     let items = sqlx::query_as(
         "SELECT ri.id, ri.sale_item_id, ri.variant_id, si.product_name, si.sku, si.unit_short_name, ri.quantity, \
-         ri.item_condition, ri.tax_amount, ri.line_total FROM sale_return_items ri \
+         ri.item_condition, ri.tax_amount, ri.line_total, ri.promo_charge FROM sale_return_items ri \
          JOIN sale_items si ON si.tenant_id = ri.tenant_id AND si.id = ri.sale_item_id \
          WHERE ri.tenant_id = ? AND ri.return_id = ? ORDER BY si.line_no",
     )
@@ -304,6 +307,154 @@ pub fn bogo_refund(
     (refund, round2(tax_amount * refund / line_total).min(tax_amount - returned_tax))
 }
 
+/// Free units still earned by `bought` qualifying units ("buy X get Y").
+pub fn bxgy_entitled(bought: Decimal, buy: Decimal, get: Decimal, repeat: bool) -> Decimal {
+    if buy <= Decimal::ZERO {
+        return Decimal::ZERO;
+    }
+    let sets = (bought.max(Decimal::ZERO) / buy).floor();
+    (if repeat { sets } else { sets.min(Decimal::ONE) }) * get
+}
+
+/// What should have been charged for free units kept beyond what is still earned.
+pub fn bxgy_charge(
+    bought: Decimal,
+    free_kept: Decimal,
+    buy: Decimal,
+    get: Decimal,
+    repeat: bool,
+    unit_value: Decimal,
+) -> Decimal {
+    round2((free_kept - bxgy_entitled(bought, buy, get, repeat)).max(Decimal::ZERO) * unit_value)
+}
+
+struct BxgyAdjustment {
+    promotion_id: Uuid,
+    /// + charge now, − give back now.
+    delta: Decimal,
+    buy_lines: Vec<Uuid>,
+    free_lines: Vec<Uuid>,
+}
+
+/// Cross-product Buy X Get Y offers on the sale that this return changes.
+async fn cross_bxgy_adjustments(
+    tx: &mut TenantTx,
+    sale_id: Uuid,
+    items: &[ItemRow],
+    returning: &[(Uuid, Decimal)],
+) -> AppResult<Vec<BxgyAdjustment>> {
+    let tenant_id = tx.tenant_id();
+    // Free lines per promotion, with the value of one free unit as sold.
+    let free: Vec<(Uuid, Uuid, Decimal, Decimal)> = sqlx::query_as(
+        "SELECT d.promotion_id, d.sale_item_id, d.free_quantity, d.discount_amount FROM sale_item_discounts d \
+         WHERE d.tenant_id = ? AND d.sale_id = ? AND d.promotion_type = 'bxgy' AND d.free_quantity > 0 \
+           AND d.bxgy_get_target_type IN ('product', 'category')",
+    )
+    .bind(tenant_id)
+    .bind(sale_id)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    if free.is_empty() {
+        return Ok(Vec::new());
+    }
+    let ret = |id: Uuid| returning.iter().find(|(i, _)| *i == id).map_or(Decimal::ZERO, |(_, q)| *q);
+    let item = |id: Uuid| items.iter().find(|i| i.id == id);
+    let mut promotion_ids: Vec<Uuid> = free.iter().map(|f| f.0).collect();
+    promotion_ids.sort();
+    promotion_ids.dedup();
+
+    // Products and categories of the sale lines, to find the lines that earned the free item.
+    let variant_ids: Vec<Uuid> = items.iter().map(|i| i.variant_id).collect();
+    let chains = crate::promotions::store::line_targets(tx, &variant_ids).await?;
+    let mut q: QueryBuilder<MySql> =
+        QueryBuilder::new("SELECT id, product_id FROM product_variants WHERE tenant_id = ");
+    q.push_bind(tenant_id).push(" AND id IN (");
+    let mut sep = q.separated(", ");
+    for v in &variant_ids {
+        sep.push_bind(*v);
+    }
+    q.push(")");
+    let products: Vec<(Uuid, Uuid)> = q.build_query_as().fetch_all(&mut **tx).await.map_err(map_db_error)?;
+    let targets = crate::promotions::store::targets(tx, &promotion_ids).await?;
+
+    let mut out = Vec::new();
+    for pid in promotion_ids {
+        // The rule is locked once used, so today's row is the rule as sold.
+        let rule: Option<(Option<Decimal>, Option<Decimal>, bool)> = sqlx::query_as(
+            "SELECT bxgy_buy_quantity, bxgy_get_quantity, bxgy_repeat FROM promotions WHERE tenant_id = ? AND id = ?",
+        )
+        .bind(tenant_id)
+        .bind(pid)
+        .fetch_optional(&mut **tx)
+        .await
+        .map_err(map_db_error)?;
+        let Some((Some(buy), Some(get), repeat)) = rule else { continue };
+        let free_lines: Vec<&(Uuid, Uuid, Decimal, Decimal)> = free.iter().filter(|f| f.0 == pid).collect();
+        let free_ids: Vec<Uuid> = free_lines.iter().map(|f| f.1).collect();
+        let free_units: Decimal = free_lines.iter().map(|f| f.2).sum();
+        if free_units.is_zero() {
+            continue;
+        }
+        let unit_value = free_lines.iter().map(|f| f.3).sum::<Decimal>() / free_units;
+        // Lines that earned it: on the offer's products, not themselves free.
+        let promo_targets = targets.get(&pid).cloned().unwrap_or_default();
+        let buy_ids: Vec<Uuid> = items
+            .iter()
+            .filter(|i| !free_ids.contains(&i.id))
+            .filter(|i| {
+                let (brand_id, category_ids) = chains.get(&i.variant_id).cloned().unwrap_or_default();
+                let product_id = products.iter().find(|(v, _)| *v == i.variant_id).map_or(Uuid::nil(), |(_, p)| *p);
+                crate::promotions::engine::matches(
+                    &promo_targets,
+                    &crate::promotions::engine::Line {
+                        variant_id: i.variant_id,
+                        product_id,
+                        category_ids,
+                        brand_id,
+                        quantity: i.quantity,
+                        unit_price: Decimal::ZERO,
+                        min_unit_price: None,
+                        promotions_off: false,
+                    },
+                )
+            })
+            .map(|i| i.id)
+            .collect();
+        let bought_before: Decimal =
+            buy_ids.iter().filter_map(|id| item(*id)).map(|i| i.quantity - i.returned_quantity).sum();
+        let bought_after = bought_before - buy_ids.iter().map(|id| ret(*id)).sum::<Decimal>();
+        // Returned units of a free line count as free units first.
+        let kept = |extra: bool| -> Decimal {
+            free_lines
+                .iter()
+                .map(|f| {
+                    let returned = item(f.1).map_or(Decimal::ZERO, |i| i.returned_quantity)
+                        + if extra { ret(f.1) } else { Decimal::ZERO };
+                    (f.2 - returned).max(Decimal::ZERO)
+                })
+                .sum()
+        };
+        let target = bxgy_charge(bought_after, kept(true), buy, get, repeat, unit_value);
+        let charged: Decimal = sqlx::query_scalar(
+            "SELECT COALESCE(SUM(ri.promo_charge), 0) FROM sale_return_items ri \
+             JOIN sale_returns r ON r.tenant_id = ri.tenant_id AND r.id = ri.return_id \
+             WHERE ri.tenant_id = ? AND r.sale_id = ? AND ri.promo_charge_promotion_id = ?",
+        )
+        .bind(tenant_id)
+        .bind(sale_id)
+        .bind(pid)
+        .fetch_one(&mut **tx)
+        .await
+        .map_err(map_db_error)?;
+        let delta = target - charged;
+        if !delta.is_zero() {
+            out.push(BxgyAdjustment { promotion_id: pid, delta, buy_lines: buy_ids, free_lines: free_ids });
+        }
+    }
+    Ok(out)
+}
+
 /// The method that pays out of the default (cash) account.
 async fn cash_method(tx: &mut TenantTx) -> AppResult<Uuid> {
     let account = accounts::default_account(tx).await?;
@@ -367,7 +518,7 @@ pub async fn create(
     let items: Vec<ItemRow> = sqlx::query_as(
         "SELECT si.id, si.variant_id, si.product_name, si.quantity, si.base_quantity, si.returned_quantity, si.tax_amount, \
          si.line_total, si.unit_cost, si.track_inventory, COALESCE(u.allow_fraction, TRUE) AS allow_fraction, \
-         COALESCE((SELECT SUM(ri.line_total) FROM sale_return_items ri WHERE ri.tenant_id = si.tenant_id AND ri.sale_item_id = si.id), 0) AS returned_value, \
+         COALESCE((SELECT SUM(ri.line_total + ri.promo_charge) FROM sale_return_items ri WHERE ri.tenant_id = si.tenant_id AND ri.sale_item_id = si.id), 0) AS returned_value, \
          COALESCE((SELECT SUM(ri.tax_amount) FROM sale_return_items ri WHERE ri.tenant_id = si.tenant_id AND ri.sale_item_id = si.id), 0) AS returned_tax, \
          si.free_quantity, \
          (SELECT MAX(d.bxgy_buy_quantity + d.bxgy_get_quantity) FROM sale_item_discounts d WHERE d.tenant_id = si.tenant_id \
@@ -390,6 +541,9 @@ pub async fn create(
         damaged: bool,
         line_total: Decimal,
         tax: Decimal,
+        /// Cross-product Buy X Get Y: charged (+) or given back (−) on this line.
+        promo_charge: Decimal,
+        promo_charge_promotion_id: Option<Uuid>,
     }
     let mut outs: Vec<Out> = Vec::new();
     for (i, line) in input.lines.iter().enumerate() {
@@ -440,7 +594,49 @@ pub async fn create(
             (round2(item.line_total * qty / item.quantity), round2(item.tax_amount * qty / item.quantity))
         };
         let base_quantity = item.base_quantity * qty / item.quantity;
-        outs.push(Out { item, quantity: qty, base_quantity, damaged, line_total, tax });
+        outs.push(Out {
+            item,
+            quantity: qty,
+            base_quantity,
+            damaged,
+            line_total,
+            tax,
+            promo_charge: Decimal::ZERO,
+            promo_charge_promotion_id: None,
+        });
+    }
+
+    // Cross-product Buy X Get Y (§8): the free item the customer keeps is
+    // charged once the items that earned it come back, and given back when
+    // the free item comes back too. What was charged so far is on the earlier
+    // return lines, so several returns always add up.
+    for adj in cross_bxgy_adjustments(
+        tx,
+        input.sale_id,
+        &items,
+        &outs.iter().map(|o| (o.item.id, o.quantity)).collect::<Vec<_>>(),
+    )
+    .await?
+    {
+        let mut left = adj.delta.abs();
+        let charging = adj.delta > Decimal::ZERO;
+        for o in outs
+            .iter_mut()
+            .filter(|o| if charging { adj.buy_lines.contains(&o.item.id) } else { adj.free_lines.contains(&o.item.id) })
+        {
+            if left.is_zero() {
+                break;
+            }
+            // A charge never takes a line's refund below its VAT part (nor below zero).
+            let take = if charging { left.min((o.line_total - o.tax).max(Decimal::ZERO)) } else { left };
+            if take.is_zero() {
+                continue;
+            }
+            o.line_total += if charging { -take } else { take };
+            o.promo_charge += if charging { take } else { -take };
+            o.promo_charge_promotion_id = Some(adj.promotion_id);
+            left -= take;
+        }
     }
 
     let total: Decimal = outs.iter().map(|o| o.line_total).sum();
@@ -519,7 +715,7 @@ pub async fn create(
     .map_err(map_db_error)?;
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
         "INSERT INTO sale_return_items (tenant_id, id, return_id, sale_item_id, variant_id, quantity, base_quantity, \
-         item_condition, location_id, taxable_amount, tax_amount, line_total, unit_cost) ",
+         item_condition, location_id, taxable_amount, tax_amount, line_total, promo_charge, promo_charge_promotion_id, unit_cost) ",
     );
     q.push_values(outs.iter().zip(&item_ids), |mut row, (o, item_id)| {
         row.push_bind(tenant_id)
@@ -534,6 +730,8 @@ pub async fn create(
             .push_bind(o.line_total - o.tax)
             .push_bind(o.tax)
             .push_bind(o.line_total)
+            .push_bind(o.promo_charge)
+            .push_bind(o.promo_charge_promotion_id)
             .push_bind(o.item.unit_cost);
     });
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
@@ -706,5 +904,27 @@ mod tests {
         // VAT follows the refund: 3 units, 1 free (buy 2 get 1), paid 230 incl. 30 VAT; return 1 → keep 2, both paid.
         let (refund, tax) = bogo_refund(d("3"), d("1"), d("3"), d("1"), d("230"), d("30"), z, z, z, d("1"));
         assert_eq!((refund, tax), (z, z));
+    }
+}
+
+#[cfg(test)]
+mod cross_tests {
+    use super::*;
+
+    fn d(s: &str) -> Decimal {
+        s.parse().expect("decimal")
+    }
+
+    #[test]
+    fn cross_product_charges() {
+        // Buy 2 rice, get 1 oil (৳120) free, once per invoice.
+        let charge = |bought: &str, kept: &str| bxgy_charge(d(bought), d(kept), d("2"), d("1"), false, d("120"));
+        assert_eq!(charge("2", "1"), d("0"));
+        // One rice back, oil kept: the oil is charged.
+        assert_eq!(charge("1", "1"), d("120"));
+        // Oil back as well: nothing to charge (the earlier charge is given back).
+        assert_eq!(charge("1", "0"), d("0"));
+        // Repeating: 4 rice earned 2 oil; 3 rice kept still earn 1.
+        assert_eq!(bxgy_charge(d("3"), d("2"), d("2"), d("1"), true, d("120")), d("120"));
     }
 }

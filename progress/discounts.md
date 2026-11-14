@@ -8,7 +8,7 @@ Branch `feature/discount-promotions` · design: `Final_docs/05_discount-system.m
 |---|---|---|
 | 1 Core engine: data model, product discount (% / amount / fixed price), calculation, POS cart, receipt, sale snapshots | Done | `backend/crates/sales/src/promotions/{engine,store}.rs`, `frontend/src/lib/promotions.ts`, migration `0121_promotions.sql` |
 | 2 Flash and schedule: windows, quantity limits with row locks, status, countdown badges | Done | engine `remaining`, `store::live(.., lock=true)`, `Schedule::open_at`, `ProductGrid` badges |
-| 3 Buy X Get Y: rules, free-item prompt, stock and cost, returns | Done | engine step 2, `OfferPrompts.tsx`, `returns::bogo_refund` |
+| 3 Buy X Get Y: rules, free-item prompt, stock and cost, returns | Done | engine step 2, `OfferPrompts.tsx`, `returns::bogo_refund`, `returns::cross_bxgy_adjustments` (0122) |
 | 4 Coupons: codes, validation, bulk generation, redemptions, limits | Done | `store::validate_coupon`, `admin.rs` coupons, `CouponField.tsx`, `CouponsPanel.tsx` |
 | 5 Reports, permissions, audit, settings | Done | `reporting/src/promotions.rs`, `/reports/promotions`, Settings → Discounts, 4 permissions |
 
@@ -26,7 +26,7 @@ Branch `feature/discount-promotions` · design: `Final_docs/05_discount-system.m
 4. **Customer groups** don't exist in the app, so `applies_to_customer` is `all` or `registered_only` only. Per-customer limits need a named customer: they are skipped for the walk-in customer, and such coupons ask for a customer.
 5. **Wholesale prices** aren't used by sales yet, so there is no "applies to wholesale" setting.
 6. **One coupon per invoice.** The "max coupons per invoice" setting isn't offered; Settings → Discounts says so.
-7. **Cross-product Buy X Get Y returns.** The doc's "keep the free item, return the paid one → charge the free item" is implemented for the same product (the common case: the kept units are charged as if bought alone). For "buy rice, get oil free", returning the rice refunds it pro rata and the free oil isn't charged back.
+7. ~~Cross-product Buy X Get Y returns~~ **done (migration 0122):** returning the items that earned a free item while keeping it takes the free item's price off the refund (never below the line's VAT part); returning the free item later gives that back. Each return line stores the adjustment (`sale_return_items.promo_charge`), so several partial returns always add up, and the return detail says why the refund is lower. Same-product offers use the kept-units rule (`bogo_refund`).
 8. **Coupon "fixed amount"** means an amount off the order (spread over the qualifying lines by value); for line promotions "fixed amount" is per unit.
 9. **The manual discount limit ignores promotions.** The cashier's limit (POS-R03) is measured on the price after promotions, because promotions are the business's own offers.
 10. **F6** focuses the coupon field (the doc's "optional new shortcut").
@@ -56,4 +56,5 @@ Every create / edit / pause / end / duplicate / delete, coupon change, and every
 ## Open / needs your decision
 - Merge `feature/discount-promotions` into main when happy. Migration 0121 runs on the next API start (dev DB `pos` is untouched so far; the browser checks used `pos_copy`).
 - `pos_copy` and the test servers on 8081 / 5174 are still running for you to try. Stop them and `DROP DATABASE pos_copy` when done.
-- The deviations above (especially 4, 6 and 7), if any should change.
+- The deviations above (especially 4 and 6), if any should change.
+- Backend CI (rustfmt, clippy on all targets) passes on this branch; on main it still fails until this is merged (commit `391ad66`).

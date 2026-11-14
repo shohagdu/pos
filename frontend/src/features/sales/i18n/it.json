@@ -194,6 +194,8 @@
     },
     "promotions": "Promozioni",
     "couponWithCode": "Coupon {{code}}",
-    "freeUnits": "{{qty}} gratis"
+    "freeUnits": "{{qty}} gratis",
+    "freeItemCharged": "Articolo gratuito trattenuto: {{amount}} tolti dal rimborso",
+    "freeItemChargeBack": "Addebito dell'articolo gratuito restituito: +{{amount}}"
   }
 }

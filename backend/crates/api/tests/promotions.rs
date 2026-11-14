@@ -327,6 +327,66 @@ async fn promotions_price_sales_and_keep_their_counters(pool: MySqlPool) {
     let min = sell(&srv, &cashier, json!({ "lines": [{ "variant_id": rice, "quantity": "1" }], "coupon_code": "EID10", "payments": pay("135"), "expected_total": "135" })).await;
     assert_eq!(field_code(&min), "COUPON_MIN_PURCHASE", "{}", min.body);
 
+    // Cross-product Buy X Get Y: buy sugar, get salt free. Returning the sugar
+    // while keeping the salt charges the salt; returning the salt gives it back.
+    let mut cross = Vec::new();
+    for (name, price) in [("Sugar", "100"), ("Salt", "40")] {
+        let res = post(
+            &srv,
+            &owner,
+            "/api/v1/products",
+            json!({ "name": name, "unit_id": pcs, "selling_price": price, "purchase_price": "20" }),
+        )
+        .await;
+        assert_eq!(res.status, StatusCode::CREATED, "{}", res.body);
+        cross.push((s(&res.body, "id"), s(&res.body, "variant_id")));
+    }
+    let (sugar_p, sugar) = cross[0].clone();
+    let (salt_p, salt) = cross[1].clone();
+    let stocked = post(
+        &srv,
+        &owner,
+        "/api/v1/stock-adjustments",
+        json!({ "reason": "opening", "lines": [{ "variant_id": sugar, "quantity": "10", "unit_cost": "20" }, { "variant_id": salt, "quantity": "10", "unit_cost": "20" }] }),
+    )
+    .await;
+    assert_eq!(stocked.status, StatusCode::CREATED, "{}", stocked.body);
+    let salt_free = post(
+        &srv,
+        &owner,
+        "/api/v1/promotions",
+        json!({ "name": "Salt free", "type": "bxgy", "targets": [{ "target_type": "product", "target_id": sugar_p }],
+                "bxgy": { "buy_quantity": "1", "get_quantity": "1", "get_target_type": "product", "get_target_id": salt_p,
+                          "get_discount_type": "free", "repeat": false }, "status": "active" }),
+    )
+    .await;
+    assert_eq!(salt_free.status, StatusCode::CREATED, "{}", salt_free.body);
+    let both = sell(
+        &srv,
+        &cashier,
+        json!({ "lines": [{ "variant_id": sugar, "quantity": "1" }, { "variant_id": salt, "quantity": "1" }], "payments": pay("100"), "expected_total": "100" }),
+    )
+    .await;
+    assert_eq!(both.status, StatusCode::CREATED, "{}", both.body);
+    let line_of = |variant: &str| s(find(&both.body["items"], "variant_id", variant), "id");
+    let give_back = |item: String| {
+        let body = json!({ "sale_id": s(&both.body, "id"), "reason": "test", "refund_mode": "cash",
+                           "lines": [{ "sale_item_id": item, "quantity": "1" }] });
+        let req = test::TestRequest::post()
+            .uri("/api/v1/sale-returns")
+            .set_json(body)
+            .insert_header(("authorization", format!("Bearer {}", owner.token)))
+            .insert_header(("idempotency-key", Uuid::now_v7().to_string()))
+            .to_request();
+        call(&srv, req)
+    };
+    let sugar_back = give_back(line_of(&sugar)).await;
+    assert_eq!(sugar_back.status, StatusCode::CREATED, "{}", sugar_back.body);
+    assert_eq!(num(&sugar_back.body["total"]), 60.0, "{}", sugar_back.body);
+    let salt_back = give_back(line_of(&salt)).await;
+    assert_eq!(salt_back.status, StatusCode::CREATED, "{}", salt_back.body);
+    assert_eq!(num(&salt_back.body["total"]), 40.0, "{}", salt_back.body);
+
     // The promotions report sees all of it.
     let report = get(&srv, &owner, "/api/v1/reports/promotions").await;
     assert_eq!(report.status, StatusCode::OK, "{}", report.body);

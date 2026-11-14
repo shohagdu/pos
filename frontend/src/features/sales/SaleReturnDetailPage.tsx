@@ -47,6 +47,13 @@ export function SaleReturnDetailPage() {
             <span aria-hidden="true">↩</span>
             {t('sales.returnedItem', { qty: `${formatQuantity(i.quantity, lang, true)} ${i.unit_short_name}` })}
           </span>
+          {i.promo_charge && dec(i.promo_charge) !== ZERO && (
+            <span className="mt-0.5 block text-xs text-ink-muted">
+              {dec(i.promo_charge) > ZERO
+                ? t('sales.freeItemCharged', { amount: money(i.promo_charge) })
+                : t('sales.freeItemChargeBack', { amount: money(i.promo_charge.replace('-', '')) })}
+            </span>
+          )}
         </>
       ),
     },

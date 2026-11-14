@@ -194,6 +194,8 @@
     },
     "promotions": "Promotions",
     "couponWithCode": "Coupon {{code}}",
-    "freeUnits": "{{qty}} free"
+    "freeUnits": "{{qty}} free",
+    "freeItemCharged": "Free item kept: {{amount}} taken off the refund",
+    "freeItemChargeBack": "Charge for the free item given back: +{{amount}}"
   }
 }

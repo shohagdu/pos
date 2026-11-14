@@ -348,6 +348,8 @@ export interface SaleReturnItem {
   item_condition: 'restock' | 'damaged'
   tax_amount: string
   line_total: string
+  /** Cross-product Buy X Get Y: free item charged (+) or given back (−); missing on older API builds. */
+  promo_charge?: string
 }
 
 export interface SaleReturnDetail extends SaleReturn {

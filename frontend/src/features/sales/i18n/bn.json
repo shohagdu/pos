@@ -194,6 +194,8 @@
     },
     "promotions": "অফার",
     "couponWithCode": "কুপন {{code}}",
-    "freeUnits": "{{qty}}টি ফ্রি"
+    "freeUnits": "{{qty}}টি ফ্রি",
+    "freeItemCharged": "ফ্রি পণ্য রাখা হয়েছে: ফেরত থেকে {{amount}} কাটা",
+    "freeItemChargeBack": "ফ্রি পণ্যের কাটা টাকা ফেরত: +{{amount}}"
   }
 }

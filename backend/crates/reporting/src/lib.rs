@@ -9,6 +9,7 @@ pub mod analysis;
 pub mod dashboard;
 pub mod expenses;
 pub mod period;
+pub mod promotions;
 pub mod purchases;
 pub mod sales;
 

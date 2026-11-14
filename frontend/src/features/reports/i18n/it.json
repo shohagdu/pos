@@ -103,6 +103,10 @@
       "supplierDues": {
         "title": "Fornitori in attesa di pagamento",
         "description": "Ogni acquisto ricevuto ancora da pagare, dal più vecchio."
+      },
+      "promotions": {
+        "title": "Promozioni",
+        "description": "Offerte, offerte lampo e coupon: cosa hanno venduto, costato e reso."
       }
     },
     "sales": {
@@ -368,6 +372,34 @@
         "search": "Fornitore, telefono o n. acquisto",
         "none": "Tutti i fornitori sono pagati."
       }
+    },
+    "promotions": {
+      "title": "Promozioni",
+      "byPromotion": "Per promozione",
+      "byPromotionHint": "Ricavi, pezzi e costo delle righe scontate, al netto dei resi; utile dopo l'offerta, costo degli articoli gratis incluso.",
+      "promotion": "Promozione",
+      "type": "Tipo",
+      "sales": "Vendite",
+      "units": "Pezzi",
+      "revenue": "Ricavi (IVA escl.)",
+      "discount": "Sconto concesso",
+      "cost": "Costo",
+      "profit": "Utile",
+      "basket": "Scontrino medio",
+      "flash": "Offerte lampo",
+      "soldOfLimit": "Venduti / in offerta",
+      "soldOutAt": "Esaurita",
+      "notSoldOut": "Non esaurita",
+      "coupons": "Coupon",
+      "byCode": "Per codice",
+      "byCustomer": "Per cliente",
+      "byCashierCoupon": "Per cassiere",
+      "uses": "Usi",
+      "byCashier": "Sconti manuali e automatici",
+      "byCashierHint": "Manuali = sconti di riga e fattura del cassiere; attenzione ai cassieri che scontano a mano molto più delle offerte.",
+      "manual": "Sconti manuali",
+      "automatic": "Promozioni",
+      "coupon": "Coupon"
     }
   }
 }

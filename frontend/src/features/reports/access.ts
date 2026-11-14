@@ -14,6 +14,7 @@ export function reportAccess(can: (permission: string) => boolean) {
     parties: can('reports.parties'),
     vat: financial,
     discounts: can('reports.sales'),
+    promotions: can('promotions.view') || can('reports.sales'),
     movement: can('reports.inventory'),
   }
 }

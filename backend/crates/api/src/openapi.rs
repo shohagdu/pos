@@ -267,6 +267,7 @@ use crate::{auth::TokenResponse, error::Problem, routes};
         routes::reports::vat_summary,
         routes::reports::discount_report,
         routes::reports::product_movement,
+        routes::reports::promotion_report,
         routes::accounting::trial_balance,
         routes::accounting::profit_and_loss,
         routes::accounting::balance_sheet,

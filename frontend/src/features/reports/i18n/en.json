@@ -103,6 +103,10 @@
       "supplierDues": {
         "title": "Suppliers waiting for payment",
         "description": "Every received purchase you still have to pay, oldest first."
+      },
+      "promotions": {
+        "title": "Promotions",
+        "description": "Offers, flash sales and coupons: what they sold, cost and earned."
       }
     },
     "sales": {
@@ -368,6 +372,34 @@
         "search": "Supplier, phone or purchase no.",
         "none": "Every supplier is paid."
       }
+    },
+    "promotions": {
+      "title": "Promotions",
+      "byPromotion": "By promotion",
+      "byPromotionHint": "Revenue, units and cost of the discounted lines, net of returns; profit after the offer, free items' cost included.",
+      "promotion": "Promotion",
+      "type": "Type",
+      "sales": "Sales",
+      "units": "Units",
+      "revenue": "Revenue (ex VAT)",
+      "discount": "Discount given",
+      "cost": "Cost",
+      "profit": "Profit",
+      "basket": "Avg. invoice",
+      "flash": "Flash sales",
+      "soldOfLimit": "Sold / on offer",
+      "soldOutAt": "Sold out",
+      "notSoldOut": "Not sold out",
+      "coupons": "Coupons",
+      "byCode": "By code",
+      "byCustomer": "By customer",
+      "byCashierCoupon": "By cashier",
+      "uses": "Uses",
+      "byCashier": "Manual vs automatic discounts",
+      "byCashierHint": "Manual = the cashier's own line and invoice discounts; watch for cashiers who give much more by hand than the offers do.",
+      "manual": "Manual discounts",
+      "automatic": "Promotions",
+      "coupon": "Coupons"
     }
   }
 }

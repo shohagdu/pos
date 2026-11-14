@@ -101,6 +101,61 @@ export interface CategorySalesRow {
   margin_pct: string | null
 }
 
+export interface PromotionPerformance {
+  promotion_id: string
+  name: string
+  promotion_type: 'product_discount' | 'flash' | 'bxgy' | 'coupon'
+  sales: number
+  units: string
+  revenue: string
+  cost: string
+  discount: string
+  profit: string
+  average_basket: string
+}
+
+export interface FlashSaleRow {
+  promotion_id: string
+  name: string
+  quantity_limit: string | null
+  quantity_used: string
+  starts_at: string | null
+  ends_at: string | null
+  sold_out_at: string | null
+}
+
+export interface CouponUseRow {
+  label: string
+  uses: number
+  discount: string
+}
+
+export interface CashierDiscountRow {
+  cashier_id: string
+  cashier_name: string | null
+  invoices: number
+  gross: string
+  manual: string
+  automatic: string
+  coupon: string
+}
+
+/** `GET /reports/promotions` (Final_docs/05 §10). */
+export interface PromotionReport {
+  from: string
+  to: string
+  gross: string
+  automatic: string
+  coupon: string
+  manual: string
+  promotions: PromotionPerformance[]
+  flash_sales: FlashSaleRow[]
+  coupon_codes: CouponUseRow[]
+  coupon_customers: CouponUseRow[]
+  coupon_cashiers: CouponUseRow[]
+  cashiers: CashierDiscountRow[]
+}
+
 export interface CashierSalesRow {
   cashier_id: string
   cashier_name: string | null
@@ -320,6 +375,7 @@ export const reportsApi = {
   profit: (range: DateRange) => get<ProfitEstimate>('/api/v1/reports/profit', range),
   vatSummary: (range: DateRange) => get<VatSummary>('/api/v1/reports/vat-summary', range),
   discounts: (range: DateRange) => get<DiscountReport>('/api/v1/reports/discounts', range),
+  promotions: (range: DateRange) => get<PromotionReport>('/api/v1/reports/promotions', range),
   productMovement: (range: DateRange & { class?: MovementClass }) => apiFetch<ProductMovement>(`/api/v1/reports/product-movement${queryString({ ...range })}`),
   aging: (party: 'customers' | 'suppliers', asOf?: string) => apiFetch<AgingReport>(`/api/v1/reports/aging${queryString({ party, as_of: asOf })}`),
   /** Unpaid sales (customers) or unpaid received purchases (suppliers), one row each. */
@@ -347,6 +403,7 @@ export interface ReportResults {
   profit: ProfitEstimate
   vatSummary: VatSummary
   discounts: DiscountReport
+  promotions: PromotionReport
   productMovement: ProductMovement
 }
 

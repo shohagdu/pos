@@ -6,6 +6,7 @@ import { AdminClaimsPage } from '../features/admin/AdminClaimsPage'
 import { AdminDashboardPage } from '../features/admin/AdminDashboardPage'
 import { PromotionFormPage } from '../features/promotions/PromotionFormPage'
 import { PromotionsPage } from '../features/promotions/PromotionsPage'
+import { PromotionReportPage } from '../features/reports/PromotionReportPage'
 import { AdminLayout } from '../features/admin/AdminLayout'
 import { AdminPlansPage } from '../features/admin/AdminPlansPage'
 import { AdminSettingsPage } from '../features/admin/AdminSettingsPage'
@@ -234,6 +235,7 @@ export const routes: RouteObject[] = [
                   { path: '/reports/supplier-dues', element: <DuesReportPage key="suppliers" party="suppliers" /> },
                   { path: '/reports/vat', element: <VatReportPage /> },
                   { path: '/reports/discounts', element: <DiscountReportPage /> },
+                  { path: '/reports/promotions', element: <PromotionReportPage /> },
                   { path: '/reports/product-movement', element: <ProductMovementPage /> },
                   { path: '/accounting/journals', element: <JournalsPage /> },
                   { path: '/accounting/journals/:id', element: <JournalDetailPage /> },

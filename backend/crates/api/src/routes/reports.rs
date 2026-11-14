@@ -30,6 +30,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(dues_report)
         .service(vat_summary)
         .service(discount_report)
+        .service(promotion_report)
         .service(product_movement);
 }
 
@@ -236,6 +237,26 @@ pub async fn discount_report(
     auth.require("reports.sales")?;
     let mut tx = auth.begin(&state).await?;
     let report = analysis::discounts(&mut tx, &range).await?;
+    tx.commit().await?;
+    Ok(HttpResponse::Ok().json(report))
+}
+
+/// Promotions (§10): performance and profit per promotion, flash sales,
+/// coupon usage and manual vs automatic discounts per cashier. Requires
+/// `promotions.view` or `reports.sales`.
+#[utoipa::path(get, path = "/api/v1/reports/promotions", tag = "reports", params(DateRange), security(("bearer" = [])),
+    responses((status = 200, body = pos_reporting::promotions::PromotionReport)))]
+#[get("/reports/promotions")]
+pub async fn promotion_report(
+    state: web::Data<AppState>,
+    auth: TenantAuth,
+    range: web::Query<DateRange>,
+) -> Result<HttpResponse, ApiError> {
+    if !auth.access.can("promotions.view") {
+        auth.require("reports.sales")?;
+    }
+    let mut tx = auth.begin(&state).await?;
+    let report = pos_reporting::promotions::promotions(&mut tx, &range).await?;
     tx.commit().await?;
     Ok(HttpResponse::Ok().json(report))
 }

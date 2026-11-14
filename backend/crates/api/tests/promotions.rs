@@ -236,6 +236,25 @@ async fn promotions_price_sales_and_keep_their_counters(pool: MySqlPool) {
     .await;
     assert_eq!(two.status, StatusCode::CREATED, "{}", two.body);
     assert_eq!(num(&two.body["items"][0]["free_quantity"]), 2.0 - 1.0);
+    // Returning the paid unit while keeping the free one refunds nothing (§8);
+    // returning the other one then refunds the line.
+    let item_id = s(&two.body["items"][0], "id");
+    let ret = |qty: &str| {
+        let body = json!({ "sale_id": s(&two.body, "id"), "reason": "test", "refund_mode": "cash",
+                           "lines": [{ "sale_item_id": item_id, "quantity": qty }] });
+        let req = test::TestRequest::post()
+            .uri("/api/v1/sale-returns")
+            .set_json(body)
+            .insert_header(("authorization", format!("Bearer {}", owner.token)))
+            .insert_header(("idempotency-key", Uuid::now_v7().to_string()))
+            .to_request();
+        call(&srv, req)
+    };
+    let first_back = ret("1").await;
+    assert_eq!(first_back.status, StatusCode::CREATED, "{}", first_back.body);
+    assert_eq!(num(&first_back.body["total"]), 0.0);
+    let second_back = ret("1").await;
+    assert_eq!(num(&second_back.body["total"]), 120.0, "{}", second_back.body);
 
     // --- Coupon: 10% off, minimum 100, one use.
     let coupon = post(
@@ -307,4 +326,12 @@ async fn promotions_price_sales_and_keep_their_counters(pool: MySqlPool) {
     assert_eq!(raised.status, StatusCode::OK, "{}", raised.body);
     let min = sell(&srv, &cashier, json!({ "lines": [{ "variant_id": rice, "quantity": "1" }], "coupon_code": "EID10", "payments": pay("135"), "expected_total": "135" })).await;
     assert_eq!(field_code(&min), "COUPON_MIN_PURCHASE", "{}", min.body);
+
+    // The promotions report sees all of it.
+    let report = get(&srv, &owner, "/api/v1/reports/promotions").await;
+    assert_eq!(report.status, StatusCode::OK, "{}", report.body);
+    let names: Vec<&str> =
+        report.body["promotions"].as_array().into_iter().flatten().filter_map(|p| p["name"].as_str()).collect();
+    assert!(names.contains(&"Rice flash") && names.contains(&"Oil BOGO"), "{}", report.body);
+    assert!(report.body["flash_sales"][0]["sold_out_at"].is_string(), "{}", report.body);
 }

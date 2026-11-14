@@ -55,6 +55,80 @@ async function scanTwiceAndPay() {
   return dialog
 }
 
+describe('POS promotions', () => {
+  const offer = {
+    id: 'promo1',
+    name: 'Rice week',
+    kind: 'product_discount',
+    discount_type: 'percent',
+    discount_value: '10',
+    targets: [{ target_type: 'product', target_id: rice.product_id }],
+    starts_at: null,
+    ends_at: null,
+    active_days: null,
+    active_time_from: null,
+    active_time_to: null,
+  }
+
+  it('prices a live offer on the line and sends the discounted total', async () => {
+    const calls = mockApi(routes({ 'GET /api/v1/pos/promotions': [offer], 'POST /api/v1/sales': () => Response.json(sale, { status: 201 }) }))
+    renderRoute('/pos')
+    const search = await screen.findByRole('combobox', { name: 'Search products' })
+    await userEvent.type(search, '4006381333931{Enter}')
+    await userEvent.type(search, '4006381333931{Enter}')
+    // 2 × 450.50 = 901.00, 10% off = 90.10.
+    await waitFor(() => expect(screen.getByTestId('grand-total')).toHaveTextContent('810.90'))
+    expect(screen.getAllByText('Rice week').length).toBeGreaterThan(0)
+    // No pos.remove_promotion: the offer cannot be taken off.
+    expect(screen.queryByRole('button', { name: 'Remove offer' })).not.toBeInTheDocument()
+    await userEvent.keyboard('{F8}')
+    const dialog = await screen.findByRole('dialog', { name: 'Payment' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm sale' }))
+    await screen.findByRole('dialog', { name: 'Sale INV-0001 completed' })
+    const post = calls.find((c) => c.method === 'POST' && c.path === '/api/v1/sales')
+    expect(post?.body).toMatchObject({ expected_total: '810.90' })
+  })
+
+  it('applies a coupon the server accepts and sends its code with the sale', async () => {
+    const coupon = {
+      ...offer,
+      id: 'promo2',
+      name: 'Ten off',
+      kind: 'coupon',
+      targets: [{ target_type: 'all_products', target_id: null }],
+      coupon_id: 'c1',
+      coupon_code: 'EID10',
+    }
+    const me = {
+      user,
+      memberships: [membership('t1', 'Rahim Store')],
+      tenant: currentTenant('t1', 'Rahim Store', ['dashboard.view', 'pos.sell', 'sales.view', 'pos.apply_coupon']),
+    }
+    const calls = mockApi(
+      routes({
+        'GET /api/v1/auth/me': me,
+        'GET /api/v1/pos/promotions': [],
+        'POST /api/v1/pos/coupons/validate': coupon,
+        'POST /api/v1/sales': () => Response.json(sale, { status: 201 }),
+      }),
+    )
+    renderRoute('/pos')
+    const search = await screen.findByRole('combobox', { name: 'Search products' })
+    await userEvent.type(search, '4006381333931{Enter}')
+    await userEvent.type(await screen.findByLabelText(/^Coupon/), 'eid10')
+    await userEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    // 450.50 − 10% = 405.45.
+    await waitFor(() => expect(screen.getByTestId('grand-total')).toHaveTextContent('405.45'))
+    expect(screen.getByRole('status', { name: '' })).toHaveTextContent(/Applied: saves .*45\.05/)
+    expect(calls.find((c) => c.path === '/api/v1/pos/coupons/validate')?.body).toMatchObject({ code: 'EID10' })
+    await userEvent.keyboard('{F8}')
+    const dialog = await screen.findByRole('dialog', { name: 'Payment' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Confirm sale' }))
+    await screen.findByRole('dialog', { name: 'Sale INV-0001 completed' })
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/sales')?.body).toMatchObject({ coupon_code: 'EID10', expected_total: '405.45' })
+  })
+})
+
 describe('POS', () => {
   it('adds scanned items and posts the sale with an idempotency key and the expected total', async () => {
     const calls = mockApi(routes({ 'POST /api/v1/sales': () => Response.json(sale, { status: 201 }) }))

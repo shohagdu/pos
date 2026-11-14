@@ -68,6 +68,49 @@ jobs:
         uses: taiki-e/install-action@cargo-audit
       - run: cargo audit
 
+  mariadb:
+    # Production (cPanel) runs MariaDB 10.5, not MySQL 8: every migration must
+    # apply there too, from scratch, before a release (migrations are embedded
+    # in the binary, so a MySQL-only statement only shows up at start-up).
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start MariaDB 10.5
+        run: |
+          docker run -d --name mariadb -p 3306:3306 \
+            -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=pos_ci \
+            --tmpfs /var/lib/mysql \
+            mariadb:10.5 \
+            --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci \
+            --log-bin-trust-function-creators=1 --transaction-isolation=READ-COMMITTED
+          for i in $(seq 1 60); do
+            docker exec mariadb mysqladmin ping -h127.0.0.1 -uroot -proot --silent && break
+            sleep 2
+          done
+          docker exec mariadb mysql -uroot -proot -e "SELECT VERSION()"
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: backend
+
+      - name: Migrate a fresh MariaDB database, run again, and run schema guards
+        env:
+          DATABASE_URL: mysql://root:root@127.0.0.1:3306/pos_ci
+          APP_ENV: test
+          JWT_SECRET: ci-only-secret-not-used-for-real-tokens-0000
+        run: |
+          cargo run --locked -q -p pos-api -- migrate
+          # A second run must find nothing to do.
+          cargo run --locked -q -p pos-api -- migrate
+          cargo run --locked -q -p pos-api -- check-schema
+
   frontend:
     runs-on: ubuntu-24.04
     defaults:

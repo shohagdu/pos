@@ -339,10 +339,10 @@ function serveStatic(req, res) {
 const HINTS = [
   [/Access denied for user/, 'Wrong database user/password, or the user is not added to the database. cPanel > MySQL Databases > "Add User To Database" (ALL PRIVILEGES), then check DATABASE_URL in pos-app/.env.'],
   [/Unknown database/, 'The database name in DATABASE_URL does not exist. Use the full name with your cPanel prefix (e.g. jsaebike_pos).'],
-  [/JSON_TABLE|You have an error in your SQL syntax/i, 'The database server is too old. This app needs MySQL 8.0+ or MariaDB 10.6+; check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for a newer one.'],
+  [/JSON_TABLE|You have an error in your SQL syntax/i, 'The database server is too old. This app needs MySQL 8.0+ or MariaDB 10.5+; check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for a newer one.'],
   [/SUPER privilege|log_bin_trust_function_creators/, 'The host blocks database triggers. Ask the hosting company to set log_bin_trust_function_creators=1 for your database.'],
   [/failed to lookup address|Name does not resolve|Name or service not known/, 'The database host in DATABASE_URL is unreadable, usually because the password contains @ # $ : / ? unencoded. Use a password of letters and digits only, or encode them (@ -> %40, # -> %23, $ -> %24, : -> %3A, / -> %2F, ? -> %3F).'],
-  [/Unknown system variable 'transaction_isolation'/, 'The database server is too old. This app needs MySQL 8.0+ or MariaDB 10.6+; check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for a newer one.'],
+  [/Unknown system variable 'transaction_isolation'/, 'The database server is too old. This app needs MySQL 8.0+ or MariaDB 10.5+; check the version in cPanel > General Information (or phpMyAdmin) and ask the hosting company for a newer one.'],
   [/Failed to create new Arbiter|Resource temporarily unavailable/, 'The API needs more threads than the host allows (CloudLinux process limit). Set HTTP_WORKERS=2 in pos-app/.env (or 1), then Restart the app.'],
   [/EAGAIN/, 'The host refused to start another process (CloudLinux process limit). Stop and Start the app once; if it repeats, ask the hosting company to raise the process (NPROC) limit.'],
   [/Connection refused|Can't connect|Connection timed out/i, 'Cannot reach MySQL. Keep "localhost" as the host in DATABASE_URL.'],

@@ -46,7 +46,7 @@ cPanel → **MySQL® Databases**
 3. **Add User To Database**: ইউজার `jsaebike_posapp`, ডাটাবেস `jsaebike_pos` → **Add**।
    পরের পেজে **ALL PRIVILEGES** টিক দিয়ে → **Make Changes**।
 
-> শর্ত: সার্ভারে **MySQL 8** লাগবে (MariaDB চলবে না)।
+> শর্ত: সার্ভারে **MySQL 8.0+ বা MariaDB 10.5+** লাগবে।
 > cPanel হোম পেজের ডান পাশে "General Information"-এ ভার্সন দেখা যায়।
 
 ---
@@ -209,7 +209,7 @@ cPanel-এর নমুনা অ্যাপ চলছে। চেক কর�
 | `Name does not resolve` / `failed to lookup address` | পাসওয়ার্ডে `@ # $` ইত্যাদি চিহ্ন আছে — শুধু অক্ষর ও সংখ্যা দিয়ে নতুন পাসওয়ার্ড দিন (ধাপ ৫ক) |
 | `Unknown database` | ডাটাবেসের পুরো নাম দিন, যেমন `jsaebike_pos` |
 | `Permission denied` | ধাপ ৬ (755) আবার করুন |
-| `UUID_TO_BIN` বা `MariaDB` | সার্ভারে MySQL 8 নেই — হোস্টিং কোম্পানিকে MySQL 8 দিতে বলুন |
+| `You have an error in your SQL syntax` | ডাটাবেস খুব পুরোনো — MySQL 8.0+ বা MariaDB 10.5+ লাগবে; হোস্টিং কোম্পানিকে বলুন |
 | `SUPER privilege` | হোস্টিং কোম্পানিকে বলুন: `log_bin_trust_function_creators=1` সেট করে দিতে |
 | `missing required environment variable` | `.env`-এ কোনো লাইন নেই বা ভুল — ধাপ ৫ আবার দেখুন |
 | `Not configured yet` | `.env`-এ DATABASE_URL এখনো বদলানো হয়নি (ধাপ ৫ক) |

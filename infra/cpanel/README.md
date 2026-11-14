@@ -9,7 +9,13 @@ to pos-api on `127.0.0.1:API_INTERNAL_PORT`. Logs go to `logs/`.
 
 ## Host requirements (check first)
 
-- **MySQL 8.0+ or MariaDB 10.6+** (creating a business uses `JSON_TABLE`).
+- **MySQL 8.0+ or MariaDB 10.5+.** Every migration must run on both: CI migrates a fresh
+  MariaDB 10.5 database (job `mariadb` in `.github/workflows/ci.yml`) on every push and pull
+  request. Before building a release without CI, run the same check by hand:
+  `docker run -d --name mdb -p 3307:3306 -e MARIADB_ROOT_PASSWORD=root -e MARIADB_DATABASE=pos_ci mariadb:10.5 --log-bin-trust-function-creators=1`,
+  then `DATABASE_URL=mysql://root:root@127.0.0.1:3307/pos_ci APP_ENV=test JWT_SECRET=x cargo run -p pos-api -- migrate`
+  (twice) and `-- check-schema`. Never edit a migration production has applied: if one has to
+  change, add its old checksum to `RELEASED_CHECKSUMS` in `backend/crates/db/src/migrations.rs`.
   cPanel > General Information (right column) or phpMyAdmin's home page shows
   the server version. Start with an empty database: the app creates the tables
   itself, so do not import a dump from another server.

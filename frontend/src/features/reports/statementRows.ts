@@ -26,7 +26,14 @@ export function useAccountDepths(tenantId: string) {
 export function sectionRows(key: string, heading: string, section: ApiSection, totalLabel: string): StatementRow[] {
   return [
     { key: `${key}-h`, kind: 'heading', label: heading },
-    ...section.lines.map((l) => ({ key: `${key}-${l.account_id}`, kind: 'line' as const, label: l.name, code: l.code, accountId: l.account_id, amount: l.amount })),
+    ...section.lines.map((l) => ({
+      key: `${key}-${l.account_id}`,
+      kind: 'line' as const,
+      label: l.name,
+      code: l.code,
+      accountId: l.account_id,
+      amount: l.amount,
+    })),
     { key: `${key}-t`, kind: 'total', label: totalLabel, amount: section.total },
   ]
 }

@@ -6,8 +6,7 @@ import { dec, tryParse } from '../../lib/decimal'
 import { optional } from '../../lib/form'
 
 export const LINK = 'font-medium text-brand-700 hover:underline'
-export const BUTTON_LINK =
-  'inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700'
+export const BUTTON_LINK = 'inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700'
 export const SECONDARY_LINK =
   'inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold text-ink hover:bg-canvas'
 

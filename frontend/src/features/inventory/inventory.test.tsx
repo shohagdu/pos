@@ -24,16 +24,52 @@ function signedIn(permissions = perms) {
 }
 
 const stockRow = {
-  variant_id: 'v1', product_id: 'p1', name: 'Miniket Rice 5kg', name_bn: 'মিনিকেট চাল', sku: 'P000001', unit_short_name: 'pcs',
-  allow_fraction: false, category_name: 'Rice', brand_name: null, quantity: '3.000', avg_cost: '400.0000', value: '1200.0000',
-  selling_price: '450.0000', reorder_level: '5.000', is_low: true, last_movement_at: null,
+  variant_id: 'v1',
+  product_id: 'p1',
+  name: 'Miniket Rice 5kg',
+  name_bn: 'মিনিকেট চাল',
+  sku: 'P000001',
+  unit_short_name: 'pcs',
+  allow_fraction: false,
+  category_name: 'Rice',
+  brand_name: null,
+  quantity: '3.000',
+  avg_cost: '400.0000',
+  value: '1200.0000',
+  selling_price: '450.0000',
+  reorder_level: '5.000',
+  is_low: true,
+  last_movement_at: null,
 }
 
 const product = (over: object) => ({
-  id: 'p1', variant_id: 'v1', product_type: 'standard', name: 'Miniket Rice 5kg', name_bn: null, description: null, sku: 'P000001',
-  barcodes: [], category_id: null, category_name: null, brand_id: null, brand_name: null, unit_id: 'u-pcs', unit_short_name: 'pcs',
-  allow_fraction: false, tax_rate_id: null, tax_rate_pct: null, track_inventory: true, purchase_price: '400.0000', selling_price: '450.0000',
-  wholesale_price: null, min_selling_price: null, reorder_level: null, status: 'active', version: 1, created_at: '', updated_at: '',
+  id: 'p1',
+  variant_id: 'v1',
+  product_type: 'standard',
+  name: 'Miniket Rice 5kg',
+  name_bn: null,
+  description: null,
+  sku: 'P000001',
+  barcodes: [],
+  category_id: null,
+  category_name: null,
+  brand_id: null,
+  brand_name: null,
+  unit_id: 'u-pcs',
+  unit_short_name: 'pcs',
+  allow_fraction: false,
+  tax_rate_id: null,
+  tax_rate_pct: null,
+  track_inventory: true,
+  purchase_price: '400.0000',
+  selling_price: '450.0000',
+  wholesale_price: null,
+  min_selling_price: null,
+  reorder_level: null,
+  status: 'active',
+  version: 1,
+  created_at: '',
+  updated_at: '',
   ...over,
 })
 
@@ -54,13 +90,38 @@ describe('inventory', () => {
 
   it('posts opening stock with positive lines, cost and an Idempotency-Key', async () => {
     const created = {
-      id: 'adj1', adjustment_no: 'ADJ-0001', business_date: '2026-10-18', reason: 'opening', note: null, status: 'posted', location_id: 'loc1',
-      location_name: 'Shop floor', total_value: '4000.00', item_count: 1, created_by_name: 'Rahim Uddin', created_at: '2026-10-18T04:00:00Z',
-      items: [{ id: 'i1', variant_id: 'v1', product_name: 'Miniket Rice 5kg', sku: 'P000001', unit_short_name: 'pcs', quantity: '10.000', unit_cost: '400.0000', note: null, batches: [] }],
+      id: 'adj1',
+      adjustment_no: 'ADJ-0001',
+      business_date: '2026-10-18',
+      reason: 'opening',
+      note: null,
+      status: 'posted',
+      location_id: 'loc1',
+      location_name: 'Shop floor',
+      total_value: '4000.00',
+      item_count: 1,
+      created_by_name: 'Rahim Uddin',
+      created_at: '2026-10-18T04:00:00Z',
+      items: [
+        {
+          id: 'i1',
+          variant_id: 'v1',
+          product_name: 'Miniket Rice 5kg',
+          sku: 'P000001',
+          unit_short_name: 'pcs',
+          quantity: '10.000',
+          unit_cost: '400.0000',
+          note: null,
+          batches: [],
+        },
+      ],
     }
     const calls = mockApi({
       ...signedIn(),
-      'GET /api/v1/products': { data: [product({}), product({ id: 'p2', variant_id: 'v2', name: 'Delivery charge', track_inventory: false })], next_cursor: null },
+      'GET /api/v1/products': {
+        data: [product({}), product({ id: 'p2', variant_id: 'v2', name: 'Delivery charge', track_inventory: false })],
+        next_cursor: null,
+      },
       'POST /api/v1/stock-adjustments': () => Response.json(created, { status: 201 }),
       'GET /api/v1/stock-adjustments/adj1': created,
     })
@@ -90,10 +151,29 @@ describe('inventory', () => {
   })
 
   it('loads products without stock; blank rows are skipped and the entry survives a reload', async () => {
-    const out = (id: string, name: string, cost: string | null) => ({ ...stockRow, variant_id: id, name, sku: id, quantity: '0.000', is_low: false, purchase_price: cost })
+    const out = (id: string, name: string, cost: string | null) => ({
+      ...stockRow,
+      variant_id: id,
+      name,
+      sku: id,
+      quantity: '0.000',
+      is_low: false,
+      purchase_price: cost,
+    })
     const created = {
-      id: 'adj2', adjustment_no: 'ADJ-0002', business_date: '2026-11-06', reason: 'opening', note: null, status: 'posted', location_id: 'loc1',
-      location_name: 'Shop floor', total_value: '0', item_count: 1, created_by_name: 'Rahim Uddin', created_at: '2026-11-06T04:00:00Z', items: [],
+      id: 'adj2',
+      adjustment_no: 'ADJ-0002',
+      business_date: '2026-11-06',
+      reason: 'opening',
+      note: null,
+      status: 'posted',
+      location_id: 'loc1',
+      location_name: 'Shop floor',
+      total_value: '0',
+      item_count: 1,
+      created_by_name: 'Rahim Uddin',
+      created_at: '2026-11-06T04:00:00Z',
+      items: [],
     }
     const calls = mockApi({
       ...signedIn(),

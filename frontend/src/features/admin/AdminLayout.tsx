@@ -82,9 +82,7 @@ function ConsoleShell({ name, role }: { name: string; role: string }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex flex-wrap items-center justify-end gap-3 border-b border-ink/20 bg-ink/95 px-4 py-3 text-surface sm:px-8 print:hidden">
           <span className="text-sm">{name}</span>
-          <span className="rounded bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">
-            {t(`admin.roles.${role}`, { defaultValue: role })}
-          </span>
+          <span className="rounded bg-brand-600 px-2 py-0.5 text-xs font-semibold text-white">{t(`admin.roles.${role}`, { defaultValue: role })}</span>
           <Link to="/" className="text-sm font-medium text-brand-100 hover:underline">
             {t('admin.backToApp')}
           </Link>

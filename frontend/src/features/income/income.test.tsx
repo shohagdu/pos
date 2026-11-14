@@ -10,9 +10,22 @@ afterEach(() => vi.restoreAllMocks())
 const perms = ['dashboard.view', 'income.create', 'payments.void']
 
 const interest = {
-  id: 'i1', income_no: 'INC-0001', business_date: '2026-10-05', category_id: 'cat-int', category_name: 'Bank interest', amount: '250.00',
-  account_id: 'a-cash', account_name: 'Cash drawer', payment_id: 'pay1', source: 'City Bank', reference: null, note: null,
-  status: 'posted', void_reason: null, created_by_name: 'Rahim Uddin', created_at: '2026-10-05T05:00:00Z',
+  id: 'i1',
+  income_no: 'INC-0001',
+  business_date: '2026-10-05',
+  category_id: 'cat-int',
+  category_name: 'Bank interest',
+  amount: '250.00',
+  account_id: 'a-cash',
+  account_name: 'Cash drawer',
+  payment_id: 'pay1',
+  source: 'City Bank',
+  reference: null,
+  note: null,
+  status: 'posted',
+  void_reason: null,
+  created_by_name: 'Rahim Uddin',
+  created_at: '2026-10-05T05:00:00Z',
 }
 
 function signedIn() {
@@ -25,7 +38,20 @@ function signedIn() {
       { id: 'cat-scrap', name: 'Scrap sales', is_system: false, status: 'active', income_count: 0 },
     ],
     'GET /api/v1/payment-accounts': [
-      { id: 'a-cash', account_type: 'cash', name: 'Cash drawer', account_number: null, bank_name: null, opening_balance: '0', current_balance: '0', ledger_account_id: null, is_default: true, status: 'active', version: 1, created_at: '' },
+      {
+        id: 'a-cash',
+        account_type: 'cash',
+        name: 'Cash drawer',
+        account_number: null,
+        bank_name: null,
+        opening_balance: '0',
+        current_balance: '0',
+        ledger_account_id: null,
+        is_default: true,
+        status: 'active',
+        version: 1,
+        created_at: '',
+      },
     ],
   }
 }

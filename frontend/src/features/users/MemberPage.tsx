@@ -160,8 +160,7 @@ function MemberSessions({ member, tenantId }: { member: Member; tenantId: string
     mutationFn: () => usersApi.revokeMemberSessions(member.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: usersKeys.memberSessions(tenantId, member.id) }),
   })
-  const when = (iso: string) =>
-    new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+  const when = (iso: string) => new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 
   return (
     <Card className="flex flex-col gap-3">

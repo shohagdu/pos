@@ -112,7 +112,11 @@ function discountOf(type: DiscountType, value: string): Discount | null | 'inval
 }
 
 /** Prices the cart with the shared engine (same as the server, POS-R01). */
-export function priceCart(cart: Cart, ctx: Pick<PosContext, 'prices_include_tax' | 'cash_rounding' | 'cashier_max_discount_pct'>, canDiscountOverLimit: boolean): CartTotals {
+export function priceCart(
+  cart: Cart,
+  ctx: Pick<PosContext, 'prices_include_tax' | 'cash_rounding' | 'cashier_max_discount_pct'>,
+  canDiscountOverLimit: boolean,
+): CartTotals {
   const lineProblems: Record<string, LineProblem> = {}
   const inputs = cart.lines.map((l) => {
     const qty = tryParse(l.quantity)
@@ -131,8 +135,7 @@ export function priceCart(cart: Cart, ctx: Pick<PosContext, 'prices_include_tax'
     }
   })
   const invoice = discountOf(cart.invoiceDiscountType, cart.invoiceDiscountValue)
-  let invoiceProblem: LineProblem | null =
-    invoice === 'invalid' || (invoice?.type === 'percent' && invoice.value > dec(100)) ? 'discount' : null
+  let invoiceProblem: LineProblem | null = invoice === 'invalid' || (invoice?.type === 'percent' && invoice.value > dec(100)) ? 'discount' : null
   if (Object.keys(lineProblems).length > 0 || invoiceProblem) return { totals: null, lineProblems, invoiceProblem }
 
   let totals: Totals
@@ -206,16 +209,18 @@ export function deserializeCart(raw: Record<string, unknown>): Cart {
   const str = (v: unknown, fallback = '') => (typeof v === 'string' ? v : fallback)
   const type = (v: unknown): DiscountType => (v === 'percent' ? 'percent' : 'amount')
   return {
-    lines: lines.filter((l): l is Record<string, unknown> => isObject(l) && isObject(l.item)).map((l) => {
-      const item = l.item as unknown as PosItem
-      return {
-        item,
-        quantity: str(l.quantity, '1'),
-        unitPrice: str(l.unitPrice, item.selling_price),
-        discountType: type(l.discountType),
-        discountValue: str(l.discountValue),
-      }
-    }),
+    lines: lines
+      .filter((l): l is Record<string, unknown> => isObject(l) && isObject(l.item))
+      .map((l) => {
+        const item = l.item as unknown as PosItem
+        return {
+          item,
+          quantity: str(l.quantity, '1'),
+          unitPrice: str(l.unitPrice, item.selling_price),
+          discountType: type(l.discountType),
+          discountValue: str(l.discountValue),
+        }
+      }),
     customer: isObject(raw.customer) ? (raw.customer as unknown as CartCustomer) : null,
     invoiceDiscountType: type(raw.invoiceDiscountType),
     invoiceDiscountValue: str(raw.invoiceDiscountValue),

@@ -8,8 +8,7 @@ export function useFields<T extends Values>(initial: T) {
   const bind = (name: keyof T & string) => ({
     name,
     value: String(values[name] ?? ''),
-    onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setValues((v) => ({ ...v, [name]: e.target.value })),
+    onChange: (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setValues((v) => ({ ...v, [name]: e.target.value })),
   })
   const bindCheck = (name: keyof T & string) => ({
     name,

@@ -75,10 +75,7 @@ export function NotificationsPage() {
                   onClick={() => open.mutate(n)}
                   className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand-600"
                 >
-                  <span
-                    aria-hidden
-                    className={`mt-1.5 size-2.5 shrink-0 rounded-full ${n.read_at ? 'bg-transparent' : 'bg-brand-600'}`}
-                  />
+                  <span aria-hidden className={`mt-1.5 size-2.5 shrink-0 rounded-full ${n.read_at ? 'bg-transparent' : 'bg-brand-600'}`} />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span className={`text-sm ${n.read_at ? '' : 'font-semibold'}`}>
                       {!n.read_at && <span className="sr-only">{t('notifications.unread')}: </span>}

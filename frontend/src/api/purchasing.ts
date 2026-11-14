@@ -232,16 +232,13 @@ export const purchasingApi = {
     apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}`, { method: 'PUT', body: input, ifMatch: version }),
   postPurchase: (id: string, payment: PayInput | undefined, idempotencyKey: string) =>
     apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/post`, { method: 'POST', body: payment ? { payment } : {}, idempotencyKey }),
-  cancelPurchase: (id: string, reason: string) =>
-    apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/cancel`, { method: 'POST', body: { reason } }),
+  cancelPurchase: (id: string, reason: string) => apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/cancel`, { method: 'POST', body: { reason } }),
   orderPurchase: (id: string) => apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/order`, { method: 'POST' }),
   approvePurchase: (id: string) => apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/approve`, { method: 'POST' }),
   receivePurchase: (id: string, input: GoodsReceiptInput, idempotencyKey: string) =>
     apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/receive`, { method: 'POST', body: input, idempotencyKey }),
-  closePurchase: (id: string, reason: string) =>
-    apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/close`, { method: 'POST', body: { reason } }),
-  lastPrices: (variantIds: string[]) =>
-    apiFetch<LastPrice[]>(`/api/v1/purchases/last-prices${queryString({ variant_ids: variantIds.join(',') })}`),
+  closePurchase: (id: string, reason: string) => apiFetch<PurchaseDetail>(`/api/v1/purchases/${id}/close`, { method: 'POST', body: { reason } }),
+  lastPrices: (variantIds: string[]) => apiFetch<LastPrice[]>(`/api/v1/purchases/last-prices${queryString({ variant_ids: variantIds.join(',') })}`),
   paySupplier: (input: SupplierPaymentInput, idempotencyKey: string) =>
     apiFetch<PaymentDetail>('/api/v1/supplier-payments', { method: 'POST', body: input, idempotencyKey }),
   createReturn: (input: PurchaseReturnInput, idempotencyKey: string) =>

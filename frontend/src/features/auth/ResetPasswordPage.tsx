@@ -40,9 +40,7 @@ export function ResetPasswordPage() {
         </Alert>
       )}
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        {!state.identifier && (
-          <TextField label={t('auth.identifier')} autoComplete="username" required error={errors.identifier} {...bind('identifier')} />
-        )}
+        {!state.identifier && <TextField label={t('auth.identifier')} autoComplete="username" required error={errors.identifier} {...bind('identifier')} />}
         <TextField label={t('auth.code')} inputMode="numeric" autoComplete="one-time-code" maxLength={6} required error={errors.code} {...bind('code')} />
         <TextField
           label={t('auth.newPassword')}

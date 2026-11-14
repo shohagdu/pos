@@ -85,7 +85,11 @@ export function MovementsPage() {
         </div>
       ),
     },
-    { key: 'type', header: t('inventory.movementType'), render: (m) => <Badge tone={TYPE_TONE[m.movement_type] ?? 'neutral'}>{typeLabel(m.movement_type)}</Badge> },
+    {
+      key: 'type',
+      header: t('inventory.movementType'),
+      render: (m) => <Badge tone={TYPE_TONE[m.movement_type] ?? 'neutral'}>{typeLabel(m.movement_type)}</Badge>,
+    },
     { key: 'in', header: t('inventory.in'), align: 'right', render: (m) => <span className="text-brand-700">{qtyIn(m)}</span> },
     { key: 'out', header: t('inventory.outQty'), align: 'right', render: (m) => <span className="text-danger">{qtyOut(m)}</span> },
     {

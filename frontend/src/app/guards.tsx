@@ -30,7 +30,12 @@ function SessionError() {
 export function RequireSession() {
   const { status, me } = useSession()
   const location = useLocation()
-  if (status === 'loading') return <FullPage><Spinner /></FullPage>
+  if (status === 'loading')
+    return (
+      <FullPage>
+        <Spinner />
+      </FullPage>
+    )
   if (status === 'error') return <SessionError />
   if (status === 'anonymous' || !me) return <Navigate to="/login" replace state={{ from: location.pathname }} />
   if (!me.user.phone_verified) return <Navigate to="/verify" replace />
@@ -49,7 +54,12 @@ export function RequireTenant() {
 export function GuestOnly() {
   const { status, me } = useSession()
   const location = useLocation()
-  if (status === 'loading') return <FullPage><Spinner /></FullPage>
+  if (status === 'loading')
+    return (
+      <FullPage>
+        <Spinner />
+      </FullPage>
+    )
   if (status === 'authenticated' && me) {
     const from = (location.state as { from?: string } | null)?.from
     // Invitation links work before the user has any business.

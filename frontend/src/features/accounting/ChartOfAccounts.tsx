@@ -80,7 +80,11 @@ export function ChartOfAccounts({ tenantId }: { tenantId: string }) {
             ),
           },
           { key: 'type', header: t('accounting.chart.type'), render: (a) => t(`accounting.types.${a.account_type}`) },
-          { key: 'side', header: t('accounting.chart.normalSide'), render: (a) => (a.normal_side === 'debit' ? t('accounting.debit') : t('accounting.credit')) },
+          {
+            key: 'side',
+            header: t('accounting.chart.normalSide'),
+            render: (a) => (a.normal_side === 'debit' ? t('accounting.debit') : t('accounting.credit')),
+          },
           {
             key: 'flags',
             header: t('common.status'),
@@ -99,17 +103,31 @@ export function ChartOfAccounts({ tenantId }: { tenantId: string }) {
             render: (a) => (
               <span className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-sm whitespace-nowrap print:hidden">
                 {a.is_postable && (
-                  <Link to={`/reports/general-ledger?account_id=${a.id}`} className="font-semibold text-brand-700 hover:underline" aria-label={t('accounting.chart.ledgerOf', { name: a.name })}>
+                  <Link
+                    to={`/reports/general-ledger?account_id=${a.id}`}
+                    className="font-semibold text-brand-700 hover:underline"
+                    aria-label={t('accounting.chart.ledgerOf', { name: a.name })}
+                  >
                     {t('accounting.chart.ledger')}
                   </Link>
                 )}
                 {canManage && !a.is_postable && a.status === 'active' && (
-                  <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => setEditing({ parentId: a.id })} aria-label={t('accounting.chart.addSubTo', { name: a.name })}>
+                  <button
+                    type="button"
+                    className="font-semibold text-brand-700 hover:underline"
+                    onClick={() => setEditing({ parentId: a.id })}
+                    aria-label={t('accounting.chart.addSubTo', { name: a.name })}
+                  >
                     + {t('accounting.chart.addSub')}
                   </button>
                 )}
                 {canManage && (
-                  <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => setEditing({ account: a })} aria-label={t('accounting.chart.editOf', { name: a.name })}>
+                  <button
+                    type="button"
+                    className="font-semibold text-brand-700 hover:underline"
+                    onClick={() => setEditing({ account: a })}
+                    aria-label={t('accounting.chart.editOf', { name: a.name })}
+                  >
                     {t('common.edit')}
                   </button>
                 )}

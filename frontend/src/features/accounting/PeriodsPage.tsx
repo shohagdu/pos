@@ -95,7 +95,11 @@ export function PeriodsPage() {
               rowKey={(p) => p.id}
               empty={t('accounting.periods.none')}
               columns={[
-                { key: 'month', header: t('accounting.periods.month'), render: (p) => <span className="font-medium">{formatMonth(p.start_date.slice(0, 7))}</span> },
+                {
+                  key: 'month',
+                  header: t('accounting.periods.month'),
+                  render: (p) => <span className="font-medium">{formatMonth(p.start_date.slice(0, 7))}</span>,
+                },
                 { key: 'start', header: t('accounting.periods.start'), render: (p) => formatDate(p.start_date, lang) },
                 { key: 'end', header: t('accounting.periods.end'), render: (p) => formatDate(p.end_date, lang) },
                 {

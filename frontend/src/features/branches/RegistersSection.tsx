@@ -56,7 +56,7 @@ export function RegistersSection({ tenantId }: { tenantId: string }) {
             className="min-h-9"
             disabled={toggle.isPending || (r.status === 'active' && r.open_shift_id !== null)}
             onClick={() => toggle.mutate(r)}
-            aria-label={(r.status === 'active' ? t('branches.deactivateNamed', { name: r.name }) : t('branches.activateNamed', { name: r.name }))}
+            aria-label={r.status === 'active' ? t('branches.deactivateNamed', { name: r.name }) : t('branches.activateNamed', { name: r.name })}
           >
             {r.status === 'active' ? t('branches.deactivate') : t('branches.activate')}
           </Button>
@@ -68,9 +68,7 @@ export function RegistersSection({ tenantId }: { tenantId: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-ink-muted">
-          {branch ? t('branches.registersIntroBranch', { branch: branch.name }) : t('branches.registersIntro')}
-        </p>
+        <p className="text-sm text-ink-muted">{branch ? t('branches.registersIntroBranch', { branch: branch.name }) : t('branches.registersIntro')}</p>
         <Button onClick={() => setEditing('new')}>{t('branches.addRegister')}</Button>
       </div>
       {toggle.isError && <Alert tone="danger">{problemMessage(toggle.error, t)}</Alert>}
@@ -145,10 +143,7 @@ function RegisterDialog({
           value={accountId}
           onChange={(e) => setAccountId(e.target.value)}
           error={errors.cash_account_id}
-          options={[
-            ...(register ? [] : [{ value: '', label: t('branches.defaultCash') }]),
-            ...cash.map((a) => ({ value: a.id, label: a.name })),
-          ]}
+          options={[...(register ? [] : [{ value: '', label: t('branches.defaultCash') }]), ...cash.map((a) => ({ value: a.id, label: a.name }))]}
         />
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>

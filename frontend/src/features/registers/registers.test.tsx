@@ -10,7 +10,15 @@ afterEach(() => vi.restoreAllMocks())
 const perms = ['dashboard.view', 'pos.sell']
 
 const branch = (id: string, name: string, isDefault: boolean) => ({
-  id, code: id.toUpperCase(), name, address: null, phone: null, receipt_header: null, is_default: isDefault, status: 'active', version: 1,
+  id,
+  code: id.toUpperCase(),
+  name,
+  address: null,
+  phone: null,
+  receipt_header: null,
+  is_default: isDefault,
+  status: 'active',
+  version: 1,
 })
 
 function signedIn(extra: object = {}) {
@@ -19,7 +27,17 @@ function signedIn(extra: object = {}) {
     'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant: currentTenant('t1', 'Rahim Store', perms) },
     'GET /api/v1/branches': [branch('b1', 'Mirpur', true)],
     'GET /api/v1/registers': [
-      { id: 'r1', branch_id: 'b1', branch_name: 'Mirpur', name: 'Counter 1', cash_account_id: 'a1', cash_account_name: 'Cash', status: 'active', open_shift_id: null, open_shift_user: null },
+      {
+        id: 'r1',
+        branch_id: 'b1',
+        branch_name: 'Mirpur',
+        name: 'Counter 1',
+        cash_account_id: 'a1',
+        cash_account_name: 'Cash',
+        status: 'active',
+        open_shift_id: null,
+        open_shift_user: null,
+      },
     ],
     'GET /api/v1/shifts': [],
     'GET /api/v1/shifts/current': () => Response.json(null),
@@ -28,15 +46,40 @@ function signedIn(extra: object = {}) {
 }
 
 const shift = (over: object = {}) => ({
-  id: 's1', shift_no: 3, register_id: 'r1', register_name: 'Counter 1', branch_id: 'b1', status: 'open', opened_by: user.id,
-  opened_by_name: 'Rahim Uddin', opened_at: '2026-10-19T03:00:00Z', opening_cash: '500.00', closed_at: null, closed_by_name: null,
-  expected_cash: null, counted_cash: null, difference: null, note: null, ...over,
+  id: 's1',
+  shift_no: 3,
+  register_id: 'r1',
+  register_name: 'Counter 1',
+  branch_id: 'b1',
+  status: 'open',
+  opened_by: user.id,
+  opened_by_name: 'Rahim Uddin',
+  opened_at: '2026-10-19T03:00:00Z',
+  opening_cash: '500.00',
+  closed_at: null,
+  closed_by_name: null,
+  expected_cash: null,
+  counted_cash: null,
+  difference: null,
+  note: null,
+  ...over,
 })
 
 const report = (kind: 'X' | 'Z', over: object = {}) => ({
-  kind, shift: shift(over), sales_count: 4, sales_total: '1200.00', discount_total: '20.00', tax_total: '0.00', due_total: '0.00',
-  cancelled_count: 0, returns_count: 0, returns_total: '0.00', payments: [{ method_name: 'Cash', count: 4, money_in: '1200.00', money_out: '0.00' }],
-  cash_in: '1200.00', cash_out: '0.00', expected_cash: '1700.00',
+  kind,
+  shift: shift(over),
+  sales_count: 4,
+  sales_total: '1200.00',
+  discount_total: '20.00',
+  tax_total: '0.00',
+  due_total: '0.00',
+  cancelled_count: 0,
+  returns_count: 0,
+  returns_total: '0.00',
+  payments: [{ method_name: 'Cash', count: 4, money_in: '1200.00', money_out: '0.00' }],
+  cash_in: '1200.00',
+  cash_out: '0.00',
+  expected_cash: '1700.00',
 })
 
 describe('shifts', () => {
@@ -67,7 +110,13 @@ describe('shifts', () => {
     const calls = mockApi(
       signedIn({
         'GET /api/v1/shifts/s1/report': report('X'),
-        'POST /api/v1/shifts/s1/close': report('Z', { status: 'closed', closed_at: '2026-10-19T12:00:00Z', expected_cash: '1700.00', counted_cash: '1680.00', difference: '-20.00' }),
+        'POST /api/v1/shifts/s1/close': report('Z', {
+          status: 'closed',
+          closed_at: '2026-10-19T12:00:00Z',
+          expected_cash: '1700.00',
+          counted_cash: '1680.00',
+          difference: '-20.00',
+        }),
       }),
     )
     renderRoute('/shifts/s1')
@@ -91,9 +140,7 @@ describe('branch switcher', () => {
     const before = calls.length
     expect(calls.some((c) => c.headers.get('X-Branch-Id'))).toBe(false)
     await userEvent.selectOptions(picker, 'b2')
-    await waitFor(() =>
-      expect(calls.slice(before).some((c) => c.path === '/api/v1/shifts/current' && c.headers.get('X-Branch-Id') === 'b2')).toBe(true),
-    )
+    await waitFor(() => expect(calls.slice(before).some((c) => c.path === '/api/v1/shifts/current' && c.headers.get('X-Branch-Id') === 'b2')).toBe(true))
     // Session calls never carry the branch.
     expect(calls.filter((c) => c.path.startsWith('/api/v1/auth/')).every((c) => !c.headers.get('X-Branch-Id'))).toBe(true)
     expect(screen.getByText(/Shifts of Dhanmondi/)).toBeInTheDocument()

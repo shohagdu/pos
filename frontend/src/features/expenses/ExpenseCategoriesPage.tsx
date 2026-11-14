@@ -73,7 +73,12 @@ export function ExpenseCategoriesPage() {
         <QueryStatus query={categories} />
       )}
       {editing && (
-        <CategoryDialog key={editing === 'new' ? 'new' : editing.id} category={editing === 'new' ? undefined : editing} tenantId={tenantId} onClose={() => setEditing(null)} />
+        <CategoryDialog
+          key={editing === 'new' ? 'new' : editing.id}
+          category={editing === 'new' ? undefined : editing}
+          tenantId={tenantId}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   )
@@ -101,9 +106,23 @@ function CategoryDialog({ category, tenantId, onClose }: { category?: ExpenseCat
     <Dialog open onClose={onClose} title={category ? t('expenses.editCategory') : t('expenses.addCategory')}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
-        <TextField label={t('expenses.categoryName')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} autoFocus data-autofocus error={errors.name} />
+        <TextField
+          label={t('expenses.categoryName')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={100}
+          autoFocus
+          data-autofocus
+          error={errors.name}
+        />
         {category && (
-          <Checkbox label={t('expenses.categoryActive')} hint={t('expenses.categoryActiveHint')} checked={active} onChange={(e) => setActive(e.target.checked)} />
+          <Checkbox
+            label={t('expenses.categoryActive')}
+            hint={t('expenses.categoryActiveHint')}
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+          />
         )}
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>

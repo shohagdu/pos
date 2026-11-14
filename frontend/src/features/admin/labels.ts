@@ -15,8 +15,7 @@ export function stateLabel(t: TFunction, state: string): string {
   return t(`plan.status.${state}`, { defaultValue: state })
 }
 
-export const planLabel = (t: TFunction, code: string | null, name?: string | null) =>
-  code ? t(`plan.names.${code}`, { defaultValue: name ?? code }) : '—'
+export const planLabel = (t: TFunction, code: string | null, name?: string | null) => (code ? t(`plan.names.${code}`, { defaultValue: name ?? code }) : '—')
 
 export const cycleLabel = (t: TFunction, cycle: string | null) => (cycle ? t(`admin.cycles.${cycle}`, { defaultValue: cycle }) : '—')
 

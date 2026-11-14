@@ -114,7 +114,11 @@ export function GeneralLedgerPage() {
                       </Link>
                     ),
                   },
-                  { key: 'source', header: t('reports.gl.source'), render: (r) => <Badge>{t(`accounting.sources.${r.source_type}`, { defaultValue: r.source_type })}</Badge> },
+                  {
+                    key: 'source',
+                    header: t('reports.gl.source'),
+                    render: (r) => <Badge>{t(`accounting.sources.${r.source_type}`, { defaultValue: r.source_type })}</Badge>,
+                  },
                   { key: 'sourceNo', header: t('reports.gl.sourceNo'), render: (r) => r.source_no ?? '—' },
                   { key: 'memo', header: t('reports.gl.memo'), render: (r) => r.memo ?? '' },
                   { key: 'debit', header: t('reports.tb.debit'), align: 'right', render: (r) => money(r.debit, lang) },

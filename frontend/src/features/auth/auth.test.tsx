@@ -117,14 +117,35 @@ describe('sign-up and onboarding', () => {
             : { user, memberships: [], tenant: null },
         ),
       'GET /api/v1/settings': {
-        name: 'Rahim Store', slug: 'rahim-store', legal_name: null, business_type: 'grocery', phone: null, email: null,
-        address: null, district: null, bin_number: null, trade_license_no: null, currency_code: 'BDT', timezone: 'Asia/Dhaka',
-        locale: 'en', fiscal_year_start_month: 7, invoice_prefix: 'INV', receipt_paper: '80mm', receipt_footer: null,
-        auto_print_receipt: true, show_product_panel: true, show_product_images: true, is_vat_registered: false, prices_include_tax: false, version: 1,
+        name: 'Rahim Store',
+        slug: 'rahim-store',
+        legal_name: null,
+        business_type: 'grocery',
+        phone: null,
+        email: null,
+        address: null,
+        district: null,
+        bin_number: null,
+        trade_license_no: null,
+        currency_code: 'BDT',
+        timezone: 'Asia/Dhaka',
+        locale: 'en',
+        fiscal_year_start_month: 7,
+        invoice_prefix: 'INV',
+        receipt_paper: '80mm',
+        receipt_footer: null,
+        auto_print_receipt: true,
+        show_product_panel: true,
+        show_product_images: true,
+        is_vat_registered: false,
+        prices_include_tax: false,
+        version: 1,
       },
       'PATCH /api/v1/settings': (call) => Response.json({ ...(call.body as object), version: 2 }),
       'POST /api/v1/onboarding/steps/regional': { steps: [], dismissed: false, complete: false },
-      'GET /api/v1/branches': [{ id: 'b1', code: 'MAIN', name: 'Main Branch', address: null, phone: null, receipt_header: null, is_default: true, status: 'active', version: 1 }],
+      'GET /api/v1/branches': [
+        { id: 'b1', code: 'MAIN', name: 'Main Branch', address: null, phone: null, receipt_header: null, is_default: true, status: 'active', version: 1 },
+      ],
     })
     const { router } = renderRoute('/register')
 
@@ -196,7 +217,12 @@ describe('sign-up and onboarding', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Skip for now' }))
 
     await waitFor(() => expect(router.state.location.pathname).toBe('/'))
-    expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toEqual({ name: `${user.full_name}'s Shop`, business_type: 'retail', country_code: 'BD', locale: 'en' })
+    expect(calls.find((c) => c.path === '/api/v1/tenants')?.body).toEqual({
+      name: `${user.full_name}'s Shop`,
+      business_type: 'retail',
+      country_code: 'BD',
+      locale: 'en',
+    })
   })
 
   it('shows field errors from the API next to the field', async () => {

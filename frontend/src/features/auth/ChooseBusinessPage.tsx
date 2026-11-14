@@ -43,7 +43,11 @@ export function ChooseBusinessPage() {
           </li>
         ))}
       </ul>
-      {choose.isError && <Alert tone="danger" className="mt-4">{problemMessage(choose.error, t)}</Alert>}
+      {choose.isError && (
+        <Alert tone="danger" className="mt-4">
+          {problemMessage(choose.error, t)}
+        </Alert>
+      )}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link to="/onboarding/business" className="font-semibold text-brand-700 hover:underline">
           {t('tenant.createAnother')}

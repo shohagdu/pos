@@ -58,16 +58,44 @@ describe('sales', () => {
 
   it('looks up a warranty by invoice, phone or barcode', async () => {
     const item = {
-      id: 'si1', sale_id: 's1', invoice_no: 'INV-0001', business_date: '2026-10-18', customer_id: 'c1', customer_name: 'Karim',
-      customer_phone: '01711000002', is_walk_in: false, variant_id: 'v1', product_name: 'Power Bank', sku: 'P000009',
-      unit_short_name: 'pcs', quantity: '1.000', returned_quantity: '0.000', warranty_period: 3, warranty_unit: 'month' as const,
+      id: 'si1',
+      sale_id: 's1',
+      invoice_no: 'INV-0001',
+      business_date: '2026-10-18',
+      customer_id: 'c1',
+      customer_name: 'Karim',
+      customer_phone: '01711000002',
+      is_walk_in: false,
+      variant_id: 'v1',
+      product_name: 'Power Bank',
+      sku: 'P000009',
+      unit_short_name: 'pcs',
+      quantity: '1.000',
+      returned_quantity: '0.000',
+      warranty_period: 3,
+      warranty_unit: 'month' as const,
       warranty_expires_on: '2027-01-18',
     }
     const calls = mockApi({
       ...signedIn(),
       'GET /api/v1/sale-warranties': (call) =>
         Response.json({
-          data: call.search.includes('q=nothing') ? [] : [item, { ...item, id: 'si2', customer_id: 'walk', customer_name: 'Walk-in', is_walk_in: true, customer_phone: null, invoice_no: 'INV-0002', sale_id: 's2', warranty_expires_on: '2026-11-01' }],
+          data: call.search.includes('q=nothing')
+            ? []
+            : [
+                item,
+                {
+                  ...item,
+                  id: 'si2',
+                  customer_id: 'walk',
+                  customer_name: 'Walk-in',
+                  is_walk_in: true,
+                  customer_phone: null,
+                  invoice_no: 'INV-0002',
+                  sale_id: 's2',
+                  warranty_expires_on: '2026-11-01',
+                },
+              ],
           next_cursor: null,
           today: '2026-11-07',
         }),
@@ -104,10 +132,26 @@ describe('sales', () => {
       'POST /api/v1/sale-returns': () =>
         Response.json(
           {
-            id: 'r1', return_no: 'RET-1', sale_id: 's1', invoice_no: 'INV-0001', customer_id: 'c1', customer_name: 'Karim',
-            business_date: '2026-10-18', reason: 'Torn bag', refund_mode: 'cash', subtotal: '450.5000', tax_total: '0.0000',
-            total: '450.5000', applied_to_due: '0.0000', refunded_amount: '450.5000', credited_amount: '0.0000', cost_total: null,
-            created_by_name: 'Rahim Uddin', created_at: '2026-10-18T06:00:00Z', items: [], receipt,
+            id: 'r1',
+            return_no: 'RET-1',
+            sale_id: 's1',
+            invoice_no: 'INV-0001',
+            customer_id: 'c1',
+            customer_name: 'Karim',
+            business_date: '2026-10-18',
+            reason: 'Torn bag',
+            refund_mode: 'cash',
+            subtotal: '450.5000',
+            tax_total: '0.0000',
+            total: '450.5000',
+            applied_to_due: '0.0000',
+            refunded_amount: '450.5000',
+            credited_amount: '0.0000',
+            cost_total: null,
+            created_by_name: 'Rahim Uddin',
+            created_at: '2026-10-18T06:00:00Z',
+            items: [],
+            receipt,
           },
           { status: 201 },
         ),

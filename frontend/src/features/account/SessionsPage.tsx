@@ -21,8 +21,7 @@ export function SessionsPage() {
     mutationFn: authApi.revokeSession,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: authKeys.sessions }),
   })
-  const when = (iso: string) =>
-    new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
+  const when = (iso: string) => new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso))
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">

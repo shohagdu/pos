@@ -11,9 +11,21 @@ afterEach(() => vi.restoreAllMocks())
 const perms = ['dashboard.view', 'customers.view', 'customers.manage', 'customers.collect_payment', 'accounts.view']
 
 const karim = {
-  id: 'c1', code: 'C00001', name: 'Karim Mia', phone: '01711000002', email: null, address: null, credit_limit: '5000.00',
-  opening_balance: '0.00', current_balance: '250.00', is_walk_in: false, notes: null, status: 'active', version: 2,
-  created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T00:00:00Z',
+  id: 'c1',
+  code: 'C00001',
+  name: 'Karim Mia',
+  phone: '01711000002',
+  email: null,
+  address: null,
+  credit_limit: '5000.00',
+  opening_balance: '0.00',
+  current_balance: '250.00',
+  is_walk_in: false,
+  notes: null,
+  status: 'active',
+  version: 2,
+  created_at: '2026-10-01T00:00:00Z',
+  updated_at: '2026-10-01T00:00:00Z',
 }
 
 function signedIn() {
@@ -22,15 +34,54 @@ function signedIn() {
     'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant: currentTenant('t1', 'Rahim Store', perms) },
     'GET /api/v1/customers/c1': karim,
     'GET /api/v1/customers/c1/statement': {
-      party_type: 'customer', party_id: 'c1', party_name: 'Karim Mia', from: null, to: null, opening_balance: '0.00', entries: [],
-      total_debit: '0.00', total_credit: '0.00', closing_balance: '250.00',
+      party_type: 'customer',
+      party_id: 'c1',
+      party_name: 'Karim Mia',
+      from: null,
+      to: null,
+      opening_balance: '0.00',
+      entries: [],
+      total_debit: '0.00',
+      total_credit: '0.00',
+      closing_balance: '250.00',
     },
     'GET /api/v1/payment-methods': [
-      { id: 'pm-cash', name: 'Cash', method_type: 'cash', default_account_id: 'a-cash', default_account_name: 'Cash drawer', requires_reference: false, sort_order: 0, is_active: true },
-      { id: 'pm-credit', name: 'Due', method_type: 'customer_credit', default_account_id: null, default_account_name: null, requires_reference: false, sort_order: 9, is_active: true },
+      {
+        id: 'pm-cash',
+        name: 'Cash',
+        method_type: 'cash',
+        default_account_id: 'a-cash',
+        default_account_name: 'Cash drawer',
+        requires_reference: false,
+        sort_order: 0,
+        is_active: true,
+      },
+      {
+        id: 'pm-credit',
+        name: 'Due',
+        method_type: 'customer_credit',
+        default_account_id: null,
+        default_account_name: null,
+        requires_reference: false,
+        sort_order: 9,
+        is_active: true,
+      },
     ],
     'GET /api/v1/payment-accounts': [
-      { id: 'a-cash', account_type: 'cash', name: 'Cash drawer', account_number: null, bank_name: null, opening_balance: '0', current_balance: '0', ledger_account_id: null, is_default: true, status: 'active', version: 1, created_at: '' },
+      {
+        id: 'a-cash',
+        account_type: 'cash',
+        name: 'Cash drawer',
+        account_number: null,
+        bank_name: null,
+        opening_balance: '0',
+        current_balance: '0',
+        ledger_account_id: null,
+        is_default: true,
+        status: 'active',
+        version: 1,
+        created_at: '',
+      },
     ],
   }
 }
@@ -49,10 +100,7 @@ describe('customers', () => {
     const calls = mockApi({
       ...signedIn(),
       'POST /api/v1/collections': () =>
-        Response.json(
-          { id: 'pay1', payment_no: 'RCV-0001', amount: '250.00', unallocated_amount: '0.00', allocations: [] },
-          { status: 201 },
-        ),
+        Response.json({ id: 'pay1', payment_no: 'RCV-0001', amount: '250.00', unallocated_amount: '0.00', allocations: [] }, { status: 201 }),
     })
     renderRoute('/customers/c1')
     await userEvent.click(await screen.findByRole('button', { name: 'Receive payment' }))
@@ -91,9 +139,22 @@ describe('customers', () => {
 
   it('lists the items bought with a warranty and whether they are still covered', async () => {
     const item = {
-      id: 'si1', sale_id: 's1', invoice_no: 'INV-0001', business_date: '2026-10-18', customer_id: 'c1', customer_name: 'Karim Mia',
-      customer_phone: '01711000002', is_walk_in: false, variant_id: 'v1', product_name: 'Power Bank', sku: 'P000009',
-      unit_short_name: 'pcs', quantity: '1.000', returned_quantity: '0.000', warranty_period: 3, warranty_unit: 'month',
+      id: 'si1',
+      sale_id: 's1',
+      invoice_no: 'INV-0001',
+      business_date: '2026-10-18',
+      customer_id: 'c1',
+      customer_name: 'Karim Mia',
+      customer_phone: '01711000002',
+      is_walk_in: false,
+      variant_id: 'v1',
+      product_name: 'Power Bank',
+      sku: 'P000009',
+      unit_short_name: 'pcs',
+      quantity: '1.000',
+      returned_quantity: '0.000',
+      warranty_period: 3,
+      warranty_unit: 'month',
       warranty_expires_on: '2027-01-18',
     }
     const calls = mockApi({

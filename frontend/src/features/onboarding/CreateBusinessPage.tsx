@@ -98,9 +98,7 @@ export function CreateBusinessPage() {
             <TextField label={t('onboarding.business.phone')} type="tel" error={errors.phone} {...bind('phone')} />
             <TextField label={t('onboarding.business.email')} type="email" error={errors.email} {...bind('email')} />
             <TextField label={labels.bin} error={errors.bin_number} {...bind('bin_number')} />
-            {!labels.italy && (
-              <TextField label={t('onboarding.business.tradeLicense')} error={errors.trade_license_no} {...bind('trade_license_no')} />
-            )}
+            {!labels.italy && <TextField label={t('onboarding.business.tradeLicense')} error={errors.trade_license_no} {...bind('trade_license_no')} />}
           </>
         ) : (
           <Button variant="ghost" className="self-start" onClick={() => setMore(true)}>

@@ -136,7 +136,14 @@ function StartDialog({
           error={errors.account_id}
           options={[{ value: '', label: t('money.reconcile.chooseAccount') }, ...accounts.map((a) => ({ value: a.id, label: a.name }))]}
         />
-        <TextField label={t('money.reconcile.statementDate')} type="date" max={today()} value={date} onChange={(e) => setDate(e.target.value)} error={errors.statement_date} />
+        <TextField
+          label={t('money.reconcile.statementDate')}
+          type="date"
+          max={today()}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          error={errors.statement_date}
+        />
         <TextField
           label={t('money.reconcile.statementBalance')}
           inputMode="decimal"

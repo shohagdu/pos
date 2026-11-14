@@ -24,11 +24,7 @@ export function WarrantyBadge({ item, today }: { item: WarrantyItem; today: stri
   }
   const left = daysBetween(today, item.warranty_expires_on)
   if (left < 0) return <Badge tone="bad">{t('sales.warrantyTable.expired')}</Badge>
-  return (
-    <Badge tone={left <= 30 ? 'warn' : 'good'}>
-      {left === 0 ? t('sales.warrantyTable.lastDay') : t('sales.warrantyTable.daysLeft', { count: left })}
-    </Badge>
-  )
+  return <Badge tone={left <= 30 ? 'warn' : 'good'}>{left === 0 ? t('sales.warrantyTable.lastDay') : t('sales.warrantyTable.daysLeft', { count: left })}</Badge>
 }
 
 /** Items sold with a warranty: the customer's Warranties tab and the warranty lookup page. */

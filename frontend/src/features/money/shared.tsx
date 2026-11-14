@@ -71,4 +71,3 @@ export function QueryStatus({ query }: { query: { isPending: boolean; isError: b
   if (query.isError) return <Alert tone="danger">{problemMessage(query.error, t)}</Alert>
   return null
 }
-

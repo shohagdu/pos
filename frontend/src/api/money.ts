@@ -311,16 +311,13 @@ export const moneyApi = {
     apiFetch<PaymentAccount>(`/api/v1/payment-accounts/${id}`, { method: 'PUT', body: input, ifMatch: version }),
   book: (id: string, from?: string, to?: string) => apiFetch<Book>(`/api/v1/payment-accounts/${id}/book${queryString({ from, to })}`),
 
-  methods: (includeInactive = false) =>
-    apiFetch<PaymentMethod[]>(`/api/v1/payment-methods${queryString({ include_inactive: includeInactive || undefined })}`),
-  updateMethod: (id: string, patch: PaymentMethodPatch) =>
-    apiFetch<PaymentMethod>(`/api/v1/payment-methods/${id}`, { method: 'PATCH', body: patch }),
+  methods: (includeInactive = false) => apiFetch<PaymentMethod[]>(`/api/v1/payment-methods${queryString({ include_inactive: includeInactive || undefined })}`),
+  updateMethod: (id: string, patch: PaymentMethodPatch) => apiFetch<PaymentMethod>(`/api/v1/payment-methods/${id}`, { method: 'PATCH', body: patch }),
 
   payments: (filter: PaymentFilter, cursor: string | null) =>
     apiFetch<Page<Payment>>(`/api/v1/payments${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   payment: (id: string) => apiFetch<PaymentDetail>(`/api/v1/payments/${id}`),
-  voidPayment: (id: string, reason: string) =>
-    apiFetch<PaymentDetail>(`/api/v1/payments/${id}/void`, { method: 'POST', body: { reason } }),
+  voidPayment: (id: string, reason: string) => apiFetch<PaymentDetail>(`/api/v1/payments/${id}/void`, { method: 'POST', body: { reason } }),
 
   transfers: (cursor: string | null, accountId?: string) =>
     apiFetch<Page<Transfer>>(`/api/v1/account-transfers${queryString({ account_id: accountId, limit: PAGE_SIZE, cursor })}`),
@@ -328,33 +325,26 @@ export const moneyApi = {
     apiFetch<Transfer>('/api/v1/account-transfers', { method: 'POST', body: input, idempotencyKey }),
 
   expenseCategories: () => apiFetch<ExpenseCategory[]>('/api/v1/expense-categories'),
-  createExpenseCategory: (name: string) =>
-    apiFetch<ExpenseCategory>('/api/v1/expense-categories', { method: 'POST', body: { name } }),
+  createExpenseCategory: (name: string) => apiFetch<ExpenseCategory>('/api/v1/expense-categories', { method: 'POST', body: { name } }),
   updateExpenseCategory: (id: string, name: string, status: 'active' | 'inactive') =>
     apiFetch<ExpenseCategory>(`/api/v1/expense-categories/${id}`, { method: 'PUT', body: { name, status } }),
-  expenses: (filter: ExpenseFilter, cursor: string | null) =>
-    apiFetch<ExpensePage>(`/api/v1/expenses${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
+  expenses: (filter: ExpenseFilter, cursor: string | null) => apiFetch<ExpensePage>(`/api/v1/expenses${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   expense: (id: string) => apiFetch<Expense>(`/api/v1/expenses/${id}`),
-  createExpense: (input: ExpenseInput, idempotencyKey: string) =>
-    apiFetch<Expense>('/api/v1/expenses', { method: 'POST', body: input, idempotencyKey }),
+  createExpense: (input: ExpenseInput, idempotencyKey: string) => apiFetch<Expense>('/api/v1/expenses', { method: 'POST', body: input, idempotencyKey }),
   voidExpense: (id: string, reason: string) => apiFetch<Expense>(`/api/v1/expenses/${id}/void`, { method: 'POST', body: { reason } }),
 
   incomeCategories: () => apiFetch<IncomeCategory[]>('/api/v1/income-categories'),
   createIncomeCategory: (name: string) => apiFetch<IncomeCategory>('/api/v1/income-categories', { method: 'POST', body: { name } }),
   updateIncomeCategory: (id: string, name: string, status: 'active' | 'inactive') =>
     apiFetch<IncomeCategory>(`/api/v1/income-categories/${id}`, { method: 'PUT', body: { name, status } }),
-  incomes: (filter: IncomeFilter, cursor: string | null) =>
-    apiFetch<IncomePage>(`/api/v1/incomes${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
+  incomes: (filter: IncomeFilter, cursor: string | null) => apiFetch<IncomePage>(`/api/v1/incomes${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   income: (id: string) => apiFetch<Income>(`/api/v1/incomes/${id}`),
-  createIncome: (input: IncomeInput, idempotencyKey: string) =>
-    apiFetch<Income>('/api/v1/incomes', { method: 'POST', body: input, idempotencyKey }),
+  createIncome: (input: IncomeInput, idempotencyKey: string) => apiFetch<Income>('/api/v1/incomes', { method: 'POST', body: input, idempotencyKey }),
   voidIncome: (id: string, reason: string) => apiFetch<Income>(`/api/v1/incomes/${id}/void`, { method: 'POST', body: { reason } }),
 
-  reconciliations: (accountId?: string) =>
-    apiFetch<ReconciliationSummary[]>(`/api/v1/bank-reconciliations${queryString({ account_id: accountId })}`),
+  reconciliations: (accountId?: string) => apiFetch<ReconciliationSummary[]>(`/api/v1/bank-reconciliations${queryString({ account_id: accountId })}`),
   reconciliation: (id: string) => apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}`),
-  startReconciliation: (input: ReconciliationInput) =>
-    apiFetch<Reconciliation>('/api/v1/bank-reconciliations', { method: 'POST', body: input }),
+  startReconciliation: (input: ReconciliationInput) => apiFetch<Reconciliation>('/api/v1/bank-reconciliations', { method: 'POST', body: input }),
   setCleared: (id: string, change: { clear?: string[]; unclear?: string[] }) =>
     apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}/lines`, { method: 'PUT', body: change }),
   completeReconciliation: (id: string) => apiFetch<Reconciliation>(`/api/v1/bank-reconciliations/${id}/complete`, { method: 'POST' }),
@@ -383,14 +373,12 @@ export const moneyKeys = {
 
 export const usePaymentAccounts = (tenantId: string, includeInactive = false) =>
   useQuery({ queryKey: moneyKeys.accounts(tenantId, includeInactive), queryFn: () => moneyApi.accounts(includeInactive) })
-export const usePaymentAccount = (tenantId: string, id: string) =>
-  useQuery({ queryKey: moneyKeys.account(tenantId, id), queryFn: () => moneyApi.account(id) })
+export const usePaymentAccount = (tenantId: string, id: string) => useQuery({ queryKey: moneyKeys.account(tenantId, id), queryFn: () => moneyApi.account(id) })
 export const useBook = (tenantId: string, id: string, from?: string, to?: string) =>
   useQuery({ queryKey: moneyKeys.book(tenantId, id, from, to), queryFn: () => moneyApi.book(id, from, to) })
 export const usePaymentMethods = (tenantId: string, includeInactive = false) =>
   useQuery({ queryKey: moneyKeys.methods(tenantId, includeInactive), queryFn: () => moneyApi.methods(includeInactive) })
-export const usePayment = (tenantId: string, id: string) =>
-  useQuery({ queryKey: moneyKeys.payment(tenantId, id), queryFn: () => moneyApi.payment(id) })
+export const usePayment = (tenantId: string, id: string) => useQuery({ queryKey: moneyKeys.payment(tenantId, id), queryFn: () => moneyApi.payment(id) })
 export const usePayments = (tenantId: string, filter: PaymentFilter, enabled = true) =>
   useInfiniteQuery({
     queryKey: moneyKeys.payments(tenantId, filter),
@@ -406,8 +394,7 @@ export const useTransfers = (tenantId: string, accountId?: string) =>
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.next_cursor,
   })
-export const useExpenseCategories = (tenantId: string) =>
-  useQuery({ queryKey: moneyKeys.expenseCategories(tenantId), queryFn: moneyApi.expenseCategories })
+export const useExpenseCategories = (tenantId: string) => useQuery({ queryKey: moneyKeys.expenseCategories(tenantId), queryFn: moneyApi.expenseCategories })
 export const useExpenses = (tenantId: string, filter: ExpenseFilter) =>
   useInfiniteQuery({
     queryKey: moneyKeys.expenses(tenantId, filter),

@@ -35,8 +35,7 @@ export function NewCustomerDialog({
   const [phone, setPhone] = useState(initial.phone)
   const [address, setAddress] = useState('')
   const create = useMutation({
-    mutationFn: () =>
-      partiesApi.createCustomer({ name: name.trim(), phone: phone.trim() || undefined, address: address.trim() || undefined }),
+    mutationFn: () => partiesApi.createCustomer({ name: name.trim(), phone: phone.trim() || undefined, address: address.trim() || undefined }),
     onSuccess: (c) => {
       void queryClient.invalidateQueries({ queryKey: partyKeys.customers(tenantId) })
       onCreated(toCartCustomer(c))

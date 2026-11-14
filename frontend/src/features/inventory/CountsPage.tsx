@@ -41,7 +41,12 @@ export function CountsPage() {
     { key: 'date', header: t('common.date'), render: (c) => <span className="whitespace-nowrap">{formatDate(c.business_date, lang)}</span> },
     { key: 'location', header: t('inventory.location'), render: (c) => c.location_name },
     { key: 'category', header: t('inventory.countCategory'), render: (c) => c.category_name ?? t('inventory.allCategories') },
-    { key: 'progress', header: t('inventory.counted'), align: 'right', render: (c) => t('inventory.countedProgress', { counted: c.counted_count, total: c.item_count }) },
+    {
+      key: 'progress',
+      header: t('inventory.counted'),
+      align: 'right',
+      render: (c) => t('inventory.countedProgress', { counted: c.counted_count, total: c.item_count }),
+    },
     {
       key: 'variance',
       header: t('inventory.varianceValue'),
@@ -49,13 +54,21 @@ export function CountsPage() {
       render: (c) =>
         c.variance_value === null ? '—' : <span className={dec(c.variance_value) < 0n ? 'text-danger' : ''}>{formatMoney(c.variance_value, lang)}</span>,
     },
-    { key: 'status', header: t('common.status'), render: (c) => <Badge tone={COUNT_TONES[c.status]}>{t(`inventory.countStatuses.${c.status}`, { defaultValue: c.status })}</Badge> },
+    {
+      key: 'status',
+      header: t('common.status'),
+      render: (c) => <Badge tone={COUNT_TONES[c.status]}>{t(`inventory.countStatuses.${c.status}`, { defaultValue: c.status })}</Badge>,
+    },
     { key: 'by', header: t('inventory.createdBy'), render: (c) => c.created_by_name ?? '—' },
   ]
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={t('inventory.counts')} subtitle={t('inventory.countsSubtitle')} actions={<Button onClick={() => setCreating(true)}>{t('inventory.newCount')}</Button>} />
+      <PageHeader
+        title={t('inventory.counts')}
+        subtitle={t('inventory.countsSubtitle')}
+        actions={<Button onClick={() => setCreating(true)}>{t('inventory.newCount')}</Button>}
+      />
       <InventoryNav />
       <div className="flex flex-wrap items-end gap-3 print:hidden">
         <Select
@@ -132,7 +145,13 @@ function NewCountDialog({ tenantId, onClose }: { tenantId: string; onClose: () =
             ...(categories.data ?? []).filter((c) => c.status === 'active').map((c) => ({ value: c.id, label: `${indent(c.depth)}${c.name}` })),
           ]}
         />
-        <TextField label={`${t('common.note')} (${t('common.optional')})`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} error={errors.note} />
+        <TextField
+          label={`${t('common.note')} (${t('common.optional')})`}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={2000}
+          error={errors.note}
+        />
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}

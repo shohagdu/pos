@@ -88,7 +88,13 @@ export function ExpenseReportPage() {
                     },
                   },
                 ]}
-                footer={[t('common.totals'), r.count, money(r.total, lang), money(total(r.by_category.map((c) => c.tax_amount)), lang), r.by_category.length ? '100.00%' : null]}
+                footer={[
+                  t('common.totals'),
+                  r.count,
+                  money(r.total, lang),
+                  money(total(r.by_category.map((c) => c.tax_amount)), lang),
+                  r.by_category.length ? '100.00%' : null,
+                ]}
               />
             </Section>
             <Section title={t('reports.expenses.byMonth')}>

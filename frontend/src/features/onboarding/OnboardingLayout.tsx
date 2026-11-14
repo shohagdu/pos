@@ -23,9 +23,7 @@ export function OnboardingLayout() {
             {WIZARD_STEPS.map((step, i) => (
               <li key={step} className="flex flex-1 flex-col gap-1.5" aria-current={i === index ? 'step' : undefined}>
                 <span className={`h-1.5 rounded-full ${i <= index ? 'bg-brand-600' : 'bg-border'}`} />
-                <span className={`hidden text-xs sm:block ${i === index ? 'font-semibold text-ink' : 'text-ink-muted'}`}>
-                  {t(`onboarding.steps.${step}`)}
-                </span>
+                <span className={`hidden text-xs sm:block ${i === index ? 'font-semibold text-ink' : 'text-ink-muted'}`}>{t(`onboarding.steps.${step}`)}</span>
               </li>
             ))}
           </ol>

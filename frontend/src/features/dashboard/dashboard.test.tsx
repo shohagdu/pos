@@ -36,7 +36,9 @@ const dashboard = (profit: string | null) => ({
   low_stock_count: 2,
   out_of_stock_count: 1,
   top_products: [{ variant_id: 'v1', product_name: 'Miniket Rice 5kg', unit_short_name: 'pcs', quantity: '12', net_sales: '5400.00' }],
-  recent_sales: [{ id: 's1', invoice_no: 'INV-0001', customer_name: 'Walk-in', grand_total: '300.00', due_total: '0', status: 'completed', sale_date: '2026-10-18' }],
+  recent_sales: [
+    { id: 's1', invoice_no: 'INV-0001', customer_name: 'Walk-in', grand_total: '300.00', due_total: '0', status: 'completed', sale_date: '2026-10-18' },
+  ],
   last_14_days: [
     { date: '2026-10-17', sales: '100.00' },
     { date: '2026-10-18', sales: '300.00' },

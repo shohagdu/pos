@@ -24,7 +24,17 @@ describe('analysis reports', () => {
         const suppliers = call.search.includes('party=suppliers')
         const row = suppliers
           ? { ...zero, party_id: 'sup1', code: 'S-01', name: 'Akij Foods', phone: null, oldest_date: '2026-06-01', over_90: '5000.00', total: '5000.00' }
-          : { ...zero, party_id: 'c1', code: 'C-01', name: 'Karim Mia', phone: '01711000002', oldest_date: '2026-10-01', current: '700.00', other: '-200.00', total: '500.00' }
+          : {
+              ...zero,
+              party_id: 'c1',
+              code: 'C-01',
+              name: 'Karim Mia',
+              phone: '01711000002',
+              oldest_date: '2026-10-01',
+              current: '700.00',
+              other: '-200.00',
+              total: '500.00',
+            }
         const { party_id: _id, code: _c, name: _n, phone: _p, oldest_date: _o, ...totals } = row
         return Response.json({ party: suppliers ? 'suppliers' : 'customers', as_of: '2026-10-19', rows: [row], totals })
       },
@@ -43,8 +53,19 @@ describe('analysis reports', () => {
 
   it('lists unpaid sales per customer, oldest first, and searches', async () => {
     const row = {
-      id: 's1', doc_no: 'INV-0007', reference: null, doc_date: '2026-07-01', days_open: 129, party_id: 'c1', party_code: 'C-01',
-      party_name: 'Karim Mia', party_phone: '01711000002', grand_total: '1000.00', paid_total: '300.00', returned_total: '0.00', due_total: '700.00',
+      id: 's1',
+      doc_no: 'INV-0007',
+      reference: null,
+      doc_date: '2026-07-01',
+      days_open: 129,
+      party_id: 'c1',
+      party_code: 'C-01',
+      party_name: 'Karim Mia',
+      party_phone: '01711000002',
+      grand_total: '1000.00',
+      paid_total: '300.00',
+      returned_total: '0.00',
+      due_total: '700.00',
     }
     const calls = mockApi({
       ...signedIn(['reports.parties']),
@@ -75,10 +96,23 @@ describe('analysis reports', () => {
       'GET /api/v1/reports/dues': {
         party: 'suppliers',
         as_of: '2026-11-07',
-        rows: [{
-          id: 'p1', doc_no: 'PUR-0003', reference: 'KT-77', doc_date: '2026-10-20', days_open: 18, party_id: 'sup1', party_code: null,
-          party_name: 'Karim Traders', party_phone: null, grand_total: '1050.00', paid_total: '400.00', returned_total: '0.00', due_total: '650.00',
-        }],
+        rows: [
+          {
+            id: 'p1',
+            doc_no: 'PUR-0003',
+            reference: 'KT-77',
+            doc_date: '2026-10-20',
+            days_open: 18,
+            party_id: 'sup1',
+            party_code: null,
+            party_name: 'Karim Traders',
+            party_phone: null,
+            grand_total: '1050.00',
+            paid_total: '400.00',
+            returned_total: '0.00',
+            due_total: '650.00',
+          },
+        ],
         totals: { grand_total: '1050.00', paid_total: '400.00', returned_total: '0.00', due_total: '650.00', parties: 1 },
       },
     })
@@ -93,10 +127,17 @@ describe('analysis reports', () => {
     mockApi({
       ...signedIn(['reports.financial']),
       'GET /api/v1/reports/vat-summary': {
-        from: '2026-10-01', to: '2026-10-19', is_vat_registered: false,
+        from: '2026-10-01',
+        to: '2026-10-19',
+        is_vat_registered: false,
         output: [{ rate_pct: '15.00', taxable: '10000.00', vat: '1500.00' }],
-        input: [{ rate_pct: '15.00', taxable: '4000.00', vat: '600.00' }, { rate_pct: null, taxable: '1000.00', vat: '50.00' }],
-        output_vat: '1500.00', input_vat: '650.00', net_vat: '850.00',
+        input: [
+          { rate_pct: '15.00', taxable: '4000.00', vat: '600.00' },
+          { rate_pct: null, taxable: '1000.00', vat: '50.00' },
+        ],
+        output_vat: '1500.00',
+        input_vat: '650.00',
+        net_vat: '850.00',
       },
     })
     renderRoute('/reports/vat')

@@ -73,8 +73,12 @@ export function AdminDashboardPage() {
           <table className="w-full text-sm">
             <thead className="text-xs text-ink-muted uppercase">
               <tr>
-                <th scope="col" className="py-2 text-left">{t('admin.tenants.plan')}</th>
-                <th scope="col" className="py-2 text-right">{t('admin.dashboard.businesses')}</th>
+                <th scope="col" className="py-2 text-left">
+                  {t('admin.tenants.plan')}
+                </th>
+                <th scope="col" className="py-2 text-right">
+                  {t('admin.dashboard.businesses')}
+                </th>
               </tr>
             </thead>
             <tbody>

@@ -139,7 +139,9 @@ export function SalesReportPage() {
       render: (x) => (bestBy === 'net_sales' ? rankedValue(x, money(x.row.net_sales, lang)) : money(x.row.net_sales, lang)),
     },
     ...(showCost
-      ? ([{ key: 'gp', header: t('reports.sales.grossProfit'), align: 'right', render: (x) => money(x.row.gross_profit, lang) }] satisfies Column<RankedProduct>[])
+      ? ([
+          { key: 'gp', header: t('reports.sales.grossProfit'), align: 'right', render: (x) => money(x.row.gross_profit, lang) },
+        ] satisfies Column<RankedProduct>[])
       : []),
   ]
   const profitColumns: Column<RankedProduct>[] = [
@@ -181,19 +183,23 @@ export function SalesReportPage() {
     updatedAt = summary.dataUpdatedAt
     exports.push({
       run: () =>
-        downloadCsv(name('sales-summary'), [...d.rows, { ...d.totals, period: t('common.totals') }], [
-          { header: t('reports.sales.period'), value: (r) => r.period },
-          { header: t('reports.sales.invoices'), value: (r) => r.invoices },
-          { header: t('reports.sales.gross'), value: (r) => r.gross },
-          { header: t('reports.sales.discount'), value: (r) => r.discount },
-          { header: t('reports.sales.vat'), value: (r) => r.tax },
-          { header: t('reports.sales.returns'), value: (r) => r.returns },
-          { header: t('reports.sales.netSales'), value: (r) => r.net_sales },
-          { header: t('reports.sales.cogs'), value: (r) => r.cogs },
-          { header: t('reports.sales.grossProfit'), value: (r) => r.gross_profit },
-          { header: t('reports.sales.collected'), value: (r) => r.collected },
-          { header: t('reports.sales.due'), value: (r) => r.due },
-        ]),
+        downloadCsv(
+          name('sales-summary'),
+          [...d.rows, { ...d.totals, period: t('common.totals') }],
+          [
+            { header: t('reports.sales.period'), value: (r) => r.period },
+            { header: t('reports.sales.invoices'), value: (r) => r.invoices },
+            { header: t('reports.sales.gross'), value: (r) => r.gross },
+            { header: t('reports.sales.discount'), value: (r) => r.discount },
+            { header: t('reports.sales.vat'), value: (r) => r.tax },
+            { header: t('reports.sales.returns'), value: (r) => r.returns },
+            { header: t('reports.sales.netSales'), value: (r) => r.net_sales },
+            { header: t('reports.sales.cogs'), value: (r) => r.cogs },
+            { header: t('reports.sales.grossProfit'), value: (r) => r.gross_profit },
+            { header: t('reports.sales.collected'), value: (r) => r.collected },
+            { header: t('reports.sales.due'), value: (r) => r.due },
+          ],
+        ),
     })
   } else if (tab === 'product' && byProduct.data) {
     const d = byProduct.data

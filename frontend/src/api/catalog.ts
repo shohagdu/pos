@@ -218,8 +218,7 @@ export const catalogApi = {
 
   categories: () => apiFetch<Category[]>('/api/v1/categories'),
   createCategory: (input: CategoryInput) => apiFetch<Category>('/api/v1/categories', { method: 'POST', body: input }),
-  updateCategory: (id: string, input: CategoryInput) =>
-    apiFetch<Category>(`/api/v1/categories/${id}`, { method: 'PUT', body: input }),
+  updateCategory: (id: string, input: CategoryInput) => apiFetch<Category>(`/api/v1/categories/${id}`, { method: 'PUT', body: input }),
   deleteCategory: (id: string) => apiFetch<void>(`/api/v1/categories/${id}`, { method: 'DELETE' }),
 
   brands: () => apiFetch<Brand[]>('/api/v1/brands'),
@@ -227,14 +226,12 @@ export const catalogApi = {
   updateBrand: (id: string, input: BrandInput) => apiFetch<Brand>(`/api/v1/brands/${id}`, { method: 'PUT', body: input }),
   deleteBrand: (id: string) => apiFetch<void>(`/api/v1/brands/${id}`, { method: 'DELETE' }),
 
-  products: (filter: ProductFilter, cursor: string | null) =>
-    apiFetch<ProductPage>(`/api/v1/products?${productQuery(filter, cursor)}`),
+  products: (filter: ProductFilter, cursor: string | null) => apiFetch<ProductPage>(`/api/v1/products?${productQuery(filter, cursor)}`),
   product: (id: string) => apiFetch<Product>(`/api/v1/products/${id}`),
   /** The SKU a new product would get automatically and a new in-store barcode (neither reserved). */
   nextCodes: () => apiFetch<{ sku: string | null; barcode: string }>('/api/v1/products/next-codes'),
   /** Which typed codes another product already uses (the save checks again). */
-  checkCodes: (query: { sku?: string; barcodes?: string; product_id?: string }) =>
-    apiFetch<CodeCheck>(`/api/v1/products/check-codes${queryString(query)}`),
+  checkCodes: (query: { sku?: string; barcodes?: string; product_id?: string }) => apiFetch<CodeCheck>(`/api/v1/products/check-codes${queryString(query)}`),
   /** Creates every product or none; problems come back as `products[i].<field>` errors. */
   /** All products or none; `opening_stock` rows (indexes into `products`) are posted with them. */
   importProducts: (products: ProductInput[], opening_stock: ImportOpeningStock[] = []) =>
@@ -243,8 +240,7 @@ export const catalogApi = {
       body: opening_stock.length > 0 ? { products, opening_stock } : { products },
     }),
   /** Products by SKU (any case) or barcode; codes without a product are left out. */
-  lookupProducts: (codes: string[]) =>
-    apiFetch<{ code: string; product: Product }[]>('/api/v1/products/lookup', { method: 'POST', body: { codes } }),
+  lookupProducts: (codes: string[]) => apiFetch<{ code: string; product: Product }[]>('/api/v1/products/lookup', { method: 'POST', body: { codes } }),
   createProduct: (input: ProductInput) => apiFetch<Product>('/api/v1/products', { method: 'POST', body: input }),
   /** Uploads or replaces the photo (JPG, PNG or WebP, at most 2 MB). */
   setProductImage: (id: string, file: File) =>
@@ -263,8 +259,7 @@ export const catalogApi = {
 
   labels: (variantIds: string[]) => apiFetch<LabelInfo[]>('/api/v1/labels', { method: 'POST', body: { variant_ids: variantIds } }),
   /** In-store EAN-13 (`20…`) for each listed variant that has no barcode. */
-  generateBarcodes: (variantIds: string[]) =>
-    apiFetch<LabelInfo[]>('/api/v1/labels/generate-barcodes', { method: 'POST', body: { variant_ids: variantIds } }),
+  generateBarcodes: (variantIds: string[]) => apiFetch<LabelInfo[]>('/api/v1/labels/generate-barcodes', { method: 'POST', body: { variant_ids: variantIds } }),
 }
 
 export const catalogKeys = {
@@ -279,14 +274,11 @@ export const catalogKeys = {
   priceHistory: (tenantId: string, id: string) => ['catalog', tenantId, 'products', id, 'price-history'] as const,
 }
 
-export const useTaxRates = (tenantId: string) =>
-  useQuery({ queryKey: catalogKeys.taxRates(tenantId), queryFn: catalogApi.taxRates })
+export const useTaxRates = (tenantId: string) => useQuery({ queryKey: catalogKeys.taxRates(tenantId), queryFn: catalogApi.taxRates })
 export const useUnits = (tenantId: string) => useQuery({ queryKey: catalogKeys.units(tenantId), queryFn: catalogApi.units })
-export const useCategories = (tenantId: string) =>
-  useQuery({ queryKey: catalogKeys.categories(tenantId), queryFn: catalogApi.categories })
+export const useCategories = (tenantId: string) => useQuery({ queryKey: catalogKeys.categories(tenantId), queryFn: catalogApi.categories })
 export const useBrands = (tenantId: string) => useQuery({ queryKey: catalogKeys.brands(tenantId), queryFn: catalogApi.brands })
-export const useProduct = (tenantId: string, id: string) =>
-  useQuery({ queryKey: catalogKeys.product(tenantId, id), queryFn: () => catalogApi.product(id) })
+export const useProduct = (tenantId: string, id: string) => useQuery({ queryKey: catalogKeys.product(tenantId, id), queryFn: () => catalogApi.product(id) })
 export const usePriceHistory = (tenantId: string, id: string) =>
   useQuery({ queryKey: catalogKeys.priceHistory(tenantId, id), queryFn: () => catalogApi.priceHistory(id) })
 

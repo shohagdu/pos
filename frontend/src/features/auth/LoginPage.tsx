@@ -42,7 +42,11 @@ export function LoginPage() {
   return (
     <Card>
       <h1 className="mb-6 text-xl font-bold">{t('auth.signIn')}</h1>
-      {notice === 'passwordReset' && <Alert tone="success" className="mb-4">{t('auth.passwordResetDone')}</Alert>}
+      {notice === 'passwordReset' && (
+        <Alert tone="success" className="mb-4">
+          {t('auth.passwordResetDone')}
+        </Alert>
+      )}
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <TextField label={t('auth.identifier')} autoComplete="username" required error={errors.identifier} {...bind('identifier')} />
         <TextField label={t('auth.password')} type="password" autoComplete="current-password" required {...bind('password')} />

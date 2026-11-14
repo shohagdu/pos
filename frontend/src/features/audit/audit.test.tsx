@@ -45,12 +45,18 @@ describe('audit log', () => {
 
     await userEvent.click(within(table).getByRole('button', { expanded: false }))
     const changes = await screen.findByRole('table', { name: 'Changes' })
-    const price = within(changes).getByRole('rowheader', { name: /selling_price/ }).closest('tr')!
+    const price = within(changes)
+      .getByRole('rowheader', { name: /selling_price/ })
+      .closest('tr')!
     expect(price).toHaveAttribute('data-change', 'changed')
     expect(within(price).getByText('450.0000')).toBeInTheDocument()
     expect(within(price).getByText('480.0000')).toBeInTheDocument()
     expect(within(changes).getByRole('rowheader', { name: /unit/ }).closest('tr')).toHaveAttribute('data-change', 'added')
-    expect(within(changes).getByRole('rowheader', { name: /barcode/ }).closest('tr')).toHaveAttribute('data-change', 'removed')
+    expect(
+      within(changes)
+        .getByRole('rowheader', { name: /barcode/ })
+        .closest('tr'),
+    ).toHaveAttribute('data-change', 'removed')
     expect(within(changes).getByRole('rowheader', { name: /^name/ }).closest('tr')).toHaveAttribute('data-change', 'same')
   })
 

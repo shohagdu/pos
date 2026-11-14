@@ -21,25 +21,92 @@ function signedIn(permissions = perms) {
 }
 
 const item = (id: string, variant: string, name: string, quantity: string, received: string, returned = '0.000') => ({
-  id, line_no: 1, variant_id: variant, product_name: name, sku: 'P1', unit_short_name: 'pcs', quantity, received_quantity: received,
-  returned_quantity: returned, unit_cost: '10.0000', discount_type: null, discount_value: null, line_discount: '0.00', bill_discount_alloc: '0.00',
-  tax_rate_pct: '0.0000', tax_amount: '0.00', charges_alloc: '0.00', line_total: '0.00', landed_unit_cost: '10.0000', previous_unit_cost: null,
+  id,
+  line_no: 1,
+  variant_id: variant,
+  product_name: name,
+  sku: 'P1',
+  unit_short_name: 'pcs',
+  quantity,
+  received_quantity: received,
+  returned_quantity: returned,
+  unit_cost: '10.0000',
+  discount_type: null,
+  discount_value: null,
+  line_discount: '0.00',
+  bill_discount_alloc: '0.00',
+  tax_rate_pct: '0.0000',
+  tax_amount: '0.00',
+  charges_alloc: '0.00',
+  line_total: '0.00',
+  landed_unit_cost: '10.0000',
+  previous_unit_cost: null,
 })
 
 const purchase = {
-  id: 'pur1', purchase_no: 'PUR-2611-00007', supplier_id: 's1', supplier_name: 'Karim Traders', supplier_invoice_no: null, purchase_date: '2026-11-05',
-  location_id: 'loc1', location_name: 'Main store', status: 'received', payment_status: 'unpaid', subtotal: '0', item_discount_total: '0',
-  bill_discount_amount: '0', tax_total: '0', shipping_cost: '0', other_cost: '0', grand_total: '0', received_total: '0', paid_total: '0',
-  returned_total: '0', due_total: '0', note: null, item_count: 2, expected_date: null, ordered_at: null, approved_at: null, approved_by_name: null,
-  posted_at: '2026-11-05T05:00:00Z', closed_at: null, cancelled_at: null, cancel_reason: null, created_by_name: 'Rahim Uddin', version: 1,
+  id: 'pur1',
+  purchase_no: 'PUR-2611-00007',
+  supplier_id: 's1',
+  supplier_name: 'Karim Traders',
+  supplier_invoice_no: null,
+  purchase_date: '2026-11-05',
+  location_id: 'loc1',
+  location_name: 'Main store',
+  status: 'received',
+  payment_status: 'unpaid',
+  subtotal: '0',
+  item_discount_total: '0',
+  bill_discount_amount: '0',
+  tax_total: '0',
+  shipping_cost: '0',
+  other_cost: '0',
+  grand_total: '0',
+  received_total: '0',
+  paid_total: '0',
+  returned_total: '0',
+  due_total: '0',
+  note: null,
+  item_count: 2,
+  expected_date: null,
+  ordered_at: null,
+  approved_at: null,
+  approved_by_name: null,
+  posted_at: '2026-11-05T05:00:00Z',
+  closed_at: null,
+  cancelled_at: null,
+  cancel_reason: null,
+  created_by_name: 'Rahim Uddin',
+  version: 1,
   created_at: '2026-11-05T05:00:00Z',
   // 3 soaps in stock (one returned); 1.5 kg sugar → 2 labels.
   items: [item('i1', 'v1', 'Lux Soap', '4.000', '4.000', '1.000'), item('i2', 'v2', 'Sugar', '1.500', '1.500')],
-  receipts: [], payments: [], returns: [],
+  receipts: [],
+  payments: [],
+  returns: [],
 }
 
-const soap = { variant_id: 'v1', product_id: 'p1', product_name: 'Lux Soap', product_name_bn: null, variant_name: null, sku: 'P000001', barcode: '8901030865275', selling_price: '55.0000', unit_short_name: 'pcs' }
-const sugar = { variant_id: 'v2', product_id: 'p2', product_name: 'Sugar', product_name_bn: null, variant_name: null, sku: 'P000002', barcode: null, selling_price: '140.0000', unit_short_name: 'kg' }
+const soap = {
+  variant_id: 'v1',
+  product_id: 'p1',
+  product_name: 'Lux Soap',
+  product_name_bn: null,
+  variant_name: null,
+  sku: 'P000001',
+  barcode: '8901030865275',
+  selling_price: '55.0000',
+  unit_short_name: 'pcs',
+}
+const sugar = {
+  variant_id: 'v2',
+  product_id: 'p2',
+  product_name: 'Sugar',
+  product_name_bn: null,
+  variant_name: null,
+  sku: 'P000002',
+  barcode: null,
+  selling_price: '140.0000',
+  unit_short_name: 'kg',
+}
 
 describe('barcode labels', () => {
   it('pages sheets and skips used positions', () => {
@@ -95,7 +162,23 @@ describe('barcode labels', () => {
   it('opens from the product list with that product', async () => {
     const calls = mockApi({
       ...signedIn(['dashboard.view', 'products.view']),
-      'GET /api/v1/products': { data: [{ id: 'p1', variant_id: 'v1', name: 'Lux Soap', name_bn: null, sku: 'P000001', category_name: null, selling_price: '55.0000', unit_short_name: 'pcs', status: 'active', barcodes: [] }], next_cursor: null },
+      'GET /api/v1/products': {
+        data: [
+          {
+            id: 'p1',
+            variant_id: 'v1',
+            name: 'Lux Soap',
+            name_bn: null,
+            sku: 'P000001',
+            category_name: null,
+            selling_price: '55.0000',
+            unit_short_name: 'pcs',
+            status: 'active',
+            barcodes: [],
+          },
+        ],
+        next_cursor: null,
+      },
       'GET /api/v1/categories': [],
       'GET /api/v1/brands': [],
       'POST /api/v1/labels': [soap],

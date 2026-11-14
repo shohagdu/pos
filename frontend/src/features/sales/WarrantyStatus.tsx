@@ -14,9 +14,7 @@ export function WarrantyStatus({ sale }: { sale: Pick<Sale, 'warranty_items' | '
       <span className={expired ? 'text-danger' : 'text-brand-700'}>
         {t(expired ? 'sales.warrantyListExpired' : 'sales.warrantyListUntil', { date: formatDate(sale.warranty_until, i18n.language) })}
       </span>
-      {sale.warranty_items > 1 && (
-        <span className="block text-xs text-ink-muted">{t('sales.warrantyItems', { count: sale.warranty_items })}</span>
-      )}
+      {sale.warranty_items > 1 && <span className="block text-xs text-ink-muted">{t('sales.warrantyItems', { count: sale.warranty_items })}</span>}
     </span>
   )
 }

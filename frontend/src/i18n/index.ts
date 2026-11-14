@@ -34,8 +34,7 @@ const featureMessages = import.meta.glob<{ default: Messages }>('/src/features/*
 function merge(target: Messages, source: Messages): Messages {
   for (const [key, value] of Object.entries(source)) {
     const current = target[key]
-    target[key] =
-      typeof value === 'object' && typeof current === 'object' ? merge({ ...current }, value) : value
+    target[key] = typeof value === 'object' && typeof current === 'object' ? merge({ ...current }, value) : value
   }
   return target
 }

@@ -62,18 +62,14 @@ export function VerifyPhonePage() {
     <Card>
       <p className="mb-1 text-sm font-medium text-brand-700">{t('onboarding.stepOf', { step: 1, total: 5 })}</p>
       <h1 className="mb-2 text-xl font-bold">{t('auth.verifyTitle')}</h1>
-      <p className="mb-6 text-sm text-ink-muted">
-        {challenge ? t('auth.codeSentTo', { destination: challenge.destination }) : t('auth.verifyIntro')}
-      </p>
+      <p className="mb-6 text-sm text-ink-muted">{challenge ? t('auth.codeSentTo', { destination: challenge.destination }) : t('auth.verifyIntro')}</p>
       {challenge?.dev_code && !challenge.auto_verify && (
         <Alert tone="warning" className="mb-4">
           {t('auth.devCode', { code: challenge.dev_code })}
         </Alert>
       )}
       <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-        {!knownPhone && (
-          <TextField label={t('auth.mobile')} type="tel" autoComplete="tel" required error={errors.phone} {...bind('phone')} />
-        )}
+        {!knownPhone && <TextField label={t('auth.mobile')} type="tel" autoComplete="tel" required error={errors.phone} {...bind('phone')} />}
         <TextField
           label={t('auth.code')}
           inputMode="numeric"

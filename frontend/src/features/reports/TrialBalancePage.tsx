@@ -52,15 +52,32 @@ export function TrialBalancePage() {
     const d = tb.data
     exports.push({
       run: () =>
-        downloadCsv(`trial-balance-${range.from || 'start'}-${d.to}`, [...d.rows, { account_id: '', code: '', name: t('common.totals'), account_type: 'asset', opening: '', debit: d.total_debit, credit: d.total_credit, closing_debit: d.total_closing_debit, closing_credit: d.total_closing_credit }], [
-          { header: t('reports.code'), value: (r) => r.code },
-          { header: t('reports.account'), value: (r) => r.name },
-          { header: t('reports.tb.opening'), value: (r) => r.opening },
-          { header: t('reports.tb.debit'), value: (r) => r.debit },
-          { header: t('reports.tb.credit'), value: (r) => r.credit },
-          { header: t('reports.tb.closingDebit'), value: (r) => r.closing_debit },
-          { header: t('reports.tb.closingCredit'), value: (r) => r.closing_credit },
-        ]),
+        downloadCsv(
+          `trial-balance-${range.from || 'start'}-${d.to}`,
+          [
+            ...d.rows,
+            {
+              account_id: '',
+              code: '',
+              name: t('common.totals'),
+              account_type: 'asset',
+              opening: '',
+              debit: d.total_debit,
+              credit: d.total_credit,
+              closing_debit: d.total_closing_debit,
+              closing_credit: d.total_closing_credit,
+            },
+          ],
+          [
+            { header: t('reports.code'), value: (r) => r.code },
+            { header: t('reports.account'), value: (r) => r.name },
+            { header: t('reports.tb.opening'), value: (r) => r.opening },
+            { header: t('reports.tb.debit'), value: (r) => r.debit },
+            { header: t('reports.tb.credit'), value: (r) => r.credit },
+            { header: t('reports.tb.closingDebit'), value: (r) => r.closing_debit },
+            { header: t('reports.tb.closingCredit'), value: (r) => r.closing_credit },
+          ],
+        ),
     })
   }
 

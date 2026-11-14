@@ -25,9 +25,39 @@ function signedIn(perms: string[]) {
 }
 
 const accounts = [
-  { id: 'a-assets', code: '1000', name: 'Assets', account_type: 'asset', normal_side: 'debit', parent_id: null, system_key: null, is_postable: false, status: 'active' },
-  { id: 'a-cash', code: '1010', name: 'Cash in hand', account_type: 'asset', normal_side: 'debit', parent_id: 'a-assets', system_key: 'cash', is_postable: true, status: 'active' },
-  { id: 'a-sales', code: '4000', name: 'Sales', account_type: 'income', normal_side: 'credit', parent_id: null, system_key: 'sales', is_postable: true, status: 'active' },
+  {
+    id: 'a-assets',
+    code: '1000',
+    name: 'Assets',
+    account_type: 'asset',
+    normal_side: 'debit',
+    parent_id: null,
+    system_key: null,
+    is_postable: false,
+    status: 'active',
+  },
+  {
+    id: 'a-cash',
+    code: '1010',
+    name: 'Cash in hand',
+    account_type: 'asset',
+    normal_side: 'debit',
+    parent_id: 'a-assets',
+    system_key: 'cash',
+    is_postable: true,
+    status: 'active',
+  },
+  {
+    id: 'a-sales',
+    code: '4000',
+    name: 'Sales',
+    account_type: 'income',
+    normal_side: 'credit',
+    parent_id: null,
+    system_key: 'sales',
+    is_postable: true,
+    status: 'active',
+  },
 ]
 
 const row = (period: string, net: string) => ({
@@ -54,8 +84,28 @@ describe('reports', () => {
         from: '2026-10-01',
         to: '2026-10-18',
         rows: [
-          { account_id: 'a-cash', code: '1010', name: 'Cash in hand', account_type: 'asset', opening: '0', debit: '1500.00', credit: '0', closing_debit: '1500.00', closing_credit: '0' },
-          { account_id: 'a-sales', code: '4000', name: 'Sales', account_type: 'income', opening: '0', debit: '0', credit: '1500.00', closing_debit: '0', closing_credit: '1500.00' },
+          {
+            account_id: 'a-cash',
+            code: '1010',
+            name: 'Cash in hand',
+            account_type: 'asset',
+            opening: '0',
+            debit: '1500.00',
+            credit: '0',
+            closing_debit: '1500.00',
+            closing_credit: '0',
+          },
+          {
+            account_id: 'a-sales',
+            code: '4000',
+            name: 'Sales',
+            account_type: 'income',
+            opening: '0',
+            debit: '0',
+            credit: '1500.00',
+            closing_debit: '0',
+            closing_credit: '1500.00',
+          },
         ],
         total_debit: '1500.00',
         total_credit: '1500.00',
@@ -80,7 +130,10 @@ describe('reports', () => {
         from: '2026-10-01',
         to: '2026-10-18',
         group: 'day',
-        rows: [{ ...row('2026-10-17', '150.00'), cogs: null, gross_profit: null }, { ...row('2026-10-18', '250.00'), cogs: null, gross_profit: null }],
+        rows: [
+          { ...row('2026-10-17', '150.00'), cogs: null, gross_profit: null },
+          { ...row('2026-10-18', '250.00'), cogs: null, gross_profit: null },
+        ],
         totals: { ...row('', '400.00'), invoices: 4, cogs: null, gross_profit: null },
         payments: [{ method_name: 'Cash', money_in: '400.00', money_out: '0.00', count: 4 }],
         cancelled_count: 1,
@@ -98,38 +151,73 @@ describe('reports', () => {
 
   it('ranks the best-selling and most profitable products', async () => {
     const product = (id: string, name: string, quantity: string, net: string, profit: string) => ({
-      variant_id: id, product_name: name, sku: id.toUpperCase(), category_name: 'Grocery', unit_short_name: 'pcs',
-      quantity, net_sales: net, cogs: '0.00', gross_profit: profit, margin_pct: '10.00',
+      variant_id: id,
+      product_name: name,
+      sku: id.toUpperCase(),
+      category_name: 'Grocery',
+      unit_short_name: 'pcs',
+      quantity,
+      net_sales: net,
+      cogs: '0.00',
+      gross_profit: profit,
+      margin_pct: '10.00',
     })
     const calls = mockApi({
       ...signedIn(['reports.sales', 'products.view_cost']),
       'GET /api/v1/categories': [],
       'GET /api/v1/reports/sales-by-product': {
-        from: '2026-10-01', to: '2026-10-18',
-        rows: [product('v-rice', 'Miniket Rice 5kg', '10.000', '4500.00', '500.00'), product('v-salt', 'Iodized Salt 1kg', '40.000', '1680.00', '280.00'), product('v-tea', 'Black Tea 400g', '2.000', '520.00', '640.00')],
-        total_net_sales: '6700.00', total_cogs: '5280.00', total_gross_profit: '1420.00',
+        from: '2026-10-01',
+        to: '2026-10-18',
+        rows: [
+          product('v-rice', 'Miniket Rice 5kg', '10.000', '4500.00', '500.00'),
+          product('v-salt', 'Iodized Salt 1kg', '40.000', '1680.00', '280.00'),
+          product('v-tea', 'Black Tea 400g', '2.000', '520.00', '640.00'),
+        ],
+        total_net_sales: '6700.00',
+        total_cogs: '5280.00',
+        total_gross_profit: '1420.00',
       },
     })
     renderRoute('/reports/sales')
     await userEvent.click(await screen.findByRole('tab', { name: 'Best sellers' }))
     let table = await screen.findByRole('table', { name: 'Best sellers' })
     // Ranked by quantity sold: salt (40), rice (10), tea (2).
-    let names = within(table).getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[1]?.textContent)
+    let names = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => within(r).getAllByRole('cell')[1]?.textContent)
     expect(names).toEqual(['Iodized Salt 1kgV-SALT', 'Miniket Rice 5kgV-RICE', 'Black Tea 400gV-TEA'])
     await userEvent.selectOptions(screen.getByLabelText('Rank by'), 'net_sales')
-    names = within(table).getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[1]?.textContent)
+    names = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => within(r).getAllByRole('cell')[1]?.textContent)
     expect(names[0]).toBe('Miniket Rice 5kgV-RICE')
 
     await userEvent.click(screen.getByRole('tab', { name: 'Top profit' }))
     table = await screen.findByRole('table', { name: 'Top profit' })
-    names = within(table).getAllByRole('row').slice(1).map((r) => within(r).getAllByRole('cell')[1]?.textContent)
+    names = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => within(r).getAllByRole('cell')[1]?.textContent)
     expect(names).toEqual(['Black Tea 400gV-TEA', 'Miniket Rice 5kgV-RICE', 'Iodized Salt 1kgV-SALT'])
     // One request serves all three product views.
     expect(calls.filter((c) => c.path === '/api/v1/reports/sales-by-product')).toHaveLength(1)
   })
 
   it('offers Top profit only to members who may see cost', async () => {
-    mockApi({ ...signedIn(['reports.sales']), 'GET /api/v1/reports/sales-summary': { from: '2026-10-01', to: '2026-10-18', group: 'day', rows: [], totals: { ...row('', '0.00'), invoices: 0 }, payments: [], cancelled_count: 0 } })
+    mockApi({
+      ...signedIn(['reports.sales']),
+      'GET /api/v1/reports/sales-summary': {
+        from: '2026-10-01',
+        to: '2026-10-18',
+        group: 'day',
+        rows: [],
+        totals: { ...row('', '0.00'), invoices: 0 },
+        payments: [],
+        cancelled_count: 0,
+      },
+    })
     renderRoute('/reports/sales')
     expect(await screen.findByRole('tab', { name: 'Best sellers' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Top profit' })).not.toBeInTheDocument()

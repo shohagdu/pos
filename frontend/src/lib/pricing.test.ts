@@ -9,8 +9,7 @@ interface RawDiscount {
   value: string
 }
 
-const discount = (d?: RawDiscount): Discount | null =>
-  d ? { type: d.type === 'percent' ? 'percent' : 'amount', value: dec(d.value) } : null
+const discount = (d?: RawDiscount): Discount | null => (d ? { type: d.type === 'percent' ? 'percent' : 'amount', value: dec(d.value) } : null)
 
 // The same vectors drive the Rust engine (crates/sales/src/pricing.rs).
 describe('pricing engine (shared vectors)', () => {

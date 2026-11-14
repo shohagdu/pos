@@ -117,11 +117,7 @@ export function PurchasesPage() {
           <Button type="submit">{t('common.search')}</Button>
         </form>
         <div className="flex flex-wrap items-end gap-3">
-          <DateRangeFilter
-            from={filter.from ?? ''}
-            to={filter.to ?? ''}
-            onChange={({ from, to }) => set({ from: from || undefined, to: to || undefined })}
-          />
+          <DateRangeFilter from={filter.from ?? ''} to={filter.to ?? ''} onChange={({ from, to }) => set({ from: from || undefined, to: to || undefined })} />
           <Select
             label={t('common.status')}
             value={filter.status ?? ''}

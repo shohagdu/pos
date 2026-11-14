@@ -117,8 +117,7 @@ export const partiesApi = {
   updateCustomer: (id: string, version: number, input: CustomerInput) =>
     apiFetch<Customer>(`/api/v1/customers/${id}`, { method: 'PUT', body: input, ifMatch: version }),
   deleteCustomer: (id: string) => apiFetch<void>(`/api/v1/customers/${id}`, { method: 'DELETE' }),
-  customerStatement: (id: string, from?: string, to?: string) =>
-    apiFetch<Statement>(`/api/v1/customers/${id}/statement${queryString({ from, to })}`),
+  customerStatement: (id: string, from?: string, to?: string) => apiFetch<Statement>(`/api/v1/customers/${id}/statement${queryString({ from, to })}`),
 
   suppliers: (filter: PartyFilter, cursor: string | null, limit = PAGE_SIZE) =>
     apiFetch<SupplierPage>(`/api/v1/suppliers${queryString({ ...filter, limit, cursor })}`),
@@ -127,8 +126,7 @@ export const partiesApi = {
   updateSupplier: (id: string, version: number, input: SupplierInput) =>
     apiFetch<Supplier>(`/api/v1/suppliers/${id}`, { method: 'PUT', body: input, ifMatch: version }),
   deleteSupplier: (id: string) => apiFetch<void>(`/api/v1/suppliers/${id}`, { method: 'DELETE' }),
-  supplierStatement: (id: string, from?: string, to?: string) =>
-    apiFetch<Statement>(`/api/v1/suppliers/${id}/statement${queryString({ from, to })}`),
+  supplierStatement: (id: string, from?: string, to?: string) => apiFetch<Statement>(`/api/v1/suppliers/${id}/statement${queryString({ from, to })}`),
 }
 
 export const partyKeys = {
@@ -153,11 +151,9 @@ export const useCustomers = (tenantId: string, filter: PartyFilter) =>
     getNextPageParam: (last) => last.next_cursor,
   })
 
-export const useCustomer = (tenantId: string, id: string) =>
-  useQuery({ queryKey: partyKeys.customer(tenantId, id), queryFn: () => partiesApi.customer(id) })
+export const useCustomer = (tenantId: string, id: string) => useQuery({ queryKey: partyKeys.customer(tenantId, id), queryFn: () => partiesApi.customer(id) })
 
-export const useWalkInCustomer = (tenantId: string) =>
-  useQuery({ queryKey: partyKeys.walkIn(tenantId), queryFn: partiesApi.walkIn, staleTime: Infinity })
+export const useWalkInCustomer = (tenantId: string) => useQuery({ queryKey: partyKeys.walkIn(tenantId), queryFn: partiesApi.walkIn, staleTime: Infinity })
 
 export const useCustomerStatement = (tenantId: string, id: string, from?: string, to?: string) =>
   useQuery({
@@ -173,8 +169,7 @@ export const useSuppliers = (tenantId: string, filter: PartyFilter) =>
     getNextPageParam: (last) => last.next_cursor,
   })
 
-export const useSupplier = (tenantId: string, id: string) =>
-  useQuery({ queryKey: partyKeys.supplier(tenantId, id), queryFn: () => partiesApi.supplier(id) })
+export const useSupplier = (tenantId: string, id: string) => useQuery({ queryKey: partyKeys.supplier(tenantId, id), queryFn: () => partiesApi.supplier(id) })
 
 export const useSupplierStatement = (tenantId: string, id: string, from?: string, to?: string) =>
   useQuery({

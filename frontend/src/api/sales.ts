@@ -349,10 +349,8 @@ export const salesApi = {
   posProducts: (q: string, limit = 20, offset = 0, categoryId: string | null = null) =>
     apiFetch<PosItem[]>(`/api/v1/pos/products${queryString({ q, limit, offset: offset || undefined, category_id: categoryId })}`),
   posCategories: () => apiFetch<PosCategory[]>('/api/v1/pos/categories'),
-  createSale: (input: SaleInput, idempotencyKey: string) =>
-    apiFetch<SaleDetail>('/api/v1/sales', { method: 'POST', body: input, idempotencyKey }),
-  sales: (filter: SaleFilter, cursor: string | null) =>
-    apiFetch<SalePage>(`/api/v1/sales${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
+  createSale: (input: SaleInput, idempotencyKey: string) => apiFetch<SaleDetail>('/api/v1/sales', { method: 'POST', body: input, idempotencyKey }),
+  sales: (filter: SaleFilter, cursor: string | null) => apiFetch<SalePage>(`/api/v1/sales${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   sale: (id: string) => apiFetch<SaleDetail>(`/api/v1/sales/${id}`),
   warranties: (filter: WarrantyFilter, cursor: string | null) =>
     apiFetch<WarrantyPage>(`/api/v1/sale-warranties${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
@@ -370,8 +368,7 @@ export const salesApi = {
     apiFetch<HeldCart>('/api/v1/held-carts', { method: 'POST', body: input }),
   removeHeldCart: (id: string) => apiFetch<HeldCart>(`/api/v1/held-carts/${id}`, { method: 'DELETE' }),
 
-  collect: (input: CollectionInput, idempotencyKey: string) =>
-    apiFetch<PaymentDetail>('/api/v1/collections', { method: 'POST', body: input, idempotencyKey }),
+  collect: (input: CollectionInput, idempotencyKey: string) => apiFetch<PaymentDetail>('/api/v1/collections', { method: 'POST', body: input, idempotencyKey }),
 }
 
 export const salesKeys = {
@@ -388,8 +385,7 @@ export const salesKeys = {
   warranties: (tenantId: string, filter: WarrantyFilter) => ['sales', tenantId, 'warranties', filter] as const,
 }
 
-export const usePosContext = (tenantId: string) =>
-  useQuery({ queryKey: salesKeys.posContext(tenantId), queryFn: salesApi.posContext, staleTime: 5 * 60_000 })
+export const usePosContext = (tenantId: string) => useQuery({ queryKey: salesKeys.posContext(tenantId), queryFn: salesApi.posContext, staleTime: 5 * 60_000 })
 export const usePosProducts = (tenantId: string, q: string, enabled = true) =>
   useQuery({ queryKey: salesKeys.posProducts(tenantId, q), queryFn: () => salesApi.posProducts(q), enabled, staleTime: 10_000 })
 /** Page size of the POS product grid (the API allows at most 50). */
@@ -416,8 +412,7 @@ export const useSales = (tenantId: string, filter: SaleFilter) =>
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.next_cursor,
   })
-export const useSale = (tenantId: string, id: string) =>
-  useQuery({ queryKey: salesKeys.sale(tenantId, id), queryFn: () => salesApi.sale(id) })
+export const useSale = (tenantId: string, id: string) => useQuery({ queryKey: salesKeys.sale(tenantId, id), queryFn: () => salesApi.sale(id) })
 export const useSaleReturns = (tenantId: string, filter: ReturnFilter) =>
   useInfiniteQuery({
     queryKey: salesKeys.returns(tenantId, filter),

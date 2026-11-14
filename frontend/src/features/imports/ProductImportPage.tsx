@@ -73,8 +73,7 @@ function ProductImport({ tenantId, masters }: { tenantId: string; masters: Maste
     if (local) return t(`imports.errors.${local.key}`, local.values)
     return serverErrors[row.key]?.[field]
   }
-  const rowHasProblem = (row: ImportRow) =>
-    Object.keys(localErrors[row.key] ?? {}).length > 0 || Object.keys(serverErrors[row.key] ?? {}).length > 0
+  const rowHasProblem = (row: ImportRow) => Object.keys(localErrors[row.key] ?? {}).length > 0 || Object.keys(serverErrors[row.key] ?? {}).length > 0
   const problemRows = rows.filter(rowHasProblem)
   const shown = problemKeys ? rows.filter((r) => problemKeys.has(r.key)) : rows
 
@@ -136,7 +135,10 @@ function ProductImport({ tenantId, masters }: { tenantId: string; masters: Maste
       }
       const ids = { category: (n: string) => findCategory(cats, n)?.id, brand: (n: string) => findBrand(brs, n)?.id }
       const stock = canStock ? openingStock(rows, canViewCost) : []
-      const products = await catalogApi.importProducts(rows.map((r) => toInput(r, ids, canViewCost)), stock)
+      const products = await catalogApi.importProducts(
+        rows.map((r) => toInput(r, ids, canViewCost)),
+        stock,
+      )
       return { products, stocked: stock.length }
     },
     onSuccess: (created) => {
@@ -251,10 +253,14 @@ function ProductImport({ tenantId, masters }: { tenantId: string; masters: Maste
                   {t('imports.onlyProblems', { count: problemKeys?.size ?? problemRows.length })}
                 </label>
               )}
-              <Button variant="ghost" className="min-h-9" onClick={() => {
+              <Button
+                variant="ghost"
+                className="min-h-9"
+                onClick={() => {
                   setProblemKeys(null)
                   setRows((rs) => [...rs, blankRow(masters)])
-                }}>
+                }}
+              >
                 {t('imports.addRow')}
               </Button>
             </div>
@@ -275,38 +281,84 @@ function ProductImport({ tenantId, masters }: { tenantId: string; masters: Maste
           )}
 
           <datalist id="import-categories">
-            {masters.categories.filter((c) => c.status === 'active').map((c) => (
-              <option key={c.id} value={c.name} />
-            ))}
+            {masters.categories
+              .filter((c) => c.status === 'active')
+              .map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
           </datalist>
           <datalist id="import-brands">
-            {masters.brands.filter((b) => b.status === 'active').map((b) => (
-              <option key={b.id} value={b.name} />
-            ))}
+            {masters.brands
+              .filter((b) => b.status === 'active')
+              .map((b) => (
+                <option key={b.id} value={b.name} />
+              ))}
           </datalist>
 
           <div className="max-h-[70vh] overflow-auto rounded-lg border border-border">
             <table className="min-w-max text-sm">
               <thead className="sticky top-0 z-10 bg-canvas text-xs text-ink-muted uppercase">
                 <tr>
-                  <th scope="col" className="px-2 py-2 text-left">{t('imports.line')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.name')} *</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('imports.products.nameBn')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.sku')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.barcodes')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.category')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.brand')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.unit')} *</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.taxRate')}</th>
-                  {canViewCost && <th scope="col" className="px-2 py-2 text-left">{t('imports.products.cost')}</th>}
-                  <th scope="col" className="px-2 py-2 text-left">{t('imports.products.price')} *</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('imports.products.wholesale')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('imports.products.minPrice')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('imports.products.reorder')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('products.type')}</th>
-                  <th scope="col" className="px-2 py-2 text-left">{t('imports.products.track')}</th>
-                  {canStock && <th scope="col" className="px-2 py-2 text-left">{t('imports.products.openingStock')}</th>}
-                  {canStock && canViewCost && <th scope="col" className="px-2 py-2 text-left">{t('imports.products.openingCost')}</th>}
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('imports.line')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.name')} *
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('imports.products.nameBn')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.sku')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.barcodes')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.category')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.brand')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.unit')} *
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.taxRate')}
+                  </th>
+                  {canViewCost && (
+                    <th scope="col" className="px-2 py-2 text-left">
+                      {t('imports.products.cost')}
+                    </th>
+                  )}
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('imports.products.price')} *
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('imports.products.wholesale')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('imports.products.minPrice')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('imports.products.reorder')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('products.type')}
+                  </th>
+                  <th scope="col" className="px-2 py-2 text-left">
+                    {t('imports.products.track')}
+                  </th>
+                  {canStock && (
+                    <th scope="col" className="px-2 py-2 text-left">
+                      {t('imports.products.openingStock')}
+                    </th>
+                  )}
+                  {canStock && canViewCost && (
+                    <th scope="col" className="px-2 py-2 text-left">
+                      {t('imports.products.openingCost')}
+                    </th>
+                  )}
                   <th scope="col" className="px-2 py-2">
                     <span className="sr-only">{t('imports.remove')}</span>
                   </th>
@@ -358,11 +410,13 @@ function ProductImport({ tenantId, masters }: { tenantId: string; masters: Maste
                           className={`${CELL} w-28`}
                         >
                           {!row.unit_id && <option value="">{t('products.chooseUnit')}</option>}
-                          {masters.units.filter((u) => u.status === 'active').map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {unitLabel(u)}
-                            </option>
-                          ))}
+                          {masters.units
+                            .filter((u) => u.status === 'active')
+                            .map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {unitLabel(u)}
+                              </option>
+                            ))}
                         </select>
                         {unitError && <p className="mt-0.5 max-w-40 text-xs text-danger">{unitError}</p>}
                       </td>
@@ -375,11 +429,13 @@ function ProductImport({ tenantId, masters }: { tenantId: string; masters: Maste
                           className={`${CELL} w-32`}
                         >
                           <option value="">{t('products.defaultTax')}</option>
-                          {masters.taxRates.filter((r) => r.status === 'active').map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {taxLabel(r)}
-                            </option>
-                          ))}
+                          {masters.taxRates
+                            .filter((r) => r.status === 'active')
+                            .map((r) => (
+                              <option key={r.id} value={r.id}>
+                                {taxLabel(r)}
+                              </option>
+                            ))}
                         </select>
                         {taxError && <p className="mt-0.5 max-w-40 text-xs text-danger">{taxError}</p>}
                       </td>

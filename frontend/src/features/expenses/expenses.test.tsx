@@ -10,9 +10,23 @@ afterEach(() => vi.restoreAllMocks())
 const perms = ['dashboard.view', 'expenses.view', 'expenses.create', 'expenses.approve']
 
 const rent = {
-  id: 'e1', expense_no: 'EXP-0001', business_date: '2026-10-01', category_id: 'cat-rent', category_name: 'Shop rent', amount: '12000.00',
-  tax_amount: '0.00', account_id: 'a-cash', account_name: 'Cash drawer', payment_id: 'pay1', payee: 'Landlord', reference: null, note: null,
-  status: 'posted', void_reason: null, created_by_name: 'Rahim Uddin', created_at: '2026-10-01T05:00:00Z',
+  id: 'e1',
+  expense_no: 'EXP-0001',
+  business_date: '2026-10-01',
+  category_id: 'cat-rent',
+  category_name: 'Shop rent',
+  amount: '12000.00',
+  tax_amount: '0.00',
+  account_id: 'a-cash',
+  account_name: 'Cash drawer',
+  payment_id: 'pay1',
+  payee: 'Landlord',
+  reference: null,
+  note: null,
+  status: 'posted',
+  void_reason: null,
+  created_by_name: 'Rahim Uddin',
+  created_at: '2026-10-01T05:00:00Z',
 }
 
 function signedIn() {
@@ -25,7 +39,20 @@ function signedIn() {
       { id: 'cat-power', name: 'Electricity', ledger_account_id: 'l2', ledger_code: '6110', is_system: false, status: 'active', expense_count: 0 },
     ],
     'GET /api/v1/payment-accounts': [
-      { id: 'a-cash', account_type: 'cash', name: 'Cash drawer', account_number: null, bank_name: null, opening_balance: '0', current_balance: '0', ledger_account_id: null, is_default: true, status: 'active', version: 1, created_at: '' },
+      {
+        id: 'a-cash',
+        account_type: 'cash',
+        name: 'Cash drawer',
+        account_number: null,
+        bank_name: null,
+        opening_balance: '0',
+        current_balance: '0',
+        ledger_account_id: null,
+        is_default: true,
+        status: 'active',
+        version: 1,
+        created_at: '',
+      },
     ],
   }
 }

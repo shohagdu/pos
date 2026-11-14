@@ -30,7 +30,9 @@ export function SalesChart({ days, today }: { days: { date: string; sales: strin
             </div>
           ))}
         </div>
-        {top === 0n && <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-ink-muted">{t('dashboard.chart.empty')}</p>}
+        {top === 0n && (
+          <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-sm text-ink-muted">{t('dashboard.chart.empty')}</p>
+        )}
       </div>
       <div aria-hidden className="flex gap-1 text-center text-[10px] text-ink-muted sm:gap-2 sm:text-xs">
         {days.map((d) => (

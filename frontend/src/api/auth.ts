@@ -90,8 +90,7 @@ export interface RegisterInput {
   locale?: string
 }
 
-const post = <T>(path: string, body: unknown = {}, auth = false) =>
-  apiFetch<T>(`/api/v1/auth${path}`, { method: 'POST', body, auth })
+const post = <T>(path: string, body: unknown = {}, auth = false) => apiFetch<T>(`/api/v1/auth${path}`, { method: 'POST', body, auth })
 
 export const authApi = {
   register: (input: RegisterInput) => post<OtpChallenge>('/register', input),
@@ -104,14 +103,12 @@ export const authApi = {
   impersonate: (membershipId: string) => post<TokenResponse>('/impersonate', { membership_id: membershipId }, true),
   stopImpersonation: () => post<TokenResponse>('/impersonate/stop', {}, true),
   /** Platform owner/support: open a business as its owner (reason is audited). */
-  openBusiness: (tenantId: string, reason: string) =>
-    post<TokenResponse>('/open-business', { tenant_id: tenantId, reason }, true),
+  openBusiness: (tenantId: string, reason: string) => post<TokenResponse>('/open-business', { tenant_id: tenantId, reason }, true),
   forgotPassword: (identifier: string) => post<OtpChallenge>('/password/forgot', { identifier }),
   /** The signed-in user's own password; other devices are signed out. */
   changePassword: (currentPassword: string, newPassword: string) =>
     post<{ signed_out_sessions: number }>('/password/change', { current_password: currentPassword, new_password: newPassword }, true),
-  resetPassword: (identifier: string, code: string, newPassword: string) =>
-    post<void>('/password/reset', { identifier, code, new_password: newPassword }),
+  resetPassword: (identifier: string, code: string, newPassword: string) => post<void>('/password/reset', { identifier, code, new_password: newPassword }),
   me: () => apiFetch<Me>('/api/v1/auth/me'),
   sessions: () => apiFetch<SessionInfo[]>('/api/v1/auth/sessions'),
   revokeSession: (id: string) => apiFetch<void>(`/api/v1/auth/sessions/${id}`, { method: 'DELETE' }),

@@ -13,7 +13,10 @@ export function SuspendedNotice() {
       <h1 className="text-xl font-bold">{t('subscription.suspendedTitle', { business: me?.tenant?.name ?? '' })}</h1>
       <p className="text-sm">{t('subscription.suspendedBody')}</p>
       <p className="text-sm text-ink-muted">{t('subscription.suspendedData')}</p>
-      <Link to="/plan" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 sm:self-start">
+      <Link
+        to="/plan"
+        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700 sm:self-start"
+      >
         {t('subscription.seePlan')}
       </Link>
     </Card>

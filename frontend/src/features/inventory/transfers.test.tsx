@@ -27,24 +27,82 @@ function signedIn(permissions = perms) {
 }
 
 const summary = {
-  id: 'tr1', transfer_no: 'TRF-0001', business_date: '2026-10-19', status: 'dispatched', from_branch_id: 'b1', from_branch_name: 'Main',
-  from_location_id: 'loc1', from_location_name: 'Shop floor', to_branch_id: 'b2', to_branch_name: 'Uttara', to_location_id: 'loc2',
-  to_location_name: 'Uttara floor', note: null, total_value: '4000.00', loss_value: '0.00', item_count: 2, created_by_name: 'Rahim Uddin',
-  dispatched_at: '2026-10-19T04:00:00Z', received_at: null, version: 2, created_at: '2026-10-19T03:00:00Z',
+  id: 'tr1',
+  transfer_no: 'TRF-0001',
+  business_date: '2026-10-19',
+  status: 'dispatched',
+  from_branch_id: 'b1',
+  from_branch_name: 'Main',
+  from_location_id: 'loc1',
+  from_location_name: 'Shop floor',
+  to_branch_id: 'b2',
+  to_branch_name: 'Uttara',
+  to_location_id: 'loc2',
+  to_location_name: 'Uttara floor',
+  note: null,
+  total_value: '4000.00',
+  loss_value: '0.00',
+  item_count: 2,
+  created_by_name: 'Rahim Uddin',
+  dispatched_at: '2026-10-19T04:00:00Z',
+  received_at: null,
+  version: 2,
+  created_at: '2026-10-19T03:00:00Z',
 }
 const transfer = {
   ...summary,
   items: [
-    { id: 'i1', variant_id: 'v1', product_name: 'Miniket Rice 5kg', sku: 'P000001', unit_short_name: 'pcs', quantity_sent: '10.000', quantity_received: null, unit_cost: '400.0000' },
-    { id: 'i2', variant_id: 'v2', product_name: 'Lux Soap', sku: 'P000002', unit_short_name: 'pcs', quantity_sent: '5.000', quantity_received: null, unit_cost: null },
+    {
+      id: 'i1',
+      variant_id: 'v1',
+      product_name: 'Miniket Rice 5kg',
+      sku: 'P000001',
+      unit_short_name: 'pcs',
+      quantity_sent: '10.000',
+      quantity_received: null,
+      unit_cost: '400.0000',
+    },
+    {
+      id: 'i2',
+      variant_id: 'v2',
+      product_name: 'Lux Soap',
+      sku: 'P000002',
+      unit_short_name: 'pcs',
+      quantity_sent: '5.000',
+      quantity_received: null,
+      unit_cost: null,
+    },
   ],
 }
 
 const product = {
-  id: 'p1', variant_id: 'v1', product_type: 'standard', name: 'Miniket Rice 5kg', name_bn: null, description: null, sku: 'P000001',
-  barcodes: [], category_id: null, category_name: null, brand_id: null, brand_name: null, unit_id: 'u-pcs', unit_short_name: 'pcs',
-  allow_fraction: false, tax_rate_id: null, tax_rate_pct: null, track_inventory: true, purchase_price: '400.0000', selling_price: '450.0000',
-  wholesale_price: null, min_selling_price: null, reorder_level: null, status: 'active', version: 1, created_at: '', updated_at: '',
+  id: 'p1',
+  variant_id: 'v1',
+  product_type: 'standard',
+  name: 'Miniket Rice 5kg',
+  name_bn: null,
+  description: null,
+  sku: 'P000001',
+  barcodes: [],
+  category_id: null,
+  category_name: null,
+  brand_id: null,
+  brand_name: null,
+  unit_id: 'u-pcs',
+  unit_short_name: 'pcs',
+  allow_fraction: false,
+  tax_rate_id: null,
+  tax_rate_pct: null,
+  track_inventory: true,
+  purchase_price: '400.0000',
+  selling_price: '450.0000',
+  wholesale_price: null,
+  min_selling_price: null,
+  reorder_level: null,
+  status: 'active',
+  version: 1,
+  created_at: '',
+  updated_at: '',
 }
 
 describe('stock transfers', () => {
@@ -108,7 +166,16 @@ describe('stock transfers', () => {
       ...base,
       'GET /api/v1/stock-locations': [
         ...base['GET /api/v1/stock-locations'],
-        { id: 'loc3', branch_id: 'b2', branch_name: 'Uttara', code: 'UTT-W', name: 'Uttara store room', location_type: 'warehouse', is_sellable: false, status: 'active' },
+        {
+          id: 'loc3',
+          branch_id: 'b2',
+          branch_name: 'Uttara',
+          code: 'UTT-W',
+          name: 'Uttara store room',
+          location_type: 'warehouse',
+          is_sellable: false,
+          status: 'active',
+        },
       ],
     })
     localStorage.removeItem('pos.transfer.to.t1')
@@ -121,7 +188,12 @@ describe('stock transfers', () => {
   })
 
   it('receives a transfer sending only the lines that arrived short', async () => {
-    const received = { ...transfer, status: 'received', loss_value: '400.00', items: transfer.items.map((i) => ({ ...i, quantity_received: i.id === 'i1' ? '9.000' : '5.000' })) }
+    const received = {
+      ...transfer,
+      status: 'received',
+      loss_value: '400.00',
+      items: transfer.items.map((i) => ({ ...i, quantity_received: i.id === 'i1' ? '9.000' : '5.000' })),
+    }
     let current: object = transfer
     const calls = mockApi({
       ...signedIn(),
@@ -144,14 +216,49 @@ describe('stock transfers', () => {
 
 describe('stock counts', () => {
   const count = {
-    id: 'c1', count_no: 'CNT-0001', business_date: '2026-10-19', status: 'in_progress', branch_id: 'b1', location_id: 'loc1', location_name: 'Shop floor',
-    category_name: null, note: null, item_count: 2, counted_count: 1, variance_value: null, created_by_name: 'Rahim Uddin',
-    snapshot_at: '2026-10-19T03:00:00Z', posted_at: null, created_at: '2026-10-19T03:00:00Z',
+    id: 'c1',
+    count_no: 'CNT-0001',
+    business_date: '2026-10-19',
+    status: 'in_progress',
+    branch_id: 'b1',
+    location_id: 'loc1',
+    location_name: 'Shop floor',
+    category_name: null,
+    note: null,
+    item_count: 2,
+    counted_count: 1,
+    variance_value: null,
+    created_by_name: 'Rahim Uddin',
+    snapshot_at: '2026-10-19T03:00:00Z',
+    posted_at: null,
+    created_at: '2026-10-19T03:00:00Z',
     items: [
-      { id: 'ci1', variant_id: 'v1', product_name: 'Miniket Rice 5kg', sku: 'P000001', barcode: null, unit_short_name: 'pcs', allow_fraction: false,
-        system_qty: '10.000', counted_qty: '10.000', variance_qty: '0.000', unit_cost: '400.0000' },
-      { id: 'ci2', variant_id: 'v2', product_name: 'Lux Soap', sku: 'P000002', barcode: '8901', unit_short_name: 'pcs', allow_fraction: false,
-        system_qty: '5.000', counted_qty: null, variance_qty: null, unit_cost: '30.0000' },
+      {
+        id: 'ci1',
+        variant_id: 'v1',
+        product_name: 'Miniket Rice 5kg',
+        sku: 'P000001',
+        barcode: null,
+        unit_short_name: 'pcs',
+        allow_fraction: false,
+        system_qty: '10.000',
+        counted_qty: '10.000',
+        variance_qty: '0.000',
+        unit_cost: '400.0000',
+      },
+      {
+        id: 'ci2',
+        variant_id: 'v2',
+        product_name: 'Lux Soap',
+        sku: 'P000002',
+        barcode: '8901',
+        unit_short_name: 'pcs',
+        allow_fraction: false,
+        system_qty: '5.000',
+        counted_qty: null,
+        variance_qty: null,
+        unit_cost: '30.0000',
+      },
     ],
   }
 
@@ -172,7 +279,12 @@ describe('stock counts', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save entries' }))
     await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true))
     const put = calls.find((c) => c.method === 'PUT')
-    expect(put?.body).toEqual({ lines: [{ item_id: 'ci1', counted_qty: null }, { item_id: 'ci2', counted_qty: '4' }] })
+    expect(put?.body).toEqual({
+      lines: [
+        { item_id: 'ci1', counted_qty: null },
+        { item_id: 'ci2', counted_qty: '4' },
+      ],
+    })
     expect(await screen.findByText('Entries saved.')).toBeInTheDocument()
   })
 })

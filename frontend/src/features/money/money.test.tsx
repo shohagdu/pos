@@ -8,8 +8,18 @@ import { renderRoute } from '../../test/render'
 afterEach(() => vi.restoreAllMocks())
 
 const account = (id: string, name: string, type: string, balance: string, isDefault = false) => ({
-  id, account_type: type, name, account_number: null, bank_name: null, opening_balance: '0.00', current_balance: balance,
-  ledger_account_id: null, is_default: isDefault, status: 'active', version: 1, created_at: '2026-10-01T00:00:00Z',
+  id,
+  account_type: type,
+  name,
+  account_number: null,
+  bank_name: null,
+  opening_balance: '0.00',
+  current_balance: balance,
+  ledger_account_id: null,
+  is_default: isDefault,
+  status: 'active',
+  version: 1,
+  created_at: '2026-10-01T00:00:00Z',
 })
 
 function signedIn(perms: string[]) {
@@ -52,17 +62,39 @@ describe('money', () => {
 
   it('reconciles a wallet: ticks lines, then completes at a zero difference', async () => {
     const line = (id: string, amount: string, txn_type: string, cleared = false) => ({
-      id, business_date: '2026-10-10', txn_type, amount, reference_type: 'account_transfer', reference_id: 'tr1', reference_no: `REF-${id}`, note: null, cleared,
+      id,
+      business_date: '2026-10-10',
+      txn_type,
+      amount,
+      reference_type: 'account_transfer',
+      reference_id: 'tr1',
+      reference_no: `REF-${id}`,
+      note: null,
+      cleared,
     })
     const rec = (cleared: string[], status = 'in_progress') => {
       const lines = [line('l1', '1000.00', 'transfer_in', cleared.includes('l1')), line('l2', '-15.00', 'expense', cleared.includes('l2'))]
       const ticked = lines.filter((l) => l.cleared).reduce((s, l) => s + Number(l.amount), 0)
       return {
-        id: 'rec1', account_id: 'a-bkash', account_name: 'bKash', statement_date: '2026-10-15', statement_balance: '985.00', opening_balance: '0.00',
-        cleared_balance: ticked.toFixed(2), status, cleared_count: cleared.length, note: null, created_by_name: 'Rahim Uddin',
-        created_at: '2026-10-15T05:00:00Z', completed_by_name: status === 'completed' ? 'Rahim Uddin' : null,
-        completed_at: status === 'completed' ? '2026-10-15T06:00:00Z' : null, difference: (985 - ticked).toFixed(2), cleared_in: '0.00',
-        cleared_out: '0.00', book_balance: '985.00', lines,
+        id: 'rec1',
+        account_id: 'a-bkash',
+        account_name: 'bKash',
+        statement_date: '2026-10-15',
+        statement_balance: '985.00',
+        opening_balance: '0.00',
+        cleared_balance: ticked.toFixed(2),
+        status,
+        cleared_count: cleared.length,
+        note: null,
+        created_by_name: 'Rahim Uddin',
+        created_at: '2026-10-15T05:00:00Z',
+        completed_by_name: status === 'completed' ? 'Rahim Uddin' : null,
+        completed_at: status === 'completed' ? '2026-10-15T06:00:00Z' : null,
+        difference: (985 - ticked).toFixed(2),
+        cleared_in: '0.00',
+        cleared_out: '0.00',
+        book_balance: '985.00',
+        lines,
       }
     }
     let current = rec([])

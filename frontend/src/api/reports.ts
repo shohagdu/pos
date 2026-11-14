@@ -306,7 +306,7 @@ export interface ProductMovement {
   rows: ProductMovementRow[]
 }
 
-const get = <T,>(path: string, range: DateRange) => apiFetch<T>(`${path}${queryString({ ...range })}`)
+const get = <T>(path: string, range: DateRange) => apiFetch<T>(`${path}${queryString({ ...range })}`)
 
 export const reportsApi = {
   dashboard: () => apiFetch<Dashboard>('/api/v1/dashboard'),
@@ -320,10 +320,8 @@ export const reportsApi = {
   profit: (range: DateRange) => get<ProfitEstimate>('/api/v1/reports/profit', range),
   vatSummary: (range: DateRange) => get<VatSummary>('/api/v1/reports/vat-summary', range),
   discounts: (range: DateRange) => get<DiscountReport>('/api/v1/reports/discounts', range),
-  productMovement: (range: DateRange & { class?: MovementClass }) =>
-    apiFetch<ProductMovement>(`/api/v1/reports/product-movement${queryString({ ...range })}`),
-  aging: (party: 'customers' | 'suppliers', asOf?: string) =>
-    apiFetch<AgingReport>(`/api/v1/reports/aging${queryString({ party, as_of: asOf })}`),
+  productMovement: (range: DateRange & { class?: MovementClass }) => apiFetch<ProductMovement>(`/api/v1/reports/product-movement${queryString({ ...range })}`),
+  aging: (party: 'customers' | 'suppliers', asOf?: string) => apiFetch<AgingReport>(`/api/v1/reports/aging${queryString({ party, as_of: asOf })}`),
   /** Unpaid sales (customers) or unpaid received purchases (suppliers), one row each. */
   dues: (party: 'customers' | 'suppliers', filter: DuesFilter) =>
     apiFetch<DueReport>(`/api/v1/reports/dues${queryString({ party, q: filter.q || undefined, from: filter.from || undefined, to: filter.to || undefined })}`),

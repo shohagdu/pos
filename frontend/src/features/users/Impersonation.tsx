@@ -51,9 +51,7 @@ export function ImpersonationBanner() {
   return (
     <div role="status" className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-warning/20 px-4 py-2 text-center text-sm text-ink sm:px-8">
       <span>
-        <strong>
-          {support ? t('users.supportSession', { business: me.tenant?.name ?? '' }) : t('users.impersonating', { name: me.user.full_name })}
-        </strong>
+        <strong>{support ? t('users.supportSession', { business: me.tenant?.name ?? '' }) : t('users.impersonating', { name: me.user.full_name })}</strong>
         <span className="hidden sm:inline">
           {' · '}
           {support

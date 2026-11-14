@@ -56,11 +56,22 @@ export function BranchesSection({ tenantId }: { tenantId: string }) {
           </Button>
           {!b.is_default &&
             (b.status === 'active' ? (
-              <ConfirmButton className="min-h-9" disabled={toggle.isPending} onConfirm={() => toggle.mutate(b)} aria-label={t('branches.deactivateNamed', { name: b.name })}>
+              <ConfirmButton
+                className="min-h-9"
+                disabled={toggle.isPending}
+                onConfirm={() => toggle.mutate(b)}
+                aria-label={t('branches.deactivateNamed', { name: b.name })}
+              >
                 {t('branches.deactivate')}
               </ConfirmButton>
             ) : (
-              <Button variant="secondary" className="min-h-9" disabled={toggle.isPending} onClick={() => toggle.mutate(b)} aria-label={t('branches.activateNamed', { name: b.name })}>
+              <Button
+                variant="secondary"
+                className="min-h-9"
+                disabled={toggle.isPending}
+                onClick={() => toggle.mutate(b)}
+                aria-label={t('branches.activateNamed', { name: b.name })}
+              >
                 {t('branches.activate')}
               </Button>
             ))}
@@ -137,9 +148,7 @@ function BranchDialog({ tenantId, branch, onClose }: { tenantId: string; branch:
     <Dialog open onClose={onClose} title={branch ? t('branches.editNamed', { name: branch.name }) : t('branches.add')}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {save.isError && hasFormError(save.error) && (
-          <Alert tone="danger">
-            {save.error instanceof ApiError && save.error.status === 412 ? t('branches.changed') : problemMessage(save.error, t)}
-          </Alert>
+          <Alert tone="danger">{save.error instanceof ApiError && save.error.status === 412 ? t('branches.changed') : problemMessage(save.error, t)}</Alert>
         )}
         {!branch && <TextField label={t('branches.code')} required maxLength={10} hint={t('branches.codeHint')} error={errors.code} {...bind('code')} />}
         <TextField label={t('branches.name')} required maxLength={150} error={errors.name} {...bind('name')} />

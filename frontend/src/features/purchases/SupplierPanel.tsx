@@ -144,9 +144,7 @@ export function SupplierPanel({
               onMouseDown={() => blurTimer.current && clearTimeout(blurTimer.current)}
             >
               {found.isFetching && results.length === 0 && <li className="px-3 py-2 text-sm text-ink-muted">{t('common.loading')}</li>}
-              {!found.isFetching && results.length === 0 && (
-                <li className="px-3 py-2 text-sm text-ink-muted">{t('purchases.form.noSupplierFound')}</li>
-              )}
+              {!found.isFetching && results.length === 0 && <li className="px-3 py-2 text-sm text-ink-muted">{t('purchases.form.noSupplierFound')}</li>}
               {results.map((s, i) => (
                 <li
                   key={s.id}
@@ -262,8 +260,7 @@ function NewSupplierDialog({
   const [contact, setContact] = useState('')
   const [phone, setPhone] = useState(initial.phone)
   const create = useMutation({
-    mutationFn: () =>
-      partiesApi.createSupplier({ name: name.trim(), contact_person: contact.trim() || undefined, phone: phone.trim() || undefined }),
+    mutationFn: () => partiesApi.createSupplier({ name: name.trim(), contact_person: contact.trim() || undefined, phone: phone.trim() || undefined }),
     onSuccess: (s) => {
       void queryClient.invalidateQueries({ queryKey: partyKeys.suppliers(tenantId) })
       onCreated(s)

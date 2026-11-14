@@ -147,8 +147,7 @@ export function readRows(
   withStock = true,
   withCost = true,
 ): ReadResult {
-  const allowed = (c: Column) =>
-    (withStock || (c !== 'opening_stock' && c !== 'opening_cost')) && (withCost || c !== 'opening_cost')
+  const allowed = (c: Column) => (withStock || (c !== 'opening_stock' && c !== 'opening_cost')) && (withCost || c !== 'opening_cost')
   const map = new Map<Column, string>()
   const ignored: string[] = []
   for (const h of headers) {
@@ -350,9 +349,48 @@ export function sampleRows(masters: Masters, canViewCost: boolean, withStock = t
   const ex = (values: Record<string, string>) => header.map((h) => values[h] ?? '')
   return [
     header,
-    ex({ name: 'Miniket Rice 5kg', name_bn: 'মিনিকেট চাল ৫ কেজি', category: 'Rice', brand: 'Chashi', unit: pcs, purchase_price: '400', selling_price: '450', wholesale_price: '440', min_selling_price: '430', reorder_level: '10', type: 'standard', track_stock: 'yes', opening_stock: '20' }),
-    ex({ name: 'Soybean Oil 1L', sku: 'OIL-1L', barcode: '8941100500019', category: 'Oil', brand: 'Teer', unit: pcs, purchase_price: '170', selling_price: '190', reorder_level: '12', type: 'standard', track_stock: 'yes', opening_stock: '24', opening_cost: '165' }),
-    ex({ name: 'Sugar (loose)', name_bn: 'চিনি', category: 'Sugar', unit: kg, purchase_price: '120', selling_price: '135', reorder_level: '25', type: 'standard', track_stock: 'yes', opening_stock: '50' }),
+    ex({
+      name: 'Miniket Rice 5kg',
+      name_bn: 'মিনিকেট চাল ৫ কেজি',
+      category: 'Rice',
+      brand: 'Chashi',
+      unit: pcs,
+      purchase_price: '400',
+      selling_price: '450',
+      wholesale_price: '440',
+      min_selling_price: '430',
+      reorder_level: '10',
+      type: 'standard',
+      track_stock: 'yes',
+      opening_stock: '20',
+    }),
+    ex({
+      name: 'Soybean Oil 1L',
+      sku: 'OIL-1L',
+      barcode: '8941100500019',
+      category: 'Oil',
+      brand: 'Teer',
+      unit: pcs,
+      purchase_price: '170',
+      selling_price: '190',
+      reorder_level: '12',
+      type: 'standard',
+      track_stock: 'yes',
+      opening_stock: '24',
+      opening_cost: '165',
+    }),
+    ex({
+      name: 'Sugar (loose)',
+      name_bn: 'চিনি',
+      category: 'Sugar',
+      unit: kg,
+      purchase_price: '120',
+      selling_price: '135',
+      reorder_level: '25',
+      type: 'standard',
+      track_stock: 'yes',
+      opening_stock: '50',
+    }),
     ex({ name: 'Home delivery', unit: pcs, selling_price: '50', type: 'service', track_stock: 'no' }),
   ]
 }

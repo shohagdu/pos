@@ -10,9 +10,39 @@ afterEach(() => vi.restoreAllMocks())
 const ownerPerms = ['dashboard.view', 'users.view', 'users.invite', 'users.manage_roles', 'users.revoke_sessions', 'pos.sell', 'sales.view', 'settings.manage']
 
 const roles = [
-  { id: 'r-owner', code: 'owner', name: 'Owner', description: 'x', is_system: true, max_discount_pct: '100', permissions: ownerPerms, member_count: 1, version: 1 },
-  { id: 'r-admin', code: 'admin', name: 'Admin', description: 'x', is_system: true, max_discount_pct: '100', permissions: ['users.view'], member_count: 0, version: 1 },
-  { id: 'r-cashier', code: 'cashier', name: 'Cashier', description: 'x', is_system: true, max_discount_pct: null, permissions: ['pos.sell', 'sales.view'], member_count: 0, version: 1 },
+  {
+    id: 'r-owner',
+    code: 'owner',
+    name: 'Owner',
+    description: 'x',
+    is_system: true,
+    max_discount_pct: '100',
+    permissions: ownerPerms,
+    member_count: 1,
+    version: 1,
+  },
+  {
+    id: 'r-admin',
+    code: 'admin',
+    name: 'Admin',
+    description: 'x',
+    is_system: true,
+    max_discount_pct: '100',
+    permissions: ['users.view'],
+    member_count: 0,
+    version: 1,
+  },
+  {
+    id: 'r-cashier',
+    code: 'cashier',
+    name: 'Cashier',
+    description: 'x',
+    is_system: true,
+    max_discount_pct: null,
+    permissions: ['pos.sell', 'sales.view'],
+    member_count: 0,
+    version: 1,
+  },
 ]
 const catalogue = [
   { code: 'pos.sell', module: 'pos', description: 'Use the POS', is_sensitive: false },
@@ -28,15 +58,25 @@ function signedIn(perms = ownerPerms, isOwner = true) {
     'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant },
     'GET /api/v1/roles': roles,
     'GET /api/v1/permissions': catalogue,
-    'GET /api/v1/branches': [{ id: 'b1', code: 'MAIN', name: 'Main Branch', address: null, phone: null, receipt_header: null, is_default: true, status: 'active', version: 1 }],
+    'GET /api/v1/branches': [
+      { id: 'b1', code: 'MAIN', name: 'Main Branch', address: null, phone: null, receipt_header: null, is_default: true, status: 'active', version: 1 },
+    ],
   }
 }
 
 describe('users & roles', () => {
   it('adds staff directly with a password, no invitation', async () => {
     const member = {
-      id: 'm9', user_id: 'u9', full_name: 'Karim Cashier', phone: '+8801711000202', email: null, status: 'active', is_owner: false,
-      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }], joined_at: '2026-11-07T00:00:00Z', last_login_at: null,
+      id: 'm9',
+      user_id: 'u9',
+      full_name: 'Karim Cashier',
+      phone: '+8801711000202',
+      email: null,
+      status: 'active',
+      is_owner: false,
+      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }],
+      joined_at: '2026-11-07T00:00:00Z',
+      last_login_at: null,
     }
     const calls = mockApi({
       ...signedIn(),
@@ -68,8 +108,16 @@ describe('users & roles', () => {
 
   it('lets the owner sign in as a staff member and return', async () => {
     const cashier = {
-      id: 'm9', user_id: 'u9', full_name: 'Karim Cashier', phone: '+8801711000202', email: null, status: 'active', is_owner: false,
-      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }], joined_at: '2026-11-07T00:00:00Z', last_login_at: null,
+      id: 'm9',
+      user_id: 'u9',
+      full_name: 'Karim Cashier',
+      phone: '+8801711000202',
+      email: null,
+      status: 'active',
+      is_owner: false,
+      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }],
+      joined_at: '2026-11-07T00:00:00Z',
+      last_login_at: null,
     }
     const owner = { ...cashier, id: 'm-t1', user_id: 'u1', full_name: 'Rahim Uddin', is_owner: true, roles: [] }
     let as: 'owner' | 'cashier' = 'owner'
@@ -117,8 +165,16 @@ describe('users & roles', () => {
 
   it('does not offer sign-in-as to staff who are not the owner', async () => {
     const cashier = {
-      id: 'm9', user_id: 'u9', full_name: 'Karim Cashier', phone: '+8801711000202', email: null, status: 'active', is_owner: false,
-      roles: [], joined_at: null, last_login_at: null,
+      id: 'm9',
+      user_id: 'u9',
+      full_name: 'Karim Cashier',
+      phone: '+8801711000202',
+      email: null,
+      status: 'active',
+      is_owner: false,
+      roles: [],
+      joined_at: null,
+      last_login_at: null,
     }
     mockApi({ ...signedIn(ownerPerms, false), 'GET /api/v1/members': [cashier], 'GET /api/v1/invitations': [] })
     renderRoute('/users')
@@ -128,8 +184,14 @@ describe('users & roles', () => {
 
   it('invites instead of adding when the number already had an account', async () => {
     const invitation = {
-      id: 'i8', destination: '+8801711000203', roles: [{ id: 'r-cashier', name: 'Cashier' }], branch_ids: [], status: 'pending',
-      expires_at: '2026-11-20T00:00:00Z', created_at: '2026-11-13T00:00:00Z', invited_by: 'Rahim Uddin',
+      id: 'i8',
+      destination: '+8801711000203',
+      roles: [{ id: 'r-cashier', name: 'Cashier' }],
+      branch_ids: [],
+      status: 'pending',
+      expires_at: '2026-11-20T00:00:00Z',
+      created_at: '2026-11-13T00:00:00Z',
+      invited_by: 'Rahim Uddin',
     }
     mockApi({
       ...signedIn(),
@@ -190,8 +252,16 @@ describe('users & roles', () => {
 
   it('suspends a member after an inline confirmation', async () => {
     const member = {
-      id: 'm2', user_id: 'u2', full_name: 'Karim', phone: '+8801711000202', email: null, status: 'active', is_owner: false,
-      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }], joined_at: null, last_login_at: null,
+      id: 'm2',
+      user_id: 'u2',
+      full_name: 'Karim',
+      phone: '+8801711000202',
+      email: null,
+      status: 'active',
+      is_owner: false,
+      roles: [{ role_id: 'r-cashier', code: 'cashier', name: 'Cashier', branch_id: null }],
+      joined_at: null,
+      last_login_at: null,
     }
     const calls = mockApi({
       ...signedIn(),
@@ -220,8 +290,13 @@ describe('users & roles', () => {
 
 describe('accepting an invitation', () => {
   const preview = {
-    business_name: 'Rahim Store', invited_by: 'Rahim', destination: '+880*******202', destination_kind: 'phone',
-    roles: ['Cashier'], status: 'pending', expires_at: '2026-10-24T00:00:00Z',
+    business_name: 'Rahim Store',
+    invited_by: 'Rahim',
+    destination: '+880*******202',
+    destination_kind: 'phone',
+    roles: ['Cashier'],
+    status: 'pending',
+    expires_at: '2026-10-24T00:00:00Z',
   }
 
   it('asks visitors to sign in and keeps the link for afterwards', async () => {

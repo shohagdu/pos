@@ -8,8 +8,15 @@ import { renderRoute } from '../../test/render'
 afterEach(() => vi.restoreAllMocks())
 
 const archive = (id: string, kind: 'clear' | 'restore', status: 'held' | 'restored', documents: Record<string, number>) => ({
-  id, kind, status, documents, total_rows: 10, created_by_name: 'Rahim Uddin', created_at: '2026-11-08T10:00:00Z',
-  restored_by_name: null, restored_at: status === 'restored' ? '2026-11-08T11:00:00Z' : null,
+  id,
+  kind,
+  status,
+  documents,
+  total_rows: 10,
+  created_by_name: 'Rahim Uddin',
+  created_at: '2026-11-08T10:00:00Z',
+  restored_by_name: null,
+  restored_at: status === 'restored' ? '2026-11-08T11:00:00Z' : null,
 })
 
 function signedIn(isOwner = true, perms = ['settings.manage']) {

@@ -23,7 +23,15 @@ function session(status: string, daysLeft: number | null) {
 }
 
 const overview = {
-  subscription: { status: 'trialing', stored_status: 'trialing', plan_code: 'trial', plan_name: 'Free Trial', trial_ends_at: '2026-10-31T00:00:00Z', current_period_end: '2026-10-31T00:00:00Z', days_left: 14 },
+  subscription: {
+    status: 'trialing',
+    stored_status: 'trialing',
+    plan_code: 'trial',
+    plan_name: 'Free Trial',
+    trial_ends_at: '2026-10-31T00:00:00Z',
+    current_period_end: '2026-10-31T00:00:00Z',
+    days_left: 14,
+  },
   features: [
     { code: 'pos.core', name: 'POS', kind: 'flag', enabled: true, limit: null, overridden: false },
     { code: 'inventory.transfers', name: 'Stock transfers', kind: 'flag', enabled: false, limit: null, overridden: false },
@@ -70,7 +78,19 @@ describe('plan and subscription state', () => {
       ...base,
       'GET /api/v1/auth/me': { ...me, tenant: { ...me.tenant, permissions: ['users.view', 'users.invite'] } },
       'GET /api/v1/subscription': { ...overview, usage: [{ feature: 'users.max', name: 'Users', used, limit: 3 }] },
-      'GET /api/v1/roles': [{ id: 'r1', code: 'cashier', name: 'Cashier', description: null, is_system: true, max_discount_pct: null, permissions: [], member_count: 0, version: 1 }],
+      'GET /api/v1/roles': [
+        {
+          id: 'r1',
+          code: 'cashier',
+          name: 'Cashier',
+          description: null,
+          is_system: true,
+          max_discount_pct: null,
+          permissions: [],
+          member_count: 0,
+          version: 1,
+        },
+      ],
       'GET /api/v1/branches': [],
     }
   }
@@ -114,9 +134,20 @@ describe('manual subscription billing', () => {
     ],
   }
   const invoice = {
-    id: 'inv1', tenant_id: 't1', invoice_no: 'SUB-000001', plan_code: 'starter', plan_name: 'Starter', billing_cycle: 'annual',
-    period_start: '2026-10-31', period_end: '2027-10-31', subtotal: '5000.0000', discount_amount: '0.0000', total: '5000.0000',
-    status: 'open', paid_at: null, created_at: '2026-10-19T00:00:00Z',
+    id: 'inv1',
+    tenant_id: 't1',
+    invoice_no: 'SUB-000001',
+    plan_code: 'starter',
+    plan_name: 'Starter',
+    billing_cycle: 'annual',
+    period_start: '2026-10-31',
+    period_end: '2027-10-31',
+    subtotal: '5000.0000',
+    discount_amount: '0.0000',
+    total: '5000.0000',
+    status: 'open',
+    paid_at: null,
+    created_at: '2026-10-19T00:00:00Z',
   }
   const billing = {
     plans: [starter],
@@ -152,7 +183,10 @@ describe('manual subscription billing', () => {
     await userEvent.click(within(card).getByRole('button', { name: 'Pay for Starter' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Pay invoice' })
-    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/subscription/invoices')?.body).toEqual({ plan_code: 'starter', billing_cycle: 'annual' })
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/subscription/invoices')?.body).toEqual({
+      plan_code: 'starter',
+      billing_cycle: 'annual',
+    })
     expect(within(dialog).getByText('SUB-000001')).toBeInTheDocument()
     expect(within(dialog).getByText('Send money to 01700000000 (merchant).')).toBeInTheDocument()
     expect(within(dialog).getByText('Use the invoice number as reference.')).toBeInTheDocument()

@@ -10,13 +10,23 @@ afterEach(() => vi.restoreAllMocks())
 function signedIn() {
   return {
     'POST /api/v1/auth/refresh': token('t1'),
-    'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant: currentTenant('t1', 'Rahim Store', ['dashboard.view', 'inventory.view']) },
+    'GET /api/v1/auth/me': {
+      user,
+      memberships: [membership('t1', 'Rahim Store')],
+      tenant: currentTenant('t1', 'Rahim Store', ['dashboard.view', 'inventory.view']),
+    },
   }
 }
 
 const note = (id: string, read: boolean) => ({
-  id, notif_type: 'stock.low', title: '3 products are low on stock', body: '3 products are at or below their reorder level; 1 are out of stock.',
-  link: '/inventory?status=low', data: {}, read_at: read ? '2026-10-20T05:00:00Z' : null, created_at: '2026-10-20T04:00:00Z',
+  id,
+  notif_type: 'stock.low',
+  title: '3 products are low on stock',
+  body: '3 products are at or below their reorder level; 1 are out of stock.',
+  link: '/inventory?status=low',
+  data: {},
+  read_at: read ? '2026-10-20T05:00:00Z' : null,
+  created_at: '2026-10-20T04:00:00Z',
 })
 
 describe('notifications', () => {
@@ -44,7 +54,10 @@ describe('notifications', () => {
 
   it('saves only the changed channel choices', async () => {
     const pref = (notif_type: string, channels: string[]) => ({
-      notif_type, channels, default_channels: ['in_app'], available_channels: ['in_app', 'email'],
+      notif_type,
+      channels,
+      default_channels: ['in_app'],
+      available_channels: ['in_app', 'email'],
     })
     const calls = mockApi({
       ...signedIn(),

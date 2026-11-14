@@ -34,18 +34,31 @@ export function InvitationPage() {
     onSuccess: () => navigate('/', { replace: true }),
   })
 
-  if (!token) return <Card><Alert tone="danger">{t('invitation.missing')}</Alert></Card>
-  if (preview.isPending || status === 'loading') return <Card><Spinner /></Card>
-  if (preview.isError) return <Card><Alert tone="danger">{t('invitation.notFound')}</Alert></Card>
+  if (!token)
+    return (
+      <Card>
+        <Alert tone="danger">{t('invitation.missing')}</Alert>
+      </Card>
+    )
+  if (preview.isPending || status === 'loading')
+    return (
+      <Card>
+        <Spinner />
+      </Card>
+    )
+  if (preview.isError)
+    return (
+      <Card>
+        <Alert tone="danger">{t('invitation.notFound')}</Alert>
+      </Card>
+    )
   const inv = preview.data
   const open = inv.status === 'pending'
 
   return (
     <Card className="flex flex-col gap-4">
       <h1 className="text-xl font-bold">{t('invitation.title', { business: inv.business_name })}</h1>
-      <p className="text-sm text-ink-muted">
-        {t('invitation.body', { inviter: inv.invited_by, business: inv.business_name, roles: inv.roles.join(', ') })}
-      </p>
+      <p className="text-sm text-ink-muted">{t('invitation.body', { inviter: inv.invited_by, business: inv.business_name, roles: inv.roles.join(', ') })}</p>
       <p className="text-sm">{t('invitation.sentTo', { destination: inv.destination })}</p>
       {!open && <Alert tone="warning">{t(`invitation.status.${inv.status}`)}</Alert>}
       {open && status !== 'authenticated' && (

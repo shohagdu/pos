@@ -59,7 +59,7 @@ export function div(a: Dec, b: Dec): Dec {
   const q = abs(n) / abs(b)
   const r = abs(n) % abs(b)
   const v = r * 2n >= abs(b) ? q + 1n : q
-  return (n < 0n) !== (b < 0n) ? -v : v
+  return n < 0n !== b < 0n ? -v : v
 }
 
 export const min = (a: Dec, b: Dec): Dec => (a < b ? a : b)

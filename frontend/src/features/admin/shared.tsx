@@ -61,15 +61,7 @@ export function ReasonDialog(props: ReasonDialogProps) {
   return props.open ? <ReasonForm {...props} /> : null
 }
 
-function ReasonForm({
-  onClose,
-  title,
-  hint,
-  confirmLabel,
-  pending,
-  error,
-  onSubmit,
-}: ReasonDialogProps) {
+function ReasonForm({ onClose, title, hint, confirmLabel, pending, error, onSubmit }: ReasonDialogProps) {
   const { t } = useTranslation()
   const [reason, setReason] = useState('')
   const [missing, setMissing] = useState(false)

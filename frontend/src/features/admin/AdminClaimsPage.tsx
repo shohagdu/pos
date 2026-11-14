@@ -122,10 +122,7 @@ export function AdminClaimsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={t('admin.claims.title')}
-        subtitle={pendingCount !== undefined ? t('admin.claims.pendingCount', { count: pendingCount }) : undefined}
-      />
+      <PageHeader title={t('admin.claims.title')} subtitle={pendingCount !== undefined ? t('admin.claims.pendingCount', { count: pendingCount }) : undefined} />
       <StateTabs<Tab>
         label={t('admin.claims.title')}
         value={tab}

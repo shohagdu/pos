@@ -13,8 +13,7 @@ const filter = (q: string) => ({ q, status: 'active' as const })
 const pickerKey = (tenantId: string, q: string) => ['catalog', tenantId, 'products', 'purchase-picker', q] as const
 
 /** A scan matches one product's barcode or SKU exactly. */
-const exactMatch = (items: Product[], code: string) =>
-  items.find((p) => p.sku.toLowerCase() === code.toLowerCase() || p.barcodes.includes(code))
+const exactMatch = (items: Product[], code: string) => items.find((p) => p.sku.toLowerCase() === code.toLowerCase() || p.barcodes.includes(code))
 
 /**
  * Product search / barcode box for a purchase bill (F2), like the POS one:
@@ -162,19 +161,17 @@ export function PurchaseProductSearch({
                 </span>
               </span>
               <span className="shrink-0 text-right text-xs text-ink-muted">
-                {!p.track_inventory ? (
-                  t('purchases.form.serviceNotStocked')
-                ) : (
-                  showCost &&
-                  p.purchase_price !== null && (
-                    <>
-                      {t('purchases.form.currentCost')}
-                      <span className="block text-sm font-semibold text-ink tabular-nums">
-                        {formatMoney(p.purchase_price, lang)} / {p.unit_short_name}
-                      </span>
-                    </>
-                  )
-                )}
+                {!p.track_inventory
+                  ? t('purchases.form.serviceNotStocked')
+                  : showCost &&
+                    p.purchase_price !== null && (
+                      <>
+                        {t('purchases.form.currentCost')}
+                        <span className="block text-sm font-semibold text-ink tabular-nums">
+                          {formatMoney(p.purchase_price, lang)} / {p.unit_short_name}
+                        </span>
+                      </>
+                    )}
               </span>
             </li>
           ))}

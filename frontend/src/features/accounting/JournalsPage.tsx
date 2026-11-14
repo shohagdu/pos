@@ -105,7 +105,15 @@ export function JournalsPage() {
                   ),
                 },
                 { key: 'date', header: t('common.date'), render: (j) => <span className="whitespace-nowrap">{formatDate(j.entry_date, lang)}</span> },
-                { key: 'source', header: t('accounting.sourceType'), render: (j) => <Badge tone={j.source_type === 'manual' ? 'info' : 'neutral'}>{t(`accounting.sources.${j.source_type}`, { defaultValue: j.source_type })}</Badge> },
+                {
+                  key: 'source',
+                  header: t('accounting.sourceType'),
+                  render: (j) => (
+                    <Badge tone={j.source_type === 'manual' ? 'info' : 'neutral'}>
+                      {t(`accounting.sources.${j.source_type}`, { defaultValue: j.source_type })}
+                    </Badge>
+                  ),
+                },
                 { key: 'sourceNo', header: t('accounting.sourceNo'), render: (j) => j.source_no ?? '—' },
                 { key: 'memo', header: t('accounting.journal.memo'), render: (j) => j.memo ?? '' },
                 { key: 'amount', header: t('common.amount'), align: 'right', render: (j) => formatMoney(j.total_debit, lang) },

@@ -101,7 +101,12 @@ export function AgingReportPage() {
                   render: (row) => <span className={dec(row.over_90) > 0n ? 'font-semibold text-danger' : ''}>{money(row.over_90, lang)}</span>,
                 },
                 { key: 'other', header: t('reports.aging.other'), align: 'right', render: (row) => money(row.other, lang) },
-                { key: 'total', header: t('reports.aging.total'), align: 'right', render: (row) => <span className="font-semibold">{money(row.total, lang)}</span> },
+                {
+                  key: 'total',
+                  header: t('reports.aging.total'),
+                  align: 'right',
+                  render: (row) => <span className="font-semibold">{money(row.total, lang)}</span>,
+                },
                 { key: 'oldest', header: t('reports.aging.oldest'), render: (row) => (row.oldest_date ? formatDate(row.oldest_date, lang) : '—') },
               ]}
               footer={[

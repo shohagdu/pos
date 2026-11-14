@@ -40,15 +40,7 @@ export function RolePicker({
 }
 
 /** Branch scope (R-TEN-04). Hidden while the business has a single branch. */
-export function BranchScopePicker({
-  branches,
-  selected,
-  onChange,
-}: {
-  branches: Branch[]
-  selected: string[]
-  onChange: (ids: string[]) => void
-}) {
+export function BranchScopePicker({ branches, selected, onChange }: { branches: Branch[]; selected: string[]; onChange: (ids: string[]) => void }) {
   const { t } = useTranslation()
   if (branches.length < 2) return null
   const toggle = (id: string, on: boolean) => onChange(on ? [...selected, id] : selected.filter((s) => s !== id))

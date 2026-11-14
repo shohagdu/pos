@@ -358,11 +358,9 @@ export interface StockCount extends CountSummary {
 
 export const inventoryApi = {
   locations: () => apiFetch<StockLocation[]>('/api/v1/stock-locations'),
-  stock: (filter: StockFilter, cursor: string | null, limit = PAGE_SIZE) =>
-    apiFetch<StockPage>(`/api/v1/stock${queryString({ ...filter, limit, cursor })}`),
+  stock: (filter: StockFilter, cursor: string | null, limit = PAGE_SIZE) => apiFetch<StockPage>(`/api/v1/stock${queryString({ ...filter, limit, cursor })}`),
   valuation: (locationId?: string) => apiFetch<Valuation>(`/api/v1/stock/valuation${queryString({ location_id: locationId })}`),
-  batches: (filter: BatchFilter, cursor: string | null) =>
-    apiFetch<BatchPage>(`/api/v1/stock/batches${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
+  batches: (filter: BatchFilter, cursor: string | null) => apiFetch<BatchPage>(`/api/v1/stock/batches${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   batchOptions: (variantIds: string[], locationId?: string) =>
     apiFetch<BatchOption[]>(`/api/v1/stock/batch-options${queryString({ location_id: locationId, variant_ids: variantIds.join(',') })}`),
   movements: (filter: MovementFilter, cursor: string | null) =>
@@ -377,8 +375,7 @@ export const inventoryApi = {
   transfer: (id: string) => apiFetch<Transfer>(`/api/v1/stock-transfers/${id}`),
   createTransfer: (input: TransferInput, idempotencyKey: string) =>
     apiFetch<Transfer>('/api/v1/stock-transfers', { method: 'POST', body: input, idempotencyKey }),
-  dispatchTransfer: (id: string, idempotencyKey: string) =>
-    apiFetch<Transfer>(`/api/v1/stock-transfers/${id}/dispatch`, { method: 'POST', idempotencyKey }),
+  dispatchTransfer: (id: string, idempotencyKey: string) => apiFetch<Transfer>(`/api/v1/stock-transfers/${id}/dispatch`, { method: 'POST', idempotencyKey }),
   receiveTransfer: (id: string, input: ReceiveInput, idempotencyKey: string) =>
     apiFetch<Transfer>(`/api/v1/stock-transfers/${id}/receive`, { method: 'POST', body: input, idempotencyKey }),
   cancelTransfer: (id: string) => apiFetch<Transfer>(`/api/v1/stock-transfers/${id}/cancel`, { method: 'POST' }),
@@ -389,8 +386,7 @@ export const inventoryApi = {
   /** `counted_qty: null` clears an entry. */
   enterCount: (id: string, lines: { item_id: string; counted_qty: string | null }[]) =>
     apiFetch<StockCount>(`/api/v1/stock-counts/${id}/items`, { method: 'PUT', body: { lines } }),
-  postCount: (id: string, idempotencyKey: string) =>
-    apiFetch<StockCount>(`/api/v1/stock-counts/${id}/post`, { method: 'POST', idempotencyKey }),
+  postCount: (id: string, idempotencyKey: string) => apiFetch<StockCount>(`/api/v1/stock-counts/${id}/post`, { method: 'POST', idempotencyKey }),
   cancelCount: (id: string) => apiFetch<StockCount>(`/api/v1/stock-counts/${id}/cancel`, { method: 'POST' }),
 }
 
@@ -411,8 +407,7 @@ export const inventoryKeys = {
   count: (tenantId: string, id: string) => ['inventory', tenantId, 'count', id] as const,
 }
 
-export const useStockLocations = (tenantId: string) =>
-  useQuery({ queryKey: inventoryKeys.locations(tenantId), queryFn: inventoryApi.locations })
+export const useStockLocations = (tenantId: string) => useQuery({ queryKey: inventoryKeys.locations(tenantId), queryFn: inventoryApi.locations })
 
 export const useStock = (tenantId: string, filter: StockFilter) =>
   useInfiniteQuery({
@@ -480,5 +475,4 @@ export const useCounts = (tenantId: string, status?: string) =>
     getNextPageParam: (last) => last.next_cursor,
   })
 
-export const useCount = (tenantId: string, id: string) =>
-  useQuery({ queryKey: inventoryKeys.count(tenantId, id), queryFn: () => inventoryApi.count(id) })
+export const useCount = (tenantId: string, id: string) => useQuery({ queryKey: inventoryKeys.count(tenantId, id), queryFn: () => inventoryApi.count(id) })

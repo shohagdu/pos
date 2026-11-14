@@ -40,10 +40,33 @@ function signedIn(permissions = perms) {
 const masters = { units, taxRates, categories, brands: [] } as unknown as Masters
 
 const product = (over: object) => ({
-  id: 'p1', variant_id: 'v1', product_type: 'standard', name: 'Miniket Rice 5kg', name_bn: null, description: null, sku: 'P000001',
-  barcodes: [], category_id: null, category_name: null, brand_id: null, brand_name: null, unit_id: 'u-pcs', unit_short_name: 'pcs',
-  allow_fraction: false, tax_rate_id: null, tax_rate_pct: null, track_inventory: true, purchase_price: '400.0000', selling_price: '450.0000',
-  wholesale_price: null, min_selling_price: null, reorder_level: null, status: 'active', version: 1, created_at: '', updated_at: '',
+  id: 'p1',
+  variant_id: 'v1',
+  product_type: 'standard',
+  name: 'Miniket Rice 5kg',
+  name_bn: null,
+  description: null,
+  sku: 'P000001',
+  barcodes: [],
+  category_id: null,
+  category_name: null,
+  brand_id: null,
+  brand_name: null,
+  unit_id: 'u-pcs',
+  unit_short_name: 'pcs',
+  allow_fraction: false,
+  tax_rate_id: null,
+  tax_rate_pct: null,
+  track_inventory: true,
+  purchase_price: '400.0000',
+  selling_price: '450.0000',
+  wholesale_price: null,
+  min_selling_price: null,
+  reorder_level: null,
+  status: 'active',
+  version: 1,
+  created_at: '',
+  updated_at: '',
   ...over,
 })
 
@@ -51,7 +74,11 @@ const csvFile = (text: string, name = 'products.csv') => new File([text], name, 
 
 describe('CSV files', () => {
   it('the product sample reads back as valid rows', () => {
-    const { headers, records } = csvRecords(sampleRows(masters, true).map((r) => r.join(',')).join('\n'))
+    const { headers, records } = csvRecords(
+      sampleRows(masters, true)
+        .map((r) => r.join(','))
+        .join('\n'),
+    )
     const { rows, missing, ignored } = readRows(headers, records, masters)
     expect(missing).toEqual([])
     expect(ignored).toEqual([])
@@ -90,7 +117,9 @@ describe('product import', () => {
       'POST /api/v1/products/import': () => Response.json([product({ id: 'p1' }), product({ id: 'p2', track_inventory: false })], { status: 201 }),
     })
     renderRoute('/products/import')
-    const file = csvFile('Name,Unit,Selling Price,Category,Barcode,Tax Rate,Notes,Opening Stock,Opening Cost\nTea,pcs,20,Drinks,,15,x,1.5,18\nSalt,box,,rice,8941100500019|SALT,,,,900\n')
+    const file = csvFile(
+      'Name,Unit,Selling Price,Category,Barcode,Tax Rate,Notes,Opening Stock,Opening Cost\nTea,pcs,20,Drinks,,15,x,1.5,18\nSalt,box,,rice,8941100500019|SALT,,,,900\n',
+    )
     await userEvent.upload(await screen.findByLabelText('Upload CSV file'), file)
 
     expect(await screen.findByText('Check before saving: products.csv')).toBeInTheDocument()
@@ -123,8 +152,26 @@ describe('product import', () => {
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/categories')?.body).toEqual({ name: 'Drinks' })
     expect(calls.find((c) => c.path === '/api/v1/products/import')?.body).toEqual({
       products: [
-        { product_type: 'standard', name: 'Tea', barcodes: [], generate_barcode: true, category_id: 'c-drinks', unit_id: 'u-pcs', tax_rate_id: 't15', track_inventory: true, selling_price: '20' },
-        { product_type: 'standard', name: 'Salt', barcodes: ['8941100500019', 'SALT'], category_id: 'c-rice', unit_id: 'u-kg', track_inventory: true, selling_price: '1250.5' },
+        {
+          product_type: 'standard',
+          name: 'Tea',
+          barcodes: [],
+          generate_barcode: true,
+          category_id: 'c-drinks',
+          unit_id: 'u-pcs',
+          tax_rate_id: 't15',
+          track_inventory: true,
+          selling_price: '20',
+        },
+        {
+          product_type: 'standard',
+          name: 'Salt',
+          barcodes: ['8941100500019', 'SALT'],
+          category_id: 'c-rice',
+          unit_id: 'u-kg',
+          track_inventory: true,
+          selling_price: '1250.5',
+        },
       ],
       opening_stock: [
         { row: 0, quantity: '24', unit_cost: '18' },
@@ -160,9 +207,25 @@ describe('product import', () => {
 
 describe('opening stock from CSV', () => {
   it('downloads products without stock and loads a filled file into the form', async () => {
-    const out = { variant_id: 'v1', product_id: 'p1', name: 'Rice', name_bn: null, sku: 'P000001', unit_short_name: 'pcs', allow_fraction: false,
-      category_name: null, brand_name: null, quantity: '0.000', avg_cost: null, value: null, selling_price: '450.0000', purchase_price: '400.0000',
-      reorder_level: null, is_low: false, last_movement_at: null }
+    const out = {
+      variant_id: 'v1',
+      product_id: 'p1',
+      name: 'Rice',
+      name_bn: null,
+      sku: 'P000001',
+      unit_short_name: 'pcs',
+      allow_fraction: false,
+      category_name: null,
+      brand_name: null,
+      quantity: '0.000',
+      avg_cost: null,
+      value: null,
+      selling_price: '450.0000',
+      purchase_price: '400.0000',
+      reorder_level: null,
+      is_low: false,
+      last_movement_at: null,
+    }
     const blobs: Blob[] = []
     URL.createObjectURL = vi.fn((b: Blob) => {
       blobs.push(b)

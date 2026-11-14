@@ -72,7 +72,12 @@ export function IncomeCategoriesPage() {
         <QueryStatus query={categories} />
       )}
       {editing && (
-        <CategoryDialog key={editing === 'new' ? 'new' : editing.id} category={editing === 'new' ? undefined : editing} tenantId={tenantId} onClose={() => setEditing(null)} />
+        <CategoryDialog
+          key={editing === 'new' ? 'new' : editing.id}
+          category={editing === 'new' ? undefined : editing}
+          tenantId={tenantId}
+          onClose={() => setEditing(null)}
+        />
       )}
     </div>
   )
@@ -100,7 +105,16 @@ function CategoryDialog({ category, tenantId, onClose }: { category?: IncomeCate
     <Dialog open onClose={onClose} title={category ? t('income.editCategory') : t('income.addCategory')}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
-        <TextField label={t('income.categoryName')} value={name} onChange={(e) => setName(e.target.value)} required maxLength={100} autoFocus data-autofocus error={errors.name} />
+        <TextField
+          label={t('income.categoryName')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+          maxLength={100}
+          autoFocus
+          data-autofocus
+          error={errors.name}
+        />
         {category && (
           <Checkbox label={t('income.categoryActive')} hint={t('income.categoryActiveHint')} checked={active} onChange={(e) => setActive(e.target.checked)} />
         )}

@@ -201,12 +201,7 @@ export function ProductImageField({
         onChange={(e) => void choose(e.target.files?.[0])}
       />
       <div className="flex flex-wrap justify-center gap-2">
-        <Button
-          variant="secondary"
-          disabled={locked}
-          aria-describedby={`${id}-hint`}
-          onClick={() => input.current?.click()}
-        >
+        <Button variant="secondary" disabled={locked} aria-describedby={`${id}-hint`} onClick={() => input.current?.click()}>
           {shown ? t('products.image.change') : t('products.image.choose')}
         </Button>
         {shown && (

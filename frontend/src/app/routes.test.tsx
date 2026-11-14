@@ -14,7 +14,14 @@ afterEach(async () => {
 const signedInWithTenant = {
   'POST /api/v1/auth/refresh': token('t1'),
   'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant: currentTenant('t1', 'Rahim Store') },
-  'GET /api/v1/onboarding': { steps: [{ key: 'business', done: true }, { key: 'regional', done: false }], dismissed: false, complete: false },
+  'GET /api/v1/onboarding': {
+    steps: [
+      { key: 'business', done: true },
+      { key: 'regional', done: false },
+    ],
+    dismissed: false,
+    complete: false,
+  },
   'GET /readyz': { status: 'ready' },
   'GET /api/v1/meta': { name: 'pos-api', version: '0.1.0', environment: 'test' },
 }

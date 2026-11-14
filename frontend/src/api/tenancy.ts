@@ -137,8 +137,7 @@ export const tenancyApi = {
   restoreArchive: (id: string) => apiFetch<DataArchive>(`/api/v1/data-reset/archives/${id}/restore`, { method: 'POST', body: {} }),
   createTenant: (input: NewBusiness) => apiFetch<ProvisionedTenant>('/api/v1/tenants', { method: 'POST', body: input }),
   settings: () => apiFetch<BusinessSettings>('/api/v1/settings'),
-  updateSettings: (version: number, patch: SettingsPatch) =>
-    apiFetch<BusinessSettings>('/api/v1/settings', { method: 'PATCH', body: patch, ifMatch: version }),
+  updateSettings: (version: number, patch: SettingsPatch) => apiFetch<BusinessSettings>('/api/v1/settings', { method: 'PATCH', body: patch, ifMatch: version }),
   branches: () => apiFetch<Branch[]>('/api/v1/branches'),
   updateBranch: (id: string, version: number, patch: BranchPatch) =>
     apiFetch<Branch>(`/api/v1/branches/${id}`, { method: 'PATCH', body: patch, ifMatch: version }),
@@ -146,8 +145,7 @@ export const tenancyApi = {
   activateBranch: (id: string) => apiFetch<Branch>(`/api/v1/branches/${id}/activate`, { method: 'POST' }),
   deactivateBranch: (id: string) => apiFetch<Branch>(`/api/v1/branches/${id}/deactivate`, { method: 'POST' }),
   onboarding: () => apiFetch<OnboardingStatus>('/api/v1/onboarding'),
-  completeStep: (step: OnboardingStep) =>
-    apiFetch<OnboardingStatus>(`/api/v1/onboarding/steps/${step}`, { method: 'POST' }),
+  completeStep: (step: OnboardingStep) => apiFetch<OnboardingStatus>(`/api/v1/onboarding/steps/${step}`, { method: 'POST' }),
   dismissOnboarding: () => apiFetch<OnboardingStatus>('/api/v1/onboarding/dismiss', { method: 'POST' }),
 }
 

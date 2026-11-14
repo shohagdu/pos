@@ -20,8 +20,7 @@ interface PayLine {
 }
 
 const NOTE_STEPS = ['10', '50', '100', '500', '1000']
-const select =
-  'min-h-11 rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100'
+const select = 'min-h-11 rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100'
 
 /**
  * Pay (F8): split tenders, change, due; confirm posts the sale. Enter in a
@@ -65,13 +64,11 @@ export function PaymentDialog({
   const paid = tendered - change
   const due = max(grandTotal - paid, ZERO)
   const dueWalkIn = due > ZERO && !customer
-  const overCredit =
-    due > ZERO && customer !== null && customer.creditLimit !== null && dec(customer.balance) + due > dec(customer.creditLimit)
+  const overCredit = due > ZERO && customer !== null && customer.creditLimit !== null && dec(customer.balance) + due > dec(customer.creditLimit)
   const missingRef = lines.some((l) => methodOf(l.methodId)?.requires_reference && !l.reference.trim() && dec(l.amount) > ZERO)
 
   const set = (id: number, patch: Partial<PayLine>) => setLines((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)))
-  const remainingFor = (id: number) =>
-    max(grandTotal - sum(lines.filter((l) => l.id !== id).map((l) => dec(l.amount))), ZERO)
+  const remainingFor = (id: number) => max(grandTotal - sum(lines.filter((l) => l.id !== id).map((l) => dec(l.amount))), ZERO)
 
   function exact() {
     const last = lines[lines.length - 1]
@@ -232,7 +229,9 @@ export function PaymentDialog({
           </div>
           <div className="rounded-lg border border-border p-2">
             <dt className="text-xs text-ink-muted uppercase">{t('pos.change')}</dt>
-            <dd data-testid="change" className="text-lg font-bold text-brand-700 tabular-nums">{money(change)}</dd>
+            <dd data-testid="change" className="text-lg font-bold text-brand-700 tabular-nums">
+              {money(change)}
+            </dd>
           </div>
           <div className="rounded-lg border border-border p-2">
             <dt className="text-xs text-ink-muted uppercase">{t('pos.due')}</dt>

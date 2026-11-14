@@ -11,17 +11,7 @@ import { formatDateTime } from '../../lib/dates'
 import { problemMessage } from '../../lib/problem'
 
 /** Hold cart (F9) with an optional label. */
-export function HoldDialog({
-  pending,
-  error,
-  onClose,
-  onHold,
-}: {
-  pending: boolean
-  error: unknown
-  onClose: () => void
-  onHold: (label: string) => void
-}) {
+export function HoldDialog({ pending, error, onClose, onHold }: { pending: boolean; error: unknown; onClose: () => void; onHold: (label: string) => void }) {
   const { t } = useTranslation()
   const [label, setLabel] = useState('')
   function submit(e: FormEvent) {
@@ -100,12 +90,7 @@ export function HeldCartsDialog({
                   <div className="min-w-0">
                     <div className="font-medium">{c.label || t('pos.unnamedCart')}</div>
                     <div className="text-xs text-ink-muted">
-                      {[
-                        c.customer_name ?? t('pos.walkIn'),
-                        t('pos.itemCount', { count }),
-                        c.held_by_name,
-                        formatDateTime(c.created_at, i18n.language),
-                      ]
+                      {[c.customer_name ?? t('pos.walkIn'), t('pos.itemCount', { count }), c.held_by_name, formatDateTime(c.created_at, i18n.language)]
                         .filter(Boolean)
                         .join(' · ')}
                     </div>

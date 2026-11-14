@@ -18,9 +18,45 @@ beforeAll(() => {
 })
 
 const accounts = [
-  { id: 'a-assets', code: '1000', name: 'Assets', account_type: 'asset', normal_side: 'debit', parent_id: null, system_key: null, is_postable: false, status: 'active', version: 1, has_entries: false },
-  { id: 'a-cash', code: '1010', name: 'Cash in hand', account_type: 'asset', normal_side: 'debit', parent_id: 'a-assets', system_key: 'cash', is_postable: true, status: 'active', version: 1, has_entries: true },
-  { id: 'a-rent', code: '6100', name: 'Rent', account_type: 'expense', normal_side: 'debit', parent_id: null, system_key: null, is_postable: true, status: 'active', version: 3, has_entries: true },
+  {
+    id: 'a-assets',
+    code: '1000',
+    name: 'Assets',
+    account_type: 'asset',
+    normal_side: 'debit',
+    parent_id: null,
+    system_key: null,
+    is_postable: false,
+    status: 'active',
+    version: 1,
+    has_entries: false,
+  },
+  {
+    id: 'a-cash',
+    code: '1010',
+    name: 'Cash in hand',
+    account_type: 'asset',
+    normal_side: 'debit',
+    parent_id: 'a-assets',
+    system_key: 'cash',
+    is_postable: true,
+    status: 'active',
+    version: 1,
+    has_entries: true,
+  },
+  {
+    id: 'a-rent',
+    code: '6100',
+    name: 'Rent',
+    account_type: 'expense',
+    normal_side: 'debit',
+    parent_id: null,
+    system_key: null,
+    is_postable: true,
+    status: 'active',
+    version: 3,
+    has_entries: true,
+  },
 ]
 
 const journal = {
@@ -96,7 +132,11 @@ describe('accounting', () => {
   })
 
   it('shows a locked-period error from the server', async () => {
-    mockApi({ ...signedIn(['accounting.view', 'accounting.period_lock']), 'GET /api/v1/fiscal-periods': [], 'POST /api/v1/fiscal-periods/lock': () => problem(422, 'PERIOD_NOT_ENDED') })
+    mockApi({
+      ...signedIn(['accounting.view', 'accounting.period_lock']),
+      'GET /api/v1/fiscal-periods': [],
+      'POST /api/v1/fiscal-periods/lock': () => problem(422, 'PERIOD_NOT_ENDED'),
+    })
     renderRoute('/accounting/periods')
     await userEvent.click(await screen.findByRole('button', { name: 'Lock month' }))
     expect(await screen.findByText('Only months that have ended can be locked.')).toBeInTheDocument()
@@ -117,7 +157,12 @@ describe('accounting', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(calls.some((c) => c.method === 'POST' && c.path === '/api/v1/ledger-accounts')).toBe(true))
     expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/ledger-accounts')?.body).toEqual({
-      code: '1020', name: 'Petty cash', account_type: 'asset', parent_id: 'a-assets', normal_side: 'debit', is_postable: true,
+      code: '1020',
+      name: 'Petty cash',
+      account_type: 'asset',
+      parent_id: 'a-assets',
+      normal_side: 'debit',
+      is_postable: true,
     })
   })
 

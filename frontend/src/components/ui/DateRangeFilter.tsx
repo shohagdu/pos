@@ -7,15 +7,7 @@ import { TextField } from './TextField'
 const PRESETS: RangePreset[] = ['today', 'yesterday', 'last7', 'thisMonth', 'lastMonth', 'thisYear']
 
 /** From/to business dates with quick presets (REP-R01 header filters). */
-export function DateRangeFilter({
-  from,
-  to,
-  onChange,
-}: {
-  from: string
-  to: string
-  onChange: (range: { from: string; to: string }) => void
-}) {
+export function DateRangeFilter({ from, to, onChange }: { from: string; to: string; onChange: (range: { from: string; to: string }) => void }) {
   const { t } = useTranslation()
   return (
     <div className="flex flex-wrap items-end gap-3">

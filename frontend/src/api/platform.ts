@@ -174,24 +174,18 @@ export const platformApi = {
   tenants: (filter: TenantFilter, cursor: string | null) =>
     apiFetch<TenantPage>(`/api/v1/admin/tenants${queryString({ ...filter, limit: PAGE_SIZE, cursor })}`),
   tenant: (id: string) => apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}`),
-  suspend: (id: string, reason: string) =>
-    apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}/suspend`, { method: 'POST', body: { reason } }),
-  reactivate: (id: string, reason: string) =>
-    apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}/reactivate`, { method: 'POST', body: { reason } }),
-  grantLicence: (tenantId: string, input: LicenceInput) =>
-    apiFetch<TenantDetail>(`/api/v1/admin/tenants/${tenantId}/licence`, { method: 'POST', body: input }),
-  setOverride: (tenantId: string, input: OverrideInput) =>
-    apiFetch<Override>(`/api/v1/admin/tenants/${tenantId}/overrides`, { method: 'PUT', body: input }),
-  removeOverride: (tenantId: string, overrideId: string) =>
-    apiFetch<void>(`/api/v1/admin/tenants/${tenantId}/overrides/${overrideId}`, { method: 'DELETE' }),
+  suspend: (id: string, reason: string) => apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}/suspend`, { method: 'POST', body: { reason } }),
+  reactivate: (id: string, reason: string) => apiFetch<TenantDetail>(`/api/v1/admin/tenants/${id}/reactivate`, { method: 'POST', body: { reason } }),
+  grantLicence: (tenantId: string, input: LicenceInput) => apiFetch<TenantDetail>(`/api/v1/admin/tenants/${tenantId}/licence`, { method: 'POST', body: input }),
+  setOverride: (tenantId: string, input: OverrideInput) => apiFetch<Override>(`/api/v1/admin/tenants/${tenantId}/overrides`, { method: 'PUT', body: input }),
+  removeOverride: (tenantId: string, overrideId: string) => apiFetch<void>(`/api/v1/admin/tenants/${tenantId}/overrides/${overrideId}`, { method: 'DELETE' }),
   plans: () => apiFetch<AdminPlan[]>('/api/v1/admin/plans'),
   createPlan: (input: PlanInput) => apiFetch<AdminPlan>('/api/v1/admin/plans', { method: 'POST', body: input }),
   updatePlan: (id: string, input: PlanInput) => apiFetch<AdminPlan>(`/api/v1/admin/plans/${id}`, { method: 'PUT', body: input }),
   claims: (status: string, cursor: string | null, tenantId?: string) =>
     apiFetch<ClaimPage>(`/api/v1/admin/claims${queryString({ status, tenant_id: tenantId, limit: PAGE_SIZE, cursor })}`),
   approveClaim: (id: string) => apiFetch<PaymentClaim>(`/api/v1/admin/claims/${id}/approve`, { method: 'POST' }),
-  rejectClaim: (id: string, reason: string) =>
-    apiFetch<PaymentClaim>(`/api/v1/admin/claims/${id}/reject`, { method: 'POST', body: { reason } }),
+  rejectClaim: (id: string, reason: string) => apiFetch<PaymentClaim>(`/api/v1/admin/claims/${id}/reject`, { method: 'POST', body: { reason } }),
   paymentInstructions: () => apiFetch<Record<string, string>>('/api/v1/admin/settings/payment-instructions'),
   updatePaymentInstructions: (value: Record<string, string>) =>
     apiFetch<Record<string, string>>('/api/v1/admin/settings/payment-instructions', { method: 'PUT', body: value }),
@@ -209,8 +203,7 @@ export const platformKeys = {
 }
 
 /** The signed-in user's staff record; errors (403) mean "not staff". */
-export const useStaff = (enabled = true) =>
-  useQuery({ queryKey: platformKeys.me, queryFn: platformApi.me, retry: false, staleTime: 5 * 60_000, enabled })
+export const useStaff = (enabled = true) => useQuery({ queryKey: platformKeys.me, queryFn: platformApi.me, retry: false, staleTime: 5 * 60_000, enabled })
 export const usePlatformMetrics = () => useQuery({ queryKey: platformKeys.metrics, queryFn: platformApi.metrics })
 export const useAdminTenants = (filter: TenantFilter) =>
   useInfiniteQuery({
@@ -228,5 +221,4 @@ export const useAdminClaims = (status: string) =>
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.next_cursor,
   })
-export const usePaymentInstructions = () =>
-  useQuery({ queryKey: platformKeys.paymentInstructions, queryFn: platformApi.paymentInstructions })
+export const usePaymentInstructions = () => useQuery({ queryKey: platformKeys.paymentInstructions, queryFn: platformApi.paymentInstructions })

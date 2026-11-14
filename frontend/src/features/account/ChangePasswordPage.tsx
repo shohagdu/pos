@@ -56,9 +56,7 @@ export function ChangePasswordPage() {
       </div>
       {change.isSuccess && (
         <Alert tone="success">
-          {change.data.signed_out_sessions > 0
-            ? t('password.doneSignedOut', { count: change.data.signed_out_sessions })
-            : t('password.done')}
+          {change.data.signed_out_sessions > 0 ? t('password.doneSignedOut', { count: change.data.signed_out_sessions }) : t('password.done')}
         </Alert>
       )}
       <Card>
@@ -90,10 +88,7 @@ export function ChangePasswordPage() {
             <Link to="/account/sessions" className="text-sm font-semibold text-brand-700 hover:underline">
               {t('sessions.title')}
             </Link>
-            <Button
-              type="submit"
-              disabled={change.isPending || !values.current_password || !values.new_password || !values.confirm}
-            >
+            <Button type="submit" disabled={change.isPending || !values.current_password || !values.new_password || !values.confirm}>
               {change.isPending ? t('common.pleaseWait') : t('password.submit')}
             </Button>
           </div>

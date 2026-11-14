@@ -168,8 +168,7 @@ export const accountingApi = {
   lockPeriod: (month: string) => apiFetch<FiscalPeriod>('/api/v1/fiscal-periods/lock', { method: 'POST', body: { month } }),
   reopenPeriod: (month: string) => apiFetch<FiscalPeriod>('/api/v1/fiscal-periods/reopen', { method: 'POST', body: { month } }),
   trialBalance: (from?: string, to?: string) => apiFetch<TrialBalance>(`/api/v1/reports/trial-balance${queryString({ from, to })}`),
-  profitAndLoss: (from?: string, to?: string) =>
-    apiFetch<ProfitAndLoss>(`/api/v1/reports/profit-and-loss${queryString({ from, to })}`),
+  profitAndLoss: (from?: string, to?: string) => apiFetch<ProfitAndLoss>(`/api/v1/reports/profit-and-loss${queryString({ from, to })}`),
   balanceSheet: (asOf?: string) => apiFetch<BalanceSheet>(`/api/v1/reports/balance-sheet${queryString({ as_of: asOf })}`),
   generalLedger: (accountId: string, from?: string, to?: string) =>
     apiFetch<GeneralLedger>(`/api/v1/reports/general-ledger${queryString({ account_id: accountId, from, to })}`),
@@ -184,12 +183,10 @@ export const accountingKeys = {
   trialBalance: (tenantId: string, from?: string, to?: string) => ['accounting', tenantId, 'tb', from ?? '', to ?? ''] as const,
   profitAndLoss: (tenantId: string, from?: string, to?: string) => ['accounting', tenantId, 'pl', from ?? '', to ?? ''] as const,
   balanceSheet: (tenantId: string, asOf?: string) => ['accounting', tenantId, 'bs', asOf ?? ''] as const,
-  generalLedger: (tenantId: string, accountId: string, from?: string, to?: string) =>
-    ['accounting', tenantId, 'gl', accountId, from ?? '', to ?? ''] as const,
+  generalLedger: (tenantId: string, accountId: string, from?: string, to?: string) => ['accounting', tenantId, 'gl', accountId, from ?? '', to ?? ''] as const,
 }
 
-export const useLedgerAccounts = (tenantId: string) =>
-  useQuery({ queryKey: accountingKeys.ledgerAccounts(tenantId), queryFn: accountingApi.ledgerAccounts })
+export const useLedgerAccounts = (tenantId: string) => useQuery({ queryKey: accountingKeys.ledgerAccounts(tenantId), queryFn: accountingApi.ledgerAccounts })
 export const useJournals = (tenantId: string, filter: { from?: string; to?: string; source_type?: string }) =>
   useInfiniteQuery({
     queryKey: accountingKeys.journals(tenantId, filter),

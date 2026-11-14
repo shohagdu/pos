@@ -23,11 +23,33 @@ const categories = [
 ]
 
 const rice = {
-  id: 'p1', variant_id: 'v1', product_type: 'standard', name: 'Miniket Rice 5kg', name_bn: 'মিনিকেট চাল', description: null,
-  sku: 'P000001', barcodes: ['4006381333931'], category_id: 'c-rice', category_name: 'Rice', brand_id: null, brand_name: null,
-  unit_id: 'u-pcs', unit_short_name: 'pcs', allow_fraction: false, tax_rate_id: 't0', tax_rate_pct: '0.0000', track_inventory: true,
-  purchase_price: '400.0000', selling_price: '450.5000', wholesale_price: null, min_selling_price: null, reorder_level: null,
-  status: 'active', version: 1, created_at: '2026-10-17T00:00:00Z', updated_at: '2026-10-17T00:00:00Z',
+  id: 'p1',
+  variant_id: 'v1',
+  product_type: 'standard',
+  name: 'Miniket Rice 5kg',
+  name_bn: 'মিনিকেট চাল',
+  description: null,
+  sku: 'P000001',
+  barcodes: ['4006381333931'],
+  category_id: 'c-rice',
+  category_name: 'Rice',
+  brand_id: null,
+  brand_name: null,
+  unit_id: 'u-pcs',
+  unit_short_name: 'pcs',
+  allow_fraction: false,
+  tax_rate_id: 't0',
+  tax_rate_pct: '0.0000',
+  track_inventory: true,
+  purchase_price: '400.0000',
+  selling_price: '450.5000',
+  wholesale_price: null,
+  min_selling_price: null,
+  reorder_level: null,
+  status: 'active',
+  version: 1,
+  created_at: '2026-10-17T00:00:00Z',
+  updated_at: '2026-10-17T00:00:00Z',
 }
 
 function signedIn(perms = managerPerms) {
@@ -108,7 +130,11 @@ describe('products', () => {
         const taken = (code: string) => ({ code, product_name: 'Miniket Rice 5kg' })
         return Response.json({
           sku: q.get('sku') === 'P000001' ? taken('P000001') : null,
-          barcodes: (q.get('barcodes') ?? '').split(',').map((c) => c.trim()).filter((c) => c === 'RICE-5').map(taken),
+          barcodes: (q.get('barcodes') ?? '')
+            .split(',')
+            .map((c) => c.trim())
+            .filter((c) => c === 'RICE-5')
+            .map(taken),
         })
       },
     })
@@ -119,9 +145,7 @@ describe('products', () => {
     await waitFor(() => expect(sku).toHaveAccessibleDescription('This SKU is already used by “Miniket Rice 5kg”.'))
     expect(sku).toHaveAttribute('aria-invalid', 'true')
     await userEvent.type(screen.getByLabelText('Barcodes'), ', RICE-5')
-    await waitFor(() =>
-      expect(screen.getByLabelText('Barcodes')).toHaveAccessibleDescription('Barcode RICE-5 is already used by “Miniket Rice 5kg”.'),
-    )
+    await waitFor(() => expect(screen.getByLabelText('Barcodes')).toHaveAccessibleDescription('Barcode RICE-5 is already used by “Miniket Rice 5kg”.'))
     // A free SKU clears the message.
     await userEvent.type(sku, '9')
     await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/products/check-codes' && c.search.includes('sku=P0000019'))).toBe(true))
@@ -342,7 +366,11 @@ describe('products', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     expect(await screen.findByRole('alertdialog', { name: 'Product saved' })).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/products/new')
-    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/products')?.body).toMatchObject({ sku: 'SAMPLE-1', barcodes: ['SAMPLE'], selling_price: '0.00' })
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/products')?.body).toMatchObject({
+      sku: 'SAMPLE-1',
+      barcodes: ['SAMPLE'],
+      selling_price: '0.00',
+    })
   })
 
   it('shows a duplicate barcode on the barcode field', async () => {
@@ -406,12 +434,18 @@ describe('products', () => {
   it('adds a sub-category and only offers parents with room below', async () => {
     const calls = mockApi({
       ...signedIn(),
-      'GET /api/v1/categories': [...categories, { id: 'c-basmati', parent_id: 'c-rice', name: 'Basmati', depth: 2, sort_order: 0, status: 'active', product_count: 0 }],
-      'POST /api/v1/categories': (call) => Response.json({ id: 'c-new', depth: 1, sort_order: 0, status: 'active', product_count: 0, ...(call.body as object) }, { status: 201 }),
+      'GET /api/v1/categories': [
+        ...categories,
+        { id: 'c-basmati', parent_id: 'c-rice', name: 'Basmati', depth: 2, sort_order: 0, status: 'active', product_count: 0 },
+      ],
+      'POST /api/v1/categories': (call) =>
+        Response.json({ id: 'c-new', depth: 1, sort_order: 0, status: 'active', product_count: 0, ...(call.body as object) }, { status: 201 }),
     })
     renderRoute('/products/setup/categories')
     const parent = await screen.findByLabelText('Parent category')
-    const options = within(parent).getAllByRole('option').map((o) => o.textContent)
+    const options = within(parent)
+      .getAllByRole('option')
+      .map((o) => o.textContent)
     expect(options).toEqual(['None (top level)', 'Food', '— Rice'])
     await userEvent.type(screen.getByLabelText('Name'), 'Oil')
     await userEvent.selectOptions(parent, 'c-food')

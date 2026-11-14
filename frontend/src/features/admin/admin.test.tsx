@@ -32,18 +32,51 @@ function signedIn(role: string | null = 'platform_owner') {
 }
 
 const claim = {
-  id: 'c1', tenant_id: 't1', tenant_name: 'Rahim Store', invoice_id: 'i1', invoice_no: 'SUB-000001', plan_name: 'Starter',
-  billing_cycle: 'monthly', invoice_total: '990.00', method: 'bkash', amount: '900.00', transaction_ref: 'TX123',
-  payer_account: '01711000001', status: 'pending', rejection_reason: null, submitted_by_name: 'Karim', reviewed_by_name: null,
-  reviewed_at: null, created_at: '2026-10-18T10:00:00Z',
+  id: 'c1',
+  tenant_id: 't1',
+  tenant_name: 'Rahim Store',
+  invoice_id: 'i1',
+  invoice_no: 'SUB-000001',
+  plan_name: 'Starter',
+  billing_cycle: 'monthly',
+  invoice_total: '990.00',
+  method: 'bkash',
+  amount: '900.00',
+  transaction_ref: 'TX123',
+  payer_account: '01711000001',
+  status: 'pending',
+  rejection_reason: null,
+  submitted_by_name: 'Karim',
+  reviewed_by_name: null,
+  reviewed_at: null,
+  created_at: '2026-10-18T10:00:00Z',
 }
 
 const tenant = {
-  id: 't1', name: 'Rahim Store', slug: 'rahim-store', business_type: 'grocery', status: 'active', phone: '+8801711000001',
-  email: null, district: 'Dhaka', plan_code: 'starter', plan_name: 'Starter', stored_subscription_status: 'active',
-  subscription_status: 'active', owner_name: 'Rahim', owner_phone: '+8801711000001', trial_ends_at: null,
-  current_period_end: '2026-11-18T00:00:00Z', grace_ends_at: null, read_only_ends_at: null, created_at: '2026-09-01T00:00:00Z',
-  suspended_reason: null, billing_cycle: 'monthly', price_amount: '990.00', days_left: 30, last_activity_at: null,
+  id: 't1',
+  name: 'Rahim Store',
+  slug: 'rahim-store',
+  business_type: 'grocery',
+  status: 'active',
+  phone: '+8801711000001',
+  email: null,
+  district: 'Dhaka',
+  plan_code: 'starter',
+  plan_name: 'Starter',
+  stored_subscription_status: 'active',
+  subscription_status: 'active',
+  owner_name: 'Rahim',
+  owner_phone: '+8801711000001',
+  trial_ends_at: null,
+  current_period_end: '2026-11-18T00:00:00Z',
+  grace_ends_at: null,
+  read_only_ends_at: null,
+  created_at: '2026-09-01T00:00:00Z',
+  suspended_reason: null,
+  billing_cycle: 'monthly',
+  price_amount: '990.00',
+  days_left: 30,
+  last_activity_at: null,
   members: [{ user_id: 'u9', full_name: 'Rahim', phone: '+8801711000001', email: null, is_owner: true, status: 'active' }],
   usage: [{ code: 'users.max', used: 2, limit: 3 }],
   events: [],
@@ -182,8 +215,19 @@ describe('super admin console', () => {
 
   it('activates a one-time licence at the plan price, and extends a trial', async () => {
     const plan = (code: string, isTrial: boolean, prices: object[]) => ({
-      id: code, code, name: code === 'trial' ? 'Free Trial' : 'Starter', description: null, is_public: true, is_trial: isTrial,
-      trial_days: isTrial ? 14 : null, sort_order: 0, status: 'active', subscribers: 1, prices, features: [], updated_at: '2026-10-01T00:00:00Z',
+      id: code,
+      code,
+      name: code === 'trial' ? 'Free Trial' : 'Starter',
+      description: null,
+      is_public: true,
+      is_trial: isTrial,
+      trial_days: isTrial ? 14 : null,
+      sort_order: 0,
+      status: 'active',
+      subscribers: 1,
+      prices,
+      features: [],
+      updated_at: '2026-10-01T00:00:00Z',
     })
     const calls = mockApi({
       ...signedIn('billing'),
@@ -200,7 +244,10 @@ describe('super admin console', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Activate one-time licence' }))
     await waitFor(() =>
       expect(calls.find((c) => c.path === '/api/v1/admin/tenants/t1/licence')?.body).toEqual({
-        kind: 'lifetime', plan_code: 'starter', price_amount: '25000.00', reason: 'MR-1042 cash',
+        kind: 'lifetime',
+        plan_code: 'starter',
+        price_amount: '25000.00',
+        reason: 'MR-1042 cash',
       }),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

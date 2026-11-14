@@ -42,7 +42,10 @@ export function suggestCode(accounts: LedgerAccount[], parent: LedgerAccount | n
   const base = parent ? Number(parent.code) : NaN
   if (!parent || !Number.isInteger(base)) return ''
   const taken = new Set(accounts.map((a) => a.code))
-  const siblings = accounts.filter((a) => a.parent_id === parent.id).map((a) => Number(a.code)).filter(Number.isInteger)
+  const siblings = accounts
+    .filter((a) => a.parent_id === parent.id)
+    .map((a) => Number(a.code))
+    .filter(Number.isInteger)
   let next = Math.floor(Math.max(base, ...siblings) / 10) * 10 + 10
   while (taken.has(String(next))) next += 10
   return String(next)

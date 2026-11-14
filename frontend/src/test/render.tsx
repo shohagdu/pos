@@ -10,5 +10,12 @@ export function renderRoute(path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
   const queryClient = createQueryClient()
   queryClient.setDefaultOptions({ queries: { retry: false } })
-  return { router, ...render(<AppProviders queryClient={queryClient}><RouterProvider router={router} /></AppProviders>) }
+  return {
+    router,
+    ...render(
+      <AppProviders queryClient={queryClient}>
+        <RouterProvider router={router} />
+      </AppProviders>,
+    ),
+  }
 }

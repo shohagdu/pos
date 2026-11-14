@@ -4,15 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, NavLink, useParams } from 'react-router'
 
 import { ApiError } from '../../api/client'
-import {
-  BUSINESS_TYPES,
-  type BusinessSettings,
-  type BusinessType,
-  type CountryCode,
-  tenancyApi,
-  tenancyKeys,
-  useSettings,
-} from '../../api/tenancy'
+import { BUSINESS_TYPES, type BusinessSettings, type BusinessType, type CountryCode, tenancyApi, tenancyKeys, useSettings } from '../../api/tenancy'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
 import { Card } from '../../components/ui/Card'
@@ -42,9 +34,7 @@ export function SettingsPage() {
   const tenantId = me?.tenant?.tenant_id
   // Clearing transactions is for the owner in person (not while signed in as them).
   const owner = Boolean(me?.tenant?.is_owner) && !me?.impersonator
-  const visible = SECTIONS.filter((s) =>
-    s === 'data' ? owner : BRANCH_SECTIONS.includes(s) ? can('branches.manage') : can('settings.manage'),
-  )
+  const visible = SECTIONS.filter((s) => (s === 'data' ? owner : BRANCH_SECTIONS.includes(s) ? can('branches.manage') : can('settings.manage')))
   const nav = useRef<HTMLElement>(null)
   // On narrow screens the tab row scrolls; keep the open tab in view.
   useEffect(() => {

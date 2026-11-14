@@ -22,14 +22,20 @@ export function AuditDetails({ record }: { record: AuditRecord }) {
       {!hasData ? (
         <p className="text-sm text-ink-muted">{t('audit.noData')}</p>
       ) : rows ? (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{t('audit.changes')}</caption>
             <thead className="text-xs text-ink-muted uppercase">
               <tr>
-                <th scope="col" className="px-2 py-1.5">{t('audit.field')}</th>
-                <th scope="col" className="px-2 py-1.5">{t('audit.before')}</th>
-                <th scope="col" className="px-2 py-1.5">{t('audit.after')}</th>
+                <th scope="col" className="px-2 py-1.5">
+                  {t('audit.field')}
+                </th>
+                <th scope="col" className="px-2 py-1.5">
+                  {t('audit.before')}
+                </th>
+                <th scope="col" className="px-2 py-1.5">
+                  {t('audit.after')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -51,7 +57,7 @@ export function AuditDetails({ record }: { record: AuditRecord }) {
           </table>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
             <h4 className="text-xs font-semibold text-ink-muted uppercase">{t('audit.before')}</h4>
             <pre className="overflow-x-auto rounded bg-surface p-2 text-xs">{record.before == null ? '—' : JSON.stringify(record.before, null, 2)}</pre>
@@ -89,9 +95,5 @@ export function AuditDetails({ record }: { record: AuditRecord }) {
 function Value({ value }: { value: unknown }) {
   if (value === undefined) return <span className="text-ink-muted">—</span>
   const text = showValue(value)
-  return typeof value === 'object' && value !== null ? (
-    <pre className="text-xs whitespace-pre-wrap">{text}</pre>
-  ) : (
-    <span className="break-all">{text}</span>
-  )
+  return typeof value === 'object' && value !== null ? <pre className="text-xs whitespace-pre-wrap">{text}</pre> : <span className="break-all">{text}</span>
 }

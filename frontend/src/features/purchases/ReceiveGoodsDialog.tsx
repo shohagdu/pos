@@ -37,9 +37,7 @@ export function ReceiveGoodsDialog({ tenantId, purchase, onClose }: { tenantId: 
   const refresh = useRefreshAfterMoney(tenantId)
   const [key] = useState(newKey)
   const open = purchase.items.filter((i) => remaining(i) > 0n)
-  const [qty, setQty] = useState<Record<string, string>>(() =>
-    Object.fromEntries(open.map((i) => [i.id, trimDecimal(toFixed(remaining(i), 3))])),
-  )
+  const [qty, setQty] = useState<Record<string, string>>(() => Object.fromEntries(open.map((i) => [i.id, trimDecimal(toFixed(remaining(i), 3))])))
   const [date, setDate] = useState(today())
   const [note, setNote] = useState('')
   const [withPayment, setWithPayment] = useState(false)
@@ -127,15 +125,23 @@ export function ReceiveGoodsDialog({ tenantId, purchase, onClose }: { tenantId: 
     >
       <form id="receive-goods" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <p className="text-sm text-ink-muted">{t('purchases.receive.hint')}</p>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">{t('purchases.receive.title')}</caption>
             <thead className="border-y border-border bg-canvas text-xs text-ink-muted uppercase">
               <tr>
-                <th scope="col" className="px-3 py-2 text-left">{t('purchases.product')}</th>
-                <th scope="col" className="px-3 py-2 text-right">{t('purchases.receive.ordered')}</th>
-                <th scope="col" className="px-3 py-2 text-right">{t('purchases.receive.remaining')}</th>
-                <th scope="col" className="px-3 py-2 text-left">{t('purchases.receive.arriving')}</th>
+                <th scope="col" className="px-3 py-2 text-left">
+                  {t('purchases.product')}
+                </th>
+                <th scope="col" className="px-3 py-2 text-right">
+                  {t('purchases.receive.ordered')}
+                </th>
+                <th scope="col" className="px-3 py-2 text-right">
+                  {t('purchases.receive.remaining')}
+                </th>
+                <th scope="col" className="px-3 py-2 text-left">
+                  {t('purchases.receive.arriving')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -169,7 +175,7 @@ export function ReceiveGoodsDialog({ tenantId, purchase, onClose }: { tenantId: 
         </div>
         {errors.lines && <p className="text-sm text-danger">{errors.lines}</p>}
         <p className="text-sm font-medium">{t('purchases.receive.value', { value: formatMoney(toFixed(value, 2), lang) })}</p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
             label={t('purchases.receive.date')}
             type="date"
@@ -179,9 +185,16 @@ export function ReceiveGoodsDialog({ tenantId, purchase, onClose }: { tenantId: 
             onChange={(e) => setDate(e.target.value)}
             error={server.business_date}
           />
-          <TextField label={`${t('purchases.receive.note')} (${t('common.optional')})`} value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+          <TextField
+            label={`${t('purchases.receive.note')} (${t('common.optional')})`}
+            value={note}
+            maxLength={500}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </div>
-        {can('suppliers.pay') && <Checkbox label={t('purchases.receive.withPayment')} checked={withPayment} onChange={(e) => setWithPayment(e.target.checked)} />}
+        {can('suppliers.pay') && (
+          <Checkbox label={t('purchases.receive.withPayment')} checked={withPayment} onChange={(e) => setWithPayment(e.target.checked)} />
+        )}
         {withPayment && <PaymentFields tenantId={tenantId} value={payment} onChange={setPayment} errors={errors} />}
         {receive.isError && hasFormError(receive.error) && <Alert tone="danger">{problemMessage(receive.error, t)}</Alert>}
       </form>

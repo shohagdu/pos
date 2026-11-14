@@ -56,7 +56,7 @@ export function ShiftReportPage() {
         }
       />
       <Card>
-        <dl className="grid gap-4 text-sm sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-ink-muted">{t('shifts.cashier')}</dt>
             <dd className="font-medium">{s.opened_by_name ?? '—'}</dd>
@@ -88,7 +88,7 @@ export function ShiftReportPage() {
           )}
         </dl>
       </Card>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label={t('shifts.sales')} value={money(r.sales_total)} hint={t('shifts.invoiceCount', { count: r.sales_count })} />
         <StatCard label={t('shifts.returns')} value={money(r.returns_total)} hint={t('shifts.returnCount', { count: r.returns_count })} />
         <StatCard label={t('shifts.expectedCash')} value={money(r.expected_cash)} />
@@ -178,7 +178,7 @@ function CloseShiftForm({ tenantId, report }: { tenantId: string; report: ShiftR
         <h2 className="text-lg font-semibold">{t('shifts.close')}</h2>
         <p className="text-sm text-ink-muted">{t('shifts.closeHint', { amount: formatMoney(report.expected_cash, i18n.language) })}</p>
         {close.isError && hasFormError(close.error) && <Alert tone="danger">{problemMessage(close.error, t)}</Alert>}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <TextField
             label={t('shifts.countedCash')}
             value={counted}
@@ -187,7 +187,13 @@ function CloseShiftForm({ tenantId, report }: { tenantId: string; report: ShiftR
             required
             error={localError ?? errors.counted_cash}
           />
-          <TextField label={`${t('common.note')} (${t('common.optional')})`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} error={errors.note} />
+          <TextField
+            label={`${t('common.note')} (${t('common.optional')})`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={500}
+            error={errors.note}
+          />
         </div>
         {preview !== null && (
           <p className="text-sm" aria-live="polite">

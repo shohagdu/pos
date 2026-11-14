@@ -78,7 +78,7 @@ export function ProductMovementPage() {
       <Loaded query={report}>
         {(r) => (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label={t('reports.movement.fastCount')} value={r.fast_count} tone="good" />
               <StatCard label={t('reports.movement.slowCount')} value={r.slow_count} />
               <StatCard label={t('reports.movement.nonMovingCount')} value={r.non_moving_count} tone={r.non_moving_count > 0 ? 'bad' : 'default'} />
@@ -101,17 +101,28 @@ export function ProductMovementPage() {
                   ),
                 },
                 { key: 'category', header: t('reports.movement.category'), render: (row) => row.category_name ?? t('reports.uncategorised') },
-                { key: 'class', header: t('reports.movement.class'), render: (row) => <Badge tone={TONES[row.class] ?? 'neutral'}>{className(row.class)}</Badge> },
+                {
+                  key: 'class',
+                  header: t('reports.movement.class'),
+                  render: (row) => <Badge tone={TONES[row.class] ?? 'neutral'}>{className(row.class)}</Badge>,
+                },
                 { key: 'sold', header: t('reports.movement.sold'), align: 'right', render: (row) => `${qty(row.quantity_sold)} ${row.unit_short_name}` },
                 { key: 'sales', header: t('reports.movement.netSales'), align: 'right', render: (row) => money(row.net_sales, lang) },
                 { key: 'rate', header: t('reports.movement.dailyRate'), align: 'right', render: (row) => qty(row.daily_rate) },
                 { key: 'stock', header: t('reports.movement.stock'), align: 'right', render: (row) => `${qty(row.stock_qty)} ${row.unit_short_name}` },
                 { key: 'value', header: t('reports.movement.stockValue'), align: 'right', render: (row) => money(row.stock_value, lang) },
-                { key: 'days', header: t('reports.movement.daysOfStock'), align: 'right', render: (row) => (row.days_of_stock === null ? '—' : formatQuantity(row.days_of_stock, lang)) },
+                {
+                  key: 'days',
+                  header: t('reports.movement.daysOfStock'),
+                  align: 'right',
+                  render: (row) => (row.days_of_stock === null ? '—' : formatQuantity(row.days_of_stock, lang)),
+                },
                 {
                   key: 'last',
                   header: t('reports.movement.lastSold'),
-                  render: (row) => <span className="whitespace-nowrap">{row.last_sold_on ? formatDate(row.last_sold_on, lang) : t('reports.movement.never')}</span>,
+                  render: (row) => (
+                    <span className="whitespace-nowrap">{row.last_sold_on ? formatDate(row.last_sold_on, lang) : t('reports.movement.never')}</span>
+                  ),
                 },
               ]}
             />

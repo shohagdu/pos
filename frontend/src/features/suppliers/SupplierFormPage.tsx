@@ -95,7 +95,7 @@ function SupplierForm({ tenantId, supplier }: { tenantId: string; supplier?: Sup
         <fieldset disabled={readOnly} className="flex flex-col gap-6">
           <Card className="flex flex-col gap-4">
             <TextField label={t('suppliers.name')} {...bind('name')} required maxLength={200} error={errors.name} />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <TextField label={t('suppliers.contactPerson')} {...bind('contact_person')} maxLength={200} error={errors.contact_person} />
               <TextField label={t('suppliers.phone')} type="tel" {...bind('phone')} maxLength={20} error={errors.phone} />
               <TextField label={t('suppliers.email')} type="email" {...bind('email')} maxLength={200} error={errors.email} />

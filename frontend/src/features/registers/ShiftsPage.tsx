@@ -60,7 +60,7 @@ export function ShiftsPage() {
         {current.isSuccess ? (
           shift ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
                 <div>
                   <dt className="text-ink-muted">{t('shifts.register')}</dt>
                   <dd className="font-medium">

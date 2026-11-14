@@ -16,10 +16,13 @@ export function ProductSearch({
   tenantId,
   onAdd,
   inputRef,
+  showImages = true,
 }: {
   tenantId: string
   onAdd: (item: PosItem) => void
   inputRef: RefObject<HTMLInputElement | null>
+  /** Thumbnails in the results (Settings → Invoice, tax & POS). */
+  showImages?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
@@ -130,7 +133,7 @@ export function ProductSearch({
               className={`flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm ${i === active ? 'bg-brand-50' : 'hover:bg-canvas'}`}
             >
               <span className="flex min-w-0 items-center gap-3">
-                <ProductThumb fileId={item.image_file_id} />
+                {showImages && <ProductThumb fileId={item.image_file_id} />}
                 <span className="min-w-0">
                   <span className="block truncate font-medium">{lang === 'bn' && item.name_bn ? item.name_bn : item.name}</span>
                   <span className="block truncate text-xs text-ink-muted">

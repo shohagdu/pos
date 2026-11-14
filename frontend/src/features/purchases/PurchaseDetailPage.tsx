@@ -3,14 +3,7 @@ import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router'
 
-import {
-  type GoodsReceipt,
-  type PurchaseItem,
-  type PurchasePayment,
-  purchasingApi,
-  purchasingKeys,
-  usePurchase,
-} from '../../api/purchasing'
+import { type GoodsReceipt, type PurchaseItem, type PurchasePayment, purchasingApi, purchasingKeys, usePurchase } from '../../api/purchasing'
 import { Alert } from '../../components/ui/Alert'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -103,14 +96,29 @@ export function PurchaseDetailPage() {
         return total === 0n ? '—' : money(toFixed(total, 2))
       },
     },
-    { key: 'vat', header: t('purchases.vat'), align: 'right', render: (i) => (dec(i.tax_amount) === 0n ? '—' : `${money(i.tax_amount)} (${trimDecimal(i.tax_rate_pct)}%)`) },
+    {
+      key: 'vat',
+      header: t('purchases.vat'),
+      align: 'right',
+      render: (i) => (dec(i.tax_amount) === 0n ? '—' : `${money(i.tax_amount)} (${trimDecimal(i.tax_rate_pct)}%)`),
+    },
     { key: 'total', header: t('purchases.lineTotal'), align: 'right', render: (i) => money(i.line_total) },
     { key: 'landed', header: t('purchases.landedCost'), align: 'right', render: (i) => formatMoney(i.landed_unit_cost, lang) },
     ...(isDraft || isOrder
       ? []
       : [
-          { key: 'received', header: t('purchases.received'), align: 'right' as const, render: (i: PurchaseItem) => formatQuantity(i.received_quantity, lang, true) },
-          { key: 'returned', header: t('purchases.returned'), align: 'right' as const, render: (i: PurchaseItem) => formatQuantity(i.returned_quantity, lang, true) },
+          {
+            key: 'received',
+            header: t('purchases.received'),
+            align: 'right' as const,
+            render: (i: PurchaseItem) => formatQuantity(i.received_quantity, lang, true),
+          },
+          {
+            key: 'returned',
+            header: t('purchases.returned'),
+            align: 'right' as const,
+            render: (i: PurchaseItem) => formatQuantity(i.returned_quantity, lang, true),
+          },
         ]),
   ]
 
@@ -206,7 +214,9 @@ export function PurchaseDetailPage() {
           </div>
         }
       />
-      {p.status === 'cancelled' && <Alert tone="warning">{t('purchases.cancelledNote', { reason: p.cancel_reason ?? '—', date: formatDateTime(p.cancelled_at, lang) })}</Alert>}
+      {p.status === 'cancelled' && (
+        <Alert tone="warning">{t('purchases.cancelledNote', { reason: p.cancel_reason ?? '—', date: formatDateTime(p.cancelled_at, lang) })}</Alert>
+      )}
       {isDraft && <Alert>{t('purchases.draftNote')}</Alert>}
       {isDraft && <p className="-mt-3 text-sm text-ink-muted print:hidden">{t('purchases.order.hint')}</p>}
       {p.status === 'ordered' && <Alert>{t('purchases.orderedNote')}</Alert>}
@@ -214,9 +224,9 @@ export function PurchaseDetailPage() {
       {p.closed_at && <Alert tone="warning">{t('purchases.closedNote', { reason: p.cancel_reason ?? '—', date: formatDateTime(p.closed_at, lang) })}</Alert>}
       {step.isError && <Alert tone="danger">{problemMessage(step.error, t)}</Alert>}
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <Card>
-          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <Info label={t('purchases.supplier')}>
               <Link to={`/suppliers/${p.supplier_id}`} className={LINK}>
                 {p.supplier_name}
@@ -226,9 +236,7 @@ export function PurchaseDetailPage() {
             <Info label={t('purchases.purchaseDate')}>{formatDate(p.purchase_date, lang)}</Info>
             {p.expected_date && <Info label={t('purchases.expectedDate')}>{formatDate(p.expected_date, lang)}</Info>}
             {p.ordered_at && <Info label={t('purchases.orderedAt')}>{formatDateTime(p.ordered_at, lang)}</Info>}
-            {p.approved_at && (
-              <Info label={t('purchases.approvedBy')}>{`${p.approved_by_name ?? '—'} · ${formatDateTime(p.approved_at, lang)}`}</Info>
-            )}
+            {p.approved_at && <Info label={t('purchases.approvedBy')}>{`${p.approved_by_name ?? '—'} · ${formatDateTime(p.approved_at, lang)}`}</Info>}
             <Info label={t('purchases.location')}>{p.location_name}</Info>
             <Info label={t('purchases.createdBy')}>{`${p.created_by_name ?? '—'} · ${formatDateTime(p.created_at, lang)}`}</Info>
             <Info label={t('purchases.postedAt')}>{formatDateTime(p.posted_at, lang)}</Info>
@@ -278,7 +286,13 @@ export function PurchaseDetailPage() {
       {!isDraft && !isOrder && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold">{t('purchases.payments')}</h2>
-          <DataTable caption={t('purchases.payments')} columns={paymentColumns} rows={p.payments} rowKey={(x) => x.payment_id} empty={t('purchases.noPayments')} />
+          <DataTable
+            caption={t('purchases.payments')}
+            columns={paymentColumns}
+            rows={p.payments}
+            rowKey={(x) => x.payment_id}
+            empty={t('purchases.noPayments')}
+          />
         </section>
       )}
 
@@ -300,7 +314,13 @@ export function PurchaseDetailPage() {
       )}
 
       {open === 'post' && (
-        <PostDialog tenantId={tenantId} grandTotal={p.grand_total} draft={() => Promise.resolve(p)} onClose={() => setOpen(null)} onPosted={() => setOpen(null)} />
+        <PostDialog
+          tenantId={tenantId}
+          grandTotal={p.grand_total}
+          draft={() => Promise.resolve(p)}
+          onClose={() => setOpen(null)}
+          onPosted={() => setOpen(null)}
+        />
       )}
       {open === 'pay' && (
         <PaySupplierDialog

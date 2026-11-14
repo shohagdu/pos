@@ -326,7 +326,7 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
       </Link>
       <PageHeader title={purchase ? t('purchases.form.editTitle') : t('purchases.new')} subtitle={t('purchases.form.subtitle')} />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <section className="flex min-w-0 flex-col gap-3" aria-label={t('purchases.form.items')}>
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
@@ -443,12 +443,22 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
                               <option value="percent">%</option>
                             </select>
                             <div className="min-w-0 flex-1">
-                              <LineInput label={`${t('purchases.discount')} ${l.product_name}`} value={l.discount_value} error={lineError(i, 'discount_value')} onChange={(v) => updateLine(l.key, { discount_value: v })} />
+                              <LineInput
+                                label={`${t('purchases.discount')} ${l.product_name}`}
+                                value={l.discount_value}
+                                error={lineError(i, 'discount_value')}
+                                onChange={(v) => updateLine(l.key, { discount_value: v })}
+                              />
                             </div>
                           </div>
                         </LineField>
                         <LineField label={t('purchases.vatPct')}>
-                          <LineInput label={`${t('purchases.vatPct')} ${l.product_name}`} value={l.tax_rate_pct} error={lineError(i, 'tax_rate_pct')} onChange={(v) => updateLine(l.key, { tax_rate_pct: v })} />
+                          <LineInput
+                            label={`${t('purchases.vatPct')} ${l.product_name}`}
+                            value={l.tax_rate_pct}
+                            error={lineError(i, 'tax_rate_pct')}
+                            onChange={(v) => updateLine(l.key, { tax_rate_pct: v })}
+                          />
                         </LineField>
                       </div>
 
@@ -472,7 +482,11 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
                             )}
                           </span>
                         ) : (
-                          last && <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium whitespace-nowrap text-brand-700">{t('purchases.form.firstPurchase')}</span>
+                          last && (
+                            <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium whitespace-nowrap text-brand-700">
+                              {t('purchases.form.firstPurchase')}
+                            </span>
+                          )
                         )}
                         <span className="ml-auto shrink-0 whitespace-nowrap text-ink-muted tabular-nums">
                           {t('purchases.form.landedEach', { amount: m(costed.landed_unit_cost) })}
@@ -522,7 +536,14 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
               error={errors.supplier_invoice_no}
             />
             <div className="grid grid-cols-2 gap-3">
-              <TextField label={t('purchases.purchaseDate')} type="date" max={today()} value={head.purchase_date} onChange={setField('purchase_date')} error={errors.purchase_date} />
+              <TextField
+                label={t('purchases.purchaseDate')}
+                type="date"
+                max={today()}
+                value={head.purchase_date}
+                onChange={setField('purchase_date')}
+                error={errors.purchase_date}
+              />
               <Select
                 label={t('purchases.location')}
                 value={head.location_id}
@@ -563,7 +584,9 @@ function PurchaseForm({ tenantId, purchase }: { tenantId: string; purchase?: Pur
             <p className="text-xs text-ink-muted">{vatRegistered ? t('purchases.form.vatRecoverable') : t('purchases.form.vatInCost')}</p>
           </section>
 
-          {save.isError && hasFormError(save.error) && conflict !== 'DUPLICATE_SUPPLIER_INVOICE' && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
+          {save.isError && hasFormError(save.error) && conflict !== 'DUPLICATE_SUPPLIER_INVOICE' && (
+            <Alert tone="danger">{problemMessage(save.error, t)}</Alert>
+          )}
           {Object.keys(clientErrors).length > 0 && <Alert tone="danger">{t('purchases.errors.fixFields')}</Alert>}
 
           {canPost && (
@@ -667,8 +690,29 @@ function LineInput({
   )
 }
 
-function AmountField({ label, value, onChange, error }: { label: string; value: string; onChange: (e: { target: { value: string } }) => void; error?: string }) {
-  return <TextField label={label} inputMode="decimal" autoComplete="off" placeholder="0" value={value} onChange={onChange} onFocus={(e) => e.target.select()} error={error} />
+function AmountField({
+  label,
+  value,
+  onChange,
+  error,
+}: {
+  label: string
+  value: string
+  onChange: (e: { target: { value: string } }) => void
+  error?: string
+}) {
+  return (
+    <TextField
+      label={label}
+      inputMode="decimal"
+      autoComplete="off"
+      placeholder="0"
+      value={value}
+      onChange={onChange}
+      onFocus={(e) => e.target.select()}
+      error={error}
+    />
+  )
 }
 
 function Row({ label, value }: { label: string; value: string }) {

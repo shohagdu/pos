@@ -127,7 +127,12 @@ export function ExpiryPage() {
             key: 'actions',
             header: <span className="sr-only">{t('common.actions')}</span>,
             render: (r) => (
-              <Button variant="ghost" className="min-h-9" onClick={() => startWriteOff([r])} aria-label={t('inventory.expiryReport.writeOffOne', { name: r.name, batch: r.batch_no })}>
+              <Button
+                variant="ghost"
+                className="min-h-9"
+                onClick={() => startWriteOff([r])}
+                aria-label={t('inventory.expiryReport.writeOffOne', { name: r.name, batch: r.batch_no })}
+              >
                 {t('inventory.expiryReport.writeOff')}
               </Button>
             ),
@@ -167,7 +172,11 @@ export function ExpiryPage() {
       <InventoryNav />
       {summary && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-          <StatCard label={t('inventory.expiryReport.expiredCount')} value={formatQuantity(String(summary.expired), lang)} tone={summary.expired > 0 ? 'bad' : 'default'} />
+          <StatCard
+            label={t('inventory.expiryReport.expiredCount')}
+            value={formatQuantity(String(summary.expired), lang)}
+            tone={summary.expired > 0 ? 'bad' : 'default'}
+          />
           <StatCard
             label={t('inventory.expiryReport.expiringCount', { days })}
             value={formatQuantity(String(summary.expiring), lang)}
@@ -190,7 +199,7 @@ export function ExpiryPage() {
           />
           <Button type="submit">{t('common.search')}</Button>
         </form>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label={t('common.status')}
             value={status}

@@ -22,7 +22,16 @@ export type DashIcon = IconName | keyof typeof LOCAL_ICONS
 export function DIcon({ name, className = 'size-5' }: { name: DashIcon; className?: string }) {
   if (name in LOCAL_ICONS) {
     return (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 ${className}`} aria-hidden="true">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={`shrink-0 ${className}`}
+        aria-hidden="true"
+      >
         <path d={LOCAL_ICONS[name as keyof typeof LOCAL_ICONS]} />
       </svg>
     )
@@ -55,7 +64,7 @@ export function KpiCard({ icon, label, value, hint, tone = 'default' }: { icon: 
       </span>
       <div className="min-w-0">
         <div className="text-xs font-medium text-ink-muted">{label}</div>
-        <div className={`mt-0.5 truncate text-lg font-bold tabular-nums sm:text-xl ${VALUE_TONE[tone]}`}>{value}</div>
+        <div className={`mt-0.5 text-lg leading-tight font-bold tabular-nums [overflow-wrap:anywhere] sm:text-xl ${VALUE_TONE[tone]}`}>{value}</div>
         {hint && <div className="mt-0.5 text-xs text-ink-muted">{hint}</div>}
       </div>
     </div>
@@ -63,13 +72,24 @@ export function KpiCard({ icon, label, value, hint, tone = 'default' }: { icon: 
 }
 
 /** One scannable, clickable row in an attention/balances list. */
-export function ListLink({ to, icon, label, detail, value, tone = 'default' }: { to: string; icon: DashIcon; label: string; detail?: string; value: ReactNode; tone?: Tone }) {
+export function ListLink({
+  to,
+  icon,
+  label,
+  detail,
+  value,
+  tone = 'default',
+}: {
+  to: string
+  icon: DashIcon
+  label: string
+  detail?: string
+  value: ReactNode
+  tone?: Tone
+}) {
   return (
     <li>
-      <Link
-        to={to}
-        className="flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand-600"
-      >
+      <Link to={to} className="flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand-600">
         <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${ICON_TONE[tone]}`}>
           <DIcon name={icon} className="size-[18px]" />
         </span>
@@ -134,7 +154,7 @@ export function GettingStarted({ steps }: { steps: StartStep[] }) {
         {t('dashboard.start.title')}
       </h2>
       <p className="mt-1 text-sm text-ink-muted">{t('dashboard.start.subtitle')}</p>
-      <ol className="mt-4 grid gap-3 md:grid-cols-3">
+      <ol className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         {steps.map((s, i) => (
           <li key={s.key} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
             <span className="flex items-center gap-2">

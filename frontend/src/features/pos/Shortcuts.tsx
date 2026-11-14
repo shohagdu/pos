@@ -16,7 +16,7 @@ const KEYS = [
 export function Shortcuts() {
   const { t } = useTranslation()
   return (
-    <dl aria-label={t('pos.shortcuts.title')} className="mt-auto hidden grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-ink-muted md:grid">
+    <dl aria-label={t('pos.shortcuts.title')} className="mt-auto hidden grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-ink-muted lg:grid">
       {KEYS.map(([key, name]) => (
         <div key={key} className="flex gap-1.5">
           <dt>

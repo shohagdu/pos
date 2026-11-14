@@ -87,7 +87,7 @@ function ProductCodesForm({ settings, tenantId }: { settings: BusinessSettings; 
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 font-semibold">{t('settings.codes.sku')}</legend>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField
               label={t('settings.codes.prefix')}
               maxLength={10}
@@ -105,7 +105,7 @@ function ProductCodesForm({ settings, tenantId }: { settings: BusinessSettings; 
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-1 font-semibold">{t('settings.codes.barcode')}</legend>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField
               label={t('settings.codes.prefix')}
               maxLength={10}

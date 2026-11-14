@@ -1,17 +1,21 @@
 import { NavLink } from 'react-router'
 
+// Below lg the tabs stay on one line and scroll sideways; the bottom rule is
+// an inset shadow so the scrolling row is not clipped by a 1px overflow.
+const BAR =
+  'flex gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)] [scrollbar-width:none] lg:flex-wrap lg:overflow-visible [&::-webkit-scrollbar]:hidden'
+const TAB = 'flex min-h-11 shrink-0 items-center border-b-2 px-3 text-sm font-medium whitespace-nowrap lg:min-h-0 lg:py-2'
+
 /** Section tabs as links, so each tab has its own URL. */
 export function Tabs({ items, label }: { items: { to: string; label: string; end?: boolean }[]; label: string }) {
   return (
-    <nav aria-label={label} className="flex flex-wrap gap-1 border-b border-border">
+    <nav aria-label={label} className={BAR}>
       {items.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
           end={item.end ?? true}
-          className={({ isActive }) =>
-            `-mb-px border-b-2 px-3 py-2 text-sm font-medium ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`
-          }
+          className={({ isActive }) => `${TAB} ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`}
         >
           {item.label}
         </NavLink>
@@ -33,7 +37,7 @@ export function StateTabs<T extends string>({
   label: string
 }) {
   return (
-    <div role="tablist" aria-label={label} className="flex flex-wrap gap-1 border-b border-border">
+    <div role="tablist" aria-label={label} className={BAR}>
       {items.map((item) => (
         <button
           key={item.value}
@@ -41,7 +45,7 @@ export function StateTabs<T extends string>({
           role="tab"
           aria-selected={item.value === value}
           onClick={() => onChange(item.value)}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${item.value === value ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`}
+          className={`${TAB} ${item.value === value ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`}
         >
           {item.label}
         </button>

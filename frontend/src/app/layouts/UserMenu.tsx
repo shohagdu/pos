@@ -56,7 +56,7 @@ export function UserMenu() {
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={t('nav.account')}
-        className="flex items-center gap-2 rounded-full p-0.5 pr-2 hover:bg-canvas"
+        className="flex min-h-11 items-center gap-2 rounded-full p-0.5 pr-2 hover:bg-canvas lg:min-h-0"
       >
         <span className="flex size-9 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700" aria-hidden="true">
           {initials(name)}

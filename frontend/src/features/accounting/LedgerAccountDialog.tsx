@@ -148,7 +148,7 @@ export function LedgerAccountDialog({
           options={[{ value: '', label: t('accounting.chart.topLevel') }, ...groups.map((g) => ({ value: g.id, label: accountLabel(g) }))]}
           error={errors.parent_id}
         />
-        <div className="grid gap-4 sm:grid-cols-[9rem_1fr]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[9rem_1fr]">
           <TextField
             label={t('accounting.chart.code')}
             value={code}
@@ -174,7 +174,7 @@ export function LedgerAccountDialog({
             data-autofocus
           />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label={t('accounting.chart.type')}
             value={effectiveKind}
@@ -210,7 +210,12 @@ export function LedgerAccountDialog({
         />
         {errors.is_postable && <p className="-mt-2 text-sm text-danger">{errors.is_postable}</p>}
         {account && !system && (
-          <Checkbox label={t('accounting.chart.active')} hint={t('accounting.chart.activeHint')} checked={active} onChange={(e) => setActive(e.target.checked)} />
+          <Checkbox
+            label={t('accounting.chart.active')}
+            hint={t('accounting.chart.activeHint')}
+            checked={active}
+            onChange={(e) => setActive(e.target.checked)}
+          />
         )}
         {errors.status && <p className="-mt-2 text-sm text-danger">{errors.status}</p>}
 

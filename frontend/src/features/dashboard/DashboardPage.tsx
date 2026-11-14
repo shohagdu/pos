@@ -100,7 +100,7 @@ function Overview({ tenantId }: { tenantId: string }) {
   const figures = (title: string, f: Figures, salesHint?: string) => (
     <section aria-label={title} className="flex flex-col gap-3">
       <h2 className="font-semibold">{title}</h2>
-      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-3 2xl:grid-cols-6">
         <KpiCard
           icon="sales"
           label={t('dashboard.sales')}
@@ -129,7 +129,7 @@ function Overview({ tenantId }: { tenantId: string }) {
     <>
       <GettingStarted steps={steps} />
       {figures(t('dashboard.today'), d.today_figures, yesterday ? t('dashboard.yesterday', { amount: money(yesterday.sales) }) : undefined)}
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="p-4 lg:col-span-2">
           <SalesChart days={d.last_14_days} today={d.today} />
         </Card>
@@ -186,7 +186,7 @@ function Overview({ tenantId }: { tenantId: string }) {
         </div>
       </div>
       {figures(t('dashboard.thisMonth'), d.month_figures)}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section aria-labelledby="dash-top" className="flex min-w-0 flex-col gap-2">
           <h2 id="dash-top" className="font-semibold">
             {t('dashboard.topProducts')}

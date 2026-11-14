@@ -39,13 +39,23 @@ export function SaleReturnDetailPage() {
       key: 'product',
       header: t('sales.product'),
       render: (i) => (
+        // Every line here was returned: red name and a "returned item" note, as on the invoice.
         <>
-          <span className="font-medium">{i.product_name}</span>
+          <span className="font-medium text-danger">{i.product_name}</span>
           <span className="block font-mono text-xs text-ink-muted">{i.sku}</span>
+          <span className="mt-0.5 inline-flex items-center gap-1 rounded bg-danger/10 px-1.5 py-0.5 text-xs font-medium text-danger">
+            <span aria-hidden="true">↩</span>
+            {t('sales.returnedItem', { qty: `${formatQuantity(i.quantity, lang, true)} ${i.unit_short_name}` })}
+          </span>
         </>
       ),
     },
-    { key: 'qty', header: t('common.quantity'), align: 'right', render: (i) => `${formatQuantity(i.quantity, lang, true)} ${i.unit_short_name}` },
+    {
+      key: 'qty',
+      header: t('common.quantity'),
+      align: 'right',
+      render: (i) => <span className="text-danger">{`${formatQuantity(i.quantity, lang, true)} ${i.unit_short_name}`}</span>,
+    },
     {
       key: 'condition',
       header: t('sales.condition'),
@@ -71,11 +81,8 @@ export function SaleReturnDetailPage() {
         <Link to="/sales/returns" className="text-sm font-medium text-brand-700 hover:underline">
           ← {t('sales.returnsTitle')}
         </Link>
-        <PageHeader
-          title={t('sales.returnDetailTitle', { no: r.return_no })}
-          actions={<Button onClick={print}>{t('common.print')}</Button>}
-        />
-        <Card className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <PageHeader title={t('sales.returnDetailTitle', { no: r.return_no })} actions={<Button onClick={print}>{t('common.print')}</Button>} />
+        <Card className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Info
             label={t('sales.invoiceNo')}
             value={
@@ -91,7 +98,7 @@ export function SaleReturnDetailPage() {
           <Info label={t('sales.refundMode')} value={t(`sales.refundModes.${r.refund_mode}`)} />
           <Info label={t('common.reason')} value={r.reason} />
         </Card>
-        <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_20rem]">
           <DataTable caption={t('sales.items')} columns={columns} rows={r.items} rowKey={(i) => i.id} />
           <Card className="self-start p-4">
             <dl className="flex flex-col gap-1 text-sm">

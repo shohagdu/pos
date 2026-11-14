@@ -99,17 +99,21 @@ export function SupplierDetailPage() {
           </div>
         }
       />
-      {inUse ? (
-        <Alert tone="warning">{t('suppliers.inUse')}</Alert>
-      ) : (
-        remove.isError && <Alert tone="danger">{problemMessage(remove.error, t)}</Alert>
-      )}
+      {inUse ? <Alert tone="warning">{t('suppliers.inUse')}</Alert> : remove.isError && <Alert tone="danger">{problemMessage(remove.error, t)}</Alert>}
       {toggle.isError && <Alert tone="danger">{problemMessage(toggle.error, t)}</Alert>}
 
-      <Card className="grid gap-4 sm:grid-cols-[1fr_auto]">
-        <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+      <Card className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <Info label={t('suppliers.contactPerson')}>{s.contact_person ?? '—'}</Info>
-          <Info label={t('suppliers.phone')}>{s.phone ? <a href={`tel:${s.phone}`} className={LINK}>{s.phone}</a> : '—'}</Info>
+          <Info label={t('suppliers.phone')}>
+            {s.phone ? (
+              <a href={`tel:${s.phone}`} className={LINK}>
+                {s.phone}
+              </a>
+            ) : (
+              '—'
+            )}
+          </Info>
           <Info label={t('suppliers.email')}>{s.email ?? '—'}</Info>
           <Info label={t('suppliers.address')}>{s.address ?? '—'}</Info>
           <Info label={t('suppliers.openingBalance')}>{formatMoney(s.opening_balance, lang)}</Info>
@@ -117,7 +121,9 @@ export function SupplierDetailPage() {
         </dl>
         <div className="flex flex-col items-start gap-1 sm:items-end">
           <span className="text-xs font-medium text-ink-muted uppercase">{t('suppliers.balance')}</span>
-          <span className={`text-2xl font-bold tabular-nums ${balance > 0n ? 'text-danger' : 'text-ink'}`}>{formatMoney(s.current_balance.replace(/^-/, ''), lang)}</span>
+          <span className={`text-2xl font-bold tabular-nums ${balance > 0n ? 'text-danger' : 'text-ink'}`}>
+            {formatMoney(s.current_balance.replace(/^-/, ''), lang)}
+          </span>
           <BalanceBadge balance={s.current_balance} />
         </div>
       </Card>
@@ -170,7 +176,11 @@ function StatementTab({ tenantId, supplierId }: { tenantId: string; supplierId: 
       key: 'type',
       header: t('suppliers.statement.type'),
       render: (r) =>
-        r.kind === 'entry' ? t(`suppliers.entryTypes.${r.entry.entry_type}`, { defaultValue: r.entry.entry_type }) : <strong>{t(`suppliers.statement.${r.kind}`)}</strong>,
+        r.kind === 'entry' ? (
+          t(`suppliers.entryTypes.${r.entry.entry_type}`, { defaultValue: r.entry.entry_type })
+        ) : (
+          <strong>{t(`suppliers.statement.${r.kind}`)}</strong>
+        ),
     },
     {
       key: 'ref',
@@ -179,8 +189,18 @@ function StatementTab({ tenantId, supplierId }: { tenantId: string; supplierId: 
         if (r.kind !== 'entry') return ''
         const e = r.entry
         const label = e.reference_no ?? '—'
-        if (e.reference_type === 'purchase') return <Link to={`/purchases/${e.reference_id}`} className={LINK}>{label}</Link>
-        if (e.reference_type === 'purchase_return') return <Link to={`/purchases/returns/${e.reference_id}`} className={LINK}>{label}</Link>
+        if (e.reference_type === 'purchase')
+          return (
+            <Link to={`/purchases/${e.reference_id}`} className={LINK}>
+              {label}
+            </Link>
+          )
+        if (e.reference_type === 'purchase_return')
+          return (
+            <Link to={`/purchases/returns/${e.reference_id}`} className={LINK}>
+              {label}
+            </Link>
+          )
         return label
       },
     },
@@ -270,7 +290,14 @@ function BillsTab({ tenantId, supplierId }: { tenantId: string; supplierId: stri
   if (bills.isError) return <Alert tone="danger">{problemMessage(bills.error, t)}</Alert>
   return (
     <section className="flex flex-col gap-4">
-      <DataTable caption={t('suppliers.tabs.bills')} columns={columns} rows={rows} rowKey={(p) => p.id} onRowClick={(p) => navigate(`/purchases/${p.id}`)} empty={t('suppliers.noBills')} />
+      <DataTable
+        caption={t('suppliers.tabs.bills')}
+        columns={columns}
+        rows={rows}
+        rowKey={(p) => p.id}
+        onRowClick={(p) => navigate(`/purchases/${p.id}`)}
+        empty={t('suppliers.noBills')}
+      />
       {bills.hasNextPage && (
         <Button variant="secondary" className="self-center" disabled={bills.isFetchingNextPage} onClick={() => void bills.fetchNextPage()}>
           {bills.isFetchingNextPage ? t('common.loading') : t('common.loadMore')}

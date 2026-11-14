@@ -15,6 +15,7 @@ import { StatCard } from '../../components/ui/StatCard'
 import { TextField } from '../../components/ui/TextField'
 import { downloadCsv } from '../../lib/csv'
 import { formatDateTime, presetRange } from '../../lib/dates'
+import { ZERO, dec } from '../../lib/decimal'
 import { formatMoney } from '../../lib/format'
 import { problemMessage } from '../../lib/problem'
 import { useSession } from '../auth/session'
@@ -32,6 +33,10 @@ export function SalesPage() {
   const lang = i18n.language
   const [text, setText] = useState('')
   const [filter, setFilter] = useState<SaleFilter>(() => presetRange('thisMonth'))
+  // Below lg the filters fold away behind a button; search stays visible.
+  const [showFilters, setShowFilters] = useState(false)
+  const activeFilters = [filter.status, filter.payment_status, filter.with_warranty].filter(Boolean).length
+  const folded = showFilters ? '' : 'max-lg:hidden'
   const sales = useSales(tenantId, filter)
   const set = (patch: Partial<SaleFilter>) => setFilter((f) => ({ ...f, ...patch }))
 
@@ -49,7 +54,7 @@ export function SalesPage() {
       key: 'invoice',
       header: t('sales.invoiceNo'),
       render: (s) => (
-        <Link to={`/sales/${s.id}`} className="font-medium text-brand-700 hover:underline">
+        <Link to={`/sales/${s.id}`} className="font-medium whitespace-nowrap text-brand-700 hover:underline">
           {s.invoice_no}
         </Link>
       ),
@@ -65,14 +70,56 @@ export function SalesPage() {
         </>
       ),
     },
-    { key: 'cashier', header: t('sales.cashier'), render: (s) => s.cashier_name ?? '—' },
+    { key: 'cashier', header: t('sales.cashier'), showFrom: '2xl', render: (s) => s.cashier_name ?? '—' },
     { key: 'total', header: t('sales.grandTotal'), align: 'right', render: (s) => money(s.grand_total) },
-    { key: 'paid', header: t('sales.paid'), align: 'right', render: (s) => money(s.paid_total) },
+    { key: 'paid', header: t('sales.paid'), align: 'right', showFrom: '2xl', render: (s) => money(s.paid_total) },
     { key: 'due', header: t('sales.due'), align: 'right', render: (s) => money(s.due_total) },
     { key: 'status', header: t('common.status'), render: (s) => <SaleStatusBadge status={s.status} /> },
     { key: 'payment', header: t('sales.payment'), render: (s) => <PaymentStatusBadge status={s.payment_status} /> },
     { key: 'warranty', header: t('sales.warranty'), render: (s) => <WarrantyStatus sale={s} /> },
   ]
+
+  // Below xl: one card per sale; the whole card opens the invoice.
+  const card = (s: Sale) => (
+    <div className="relative flex flex-col gap-1.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Link
+            to={`/sales/${s.id}`}
+            className="font-semibold text-brand-700 after:absolute after:inset-0 after:content-[''] hover:underline focus-visible:outline-none focus-visible:after:rounded-lg focus-visible:after:ring-2 focus-visible:after:ring-brand-500"
+          >
+            {s.invoice_no}
+          </Link>
+          <div className="text-xs text-ink-muted">{formatDateTime(s.sale_date || s.created_at, lang)}</div>
+        </div>
+        <span className="text-base font-bold whitespace-nowrap tabular-nums">{money(s.grand_total)}</span>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <span className="min-w-0 break-words">
+          {s.is_walk_in ? t('sales.walkIn') : s.customer_name}
+          {s.customer_phone && !s.is_walk_in && <span className="text-ink-muted"> · {s.customer_phone}</span>}
+        </span>
+        {s.cashier_name && (
+          <span className="text-xs text-ink-muted">
+            {t('sales.cashier')}: {s.cashier_name}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+        <span className="tabular-nums">
+          <span className="text-ink-muted">{t('sales.paid')}</span> {money(s.paid_total)}
+        </span>
+        <span className={`tabular-nums ${dec(s.due_total) > ZERO ? 'font-semibold text-danger' : ''}`}>
+          <span className="font-normal text-ink-muted">{t('sales.due')}</span> {money(s.due_total)}
+        </span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          <SaleStatusBadge status={s.status} />
+          <PaymentStatusBadge status={s.payment_status} />
+        </span>
+        {s.warranty_until && s.warranty_items > 0 && <WarrantyStatus sale={s} />}
+      </div>
+    </div>
+  )
 
   function exportCsv() {
     downloadCsv(`sales-${filter.from ?? ''}-${filter.to ?? ''}`, rows, [
@@ -113,9 +160,11 @@ export function SalesPage() {
         }
       />
 
-      <div className="flex flex-col gap-3">
-        <DateRangeFilter from={filter.from ?? ''} to={filter.to ?? ''} onChange={(r) => set(r)} />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_2fr]">
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[1fr_1fr_2fr]">
+        <div id="sales-filters" className={`lg:col-span-3 ${folded}`}>
+          <DateRangeFilter from={filter.from ?? ''} to={filter.to ?? ''} onChange={(r) => set(r)} />
+        </div>
+        <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:contents ${folded}`}>
           <Select
             label={t('common.status')}
             value={filter.status ?? ''}
@@ -126,24 +175,25 @@ export function SalesPage() {
             label={t('sales.payment')}
             value={filter.payment_status ?? ''}
             onChange={(e) => set({ payment_status: e.target.value as PaymentStatus | '' })}
-            options={[
-              { value: '', label: t('common.all') },
-              ...PAYMENT_STATUSES.map((s) => ({ value: s, label: t(`sales.paymentStatuses.${s}`) })),
-            ]}
+            options={[{ value: '', label: t('common.all') }, ...PAYMENT_STATUSES.map((s) => ({ value: s, label: t(`sales.paymentStatuses.${s}`) }))]}
           />
-          <form onSubmit={onSearch} role="search" className="flex items-end gap-2 sm:col-span-2 lg:col-span-1">
-            <TextField
-              className="flex-1"
-              label={t('common.search')}
-              type="search"
-              value={text}
-              placeholder={t('sales.searchHint')}
-              onChange={(e) => setText(e.target.value)}
-            />
-            <Button type="submit">{t('common.search')}</Button>
-          </form>
         </div>
+        <form onSubmit={onSearch} role="search" className="order-first flex items-end gap-2 lg:order-none">
+          <TextField
+            className="min-w-0 flex-1"
+            label={t('common.search')}
+            type="search"
+            value={text}
+            placeholder={t('sales.searchHint')}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <Button type="submit">{t('common.search')}</Button>
+          <Button variant="secondary" className="lg:hidden" aria-expanded={showFilters} aria-controls="sales-filters" onClick={() => setShowFilters((v) => !v)}>
+            {activeFilters ? t('sales.filtersCount', { count: activeFilters }) : t('sales.filters')}
+          </Button>
+        </form>
         <Checkbox
+          className={`lg:col-span-3 ${folded}`}
           label={t('sales.withWarranty')}
           checked={filter.with_warranty ?? false}
           onChange={(e) => set({ with_warranty: e.target.checked || undefined })}
@@ -151,7 +201,7 @@ export function SalesPage() {
       </div>
 
       {summary && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 max-sm:[&>*:last-child:nth-child(odd)]:col-span-2">
           <StatCard label={t('sales.summary.count')} value={summary.count} />
           <StatCard label={t('sales.summary.total')} value={money(summary.grand_total)} />
           <StatCard label={t('sales.summary.paid')} value={money(summary.paid_total)} tone="good" />
@@ -166,16 +216,16 @@ export function SalesPage() {
         <Alert tone="danger">{problemMessage(sales.error, t)}</Alert>
       ) : (
         <>
-          <div className="flex justify-end">
+          <div className="-mt-2 flex justify-end">
             <Button variant="secondary" disabled={rows.length === 0} onClick={exportCsv}>
               {t('common.exportCsv')}
             </Button>
           </div>
-          <DataTable caption={t('sales.title')} columns={columns} rows={rows} rowKey={(s) => s.id} empty={t('sales.noSales')} />
+          <DataTable caption={t('sales.title')} columns={columns} rows={rows} rowKey={(s) => s.id} empty={t('sales.noSales')} card={card} tableFrom="xl" />
         </>
       )}
       {sales.hasNextPage && (
-        <Button variant="secondary" className="self-center" disabled={sales.isFetchingNextPage} onClick={() => void sales.fetchNextPage()}>
+        <Button variant="secondary" className="self-stretch sm:self-center" disabled={sales.isFetchingNextPage} onClick={() => void sales.fetchNextPage()}>
           {sales.isFetchingNextPage ? t('common.loading') : t('common.loadMore')}
         </Button>
       )}

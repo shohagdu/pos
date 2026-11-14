@@ -66,7 +66,7 @@ export function NewJournalDialog({ tenantId, open, onClose }: { tenantId: string
   const linesOk = used.every((l, i) => {
     const d = debits[i] ?? ZERO
     const c = credits[i] ?? ZERO
-    return l.account_id !== '' && (d > 0n) !== (c > 0n)
+    return l.account_id !== '' && d > 0n !== c > 0n
   })
   const balanced = !invalidAmount && difference === 0n && totalDebit > 0n
   const valid = memo.trim() !== '' && used.length >= 2 && linesOk && balanced
@@ -107,11 +107,11 @@ export function NewJournalDialog({ tenantId, open, onClose }: { tenantId: string
       }
     >
       <form id="new-journal" onSubmit={onSubmit} className="flex flex-col gap-4">
-        <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[12rem_1fr]">
           <TextField label={t('common.date')} type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           <TextField label={t('accounting.journal.memo')} value={memo} onChange={(e) => setMemo(e.target.value)} required maxLength={500} />
         </div>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[40rem] text-sm">
             <caption className="sr-only">{t('accounting.journal.lines')}</caption>
             <thead className="text-xs text-ink-muted uppercase">
@@ -174,7 +174,12 @@ export function NewJournalDialog({ tenantId, open, onClose }: { tenantId: string
                       />
                     </td>
                     <td className="px-1 py-1">
-                      <input aria-label={t('accounting.journal.memoN', { n })} className={cell} value={l.memo} onChange={(e) => setLine(l.id, { memo: e.target.value })} />
+                      <input
+                        aria-label={t('accounting.journal.memoN', { n })}
+                        className={cell}
+                        value={l.memo}
+                        onChange={(e) => setLine(l.id, { memo: e.target.value })}
+                      />
                     </td>
                     <td className="px-1 py-1 text-center">
                       <button

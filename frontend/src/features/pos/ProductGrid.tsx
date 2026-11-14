@@ -118,14 +118,14 @@ export function ProductGrid({
               placeholder={t('pos.filterProductsHint')}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={onKeyDown}
-              className="min-h-9 w-full rounded-lg border border-border bg-surface pr-9 pl-8 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 [&::-webkit-search-cancel-button]:hidden"
+              className="min-h-11 w-full rounded-lg border border-border bg-surface pr-9 pl-8 text-base outline-none lg:min-h-9 lg:text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100 [&::-webkit-search-cancel-button]:hidden"
             />
             {text && (
               <button
                 type="button"
                 aria-label={t('pos.clearFilter')}
                 onClick={clear}
-                className="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-muted hover:bg-canvas hover:text-ink focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none"
+                className="absolute top-1/2 right-1 flex size-10 -translate-y-1/2 lg:size-8 items-center justify-center rounded-md text-ink-muted hover:bg-canvas hover:text-ink focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:outline-none"
               >
                 <span aria-hidden="true">✕</span>
               </button>
@@ -143,14 +143,12 @@ export function ProductGrid({
                   aria-pressed={on}
                   aria-label={c.product_count === null ? undefined : t('pos.categoryChip', { name: c.name, count: c.product_count })}
                   onClick={() => setCategoryId(c.id)}
-                  className={`flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none ${
+                  className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full lg:min-h-8 border px-3 text-sm whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-brand-100 focus-visible:outline-none ${
                     on ? 'border-brand-600 bg-brand-600 font-medium text-white' : 'border-border bg-surface text-ink hover:border-brand-500'
                   }`}
                 >
                   {c.name}
-                  {c.product_count !== null && (
-                    <span className={`text-xs tabular-nums ${on ? 'text-white/80' : 'text-ink-muted'}`}>{c.product_count}</span>
-                  )}
+                  {c.product_count !== null && <span className={`text-xs tabular-nums ${on ? 'text-white/80' : 'text-ink-muted'}`}>{c.product_count}</span>}
                 </button>
               )
             })}
@@ -158,7 +156,7 @@ export function ProductGrid({
         )}
       </div>
 
-      <div className="@container max-h-[55svh] overflow-y-auto p-2 lg:max-h-none lg:min-h-0 lg:flex-1">
+      <div className="@container p-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {catalog.isPending ? (
           <ul aria-hidden="true" className={gridClass}>
             {Array.from({ length: 8 }, (_, i) => (
@@ -192,7 +190,10 @@ export function ProductGrid({
           </div>
         ) : (
           <>
-            <ul aria-busy={catalog.isPlaceholderData || undefined} className={`${gridClass} transition-opacity ${catalog.isPlaceholderData ? 'opacity-60' : ''}`}>
+            <ul
+              aria-busy={catalog.isPlaceholderData || undefined}
+              className={`${gridClass} transition-opacity ${catalog.isPlaceholderData ? 'opacity-60' : ''}`}
+            >
               {items.map((item) => {
                 const name = lang === 'bn' && item.name_bn ? item.name_bn : item.name
                 const state = stockState(item)
@@ -254,5 +255,6 @@ export function ProductGrid({
   )
 }
 
-// Two columns of cards; one when the panel is very narrow.
-const gridClass = 'grid grid-cols-1 gap-2 @[17rem]:grid-cols-2'
+// Cards by panel width: one when very narrow, two in the side panel and on
+// phones, three or four when the panel spans a tablet or a wide screen.
+const gridClass = 'grid grid-cols-1 gap-2 @[17rem]:grid-cols-2 @[36rem]:grid-cols-3 @[52rem]:grid-cols-4'

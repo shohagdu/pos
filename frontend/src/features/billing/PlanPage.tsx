@@ -29,8 +29,7 @@ export function PlanPage() {
 function PlanSummary({ tenantId }: { tenantId: string }) {
   const { t, i18n } = useTranslation()
   const overview = useSubscription(tenantId)
-  const date = (iso: string | null) =>
-    iso ? new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'long' }).format(new Date(iso)) : '—'
+  const date = (iso: string | null) => (iso ? new Intl.DateTimeFormat(dateLocale(i18n.language), { dateStyle: 'long' }).format(new Date(iso)) : '—')
 
   if (overview.isPending) return <Spinner />
   if (overview.isError) return <Alert tone="danger">{problemMessage(overview.error, t)}</Alert>
@@ -78,7 +77,7 @@ function PlanSummary({ tenantId }: { tenantId: string }) {
 
       <Card>
         <h2 className="mb-4 font-semibold">{t('plan.features')}</h2>
-        <ul className="grid gap-2 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {flags.map((f: PlanFeature) => (
             <li key={f.code} className={`flex items-center gap-2 text-sm ${f.enabled ? '' : 'text-ink-muted'}`}>
               <span aria-hidden className={f.enabled ? 'text-success' : ''}>

@@ -121,12 +121,7 @@ function Categories({ tenantId, editable }: { tenantId: string; editable: boolea
             {tree.map((c) =>
               editing === c.id ? (
                 <li key={c.id} className="border-b border-border py-3 last:border-b-0">
-                  <CategoryForm
-                    tenantId={tenantId}
-                    parents={parents.filter((p) => p.id !== c.id)}
-                    category={c}
-                    onDone={() => setEditing(null)}
-                  />
+                  <CategoryForm tenantId={tenantId} parents={parents.filter((p) => p.id !== c.id)} category={c} onDone={() => setEditing(null)} />
                 </li>
               ) : (
                 <Row
@@ -191,7 +186,7 @@ function CategoryForm({ tenantId, parents, category, onDone }: { tenantId: strin
   const fields = (
     <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
       {!category && <h2 className="font-semibold">{t('catalog.newCategory')}</h2>}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TextField label={t('catalog.name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={100} required error={errors.name} />
         <Select
           label={t('catalog.parent')}
@@ -396,9 +391,16 @@ function UnitForm({ tenantId, unit, onDone }: { tenantId: string; unit?: Unit; o
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
       {!unit && <h2 className="font-semibold">{t('catalog.newUnit')}</h2>}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TextField label={t('catalog.name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={50} required error={errors.name} />
-        <TextField label={t('catalog.shortName')} value={shortName} onChange={(e) => setShortName(e.target.value)} maxLength={10} required error={errors.short_name} />
+        <TextField
+          label={t('catalog.shortName')}
+          value={shortName}
+          onChange={(e) => setShortName(e.target.value)}
+          maxLength={10}
+          required
+          error={errors.short_name}
+        />
       </div>
       <Checkbox label={t('catalog.allowFraction')} hint={t('catalog.allowFractionHint')} checked={fraction} onChange={(e) => setFraction(e.target.checked)} />
       {unit && <Checkbox label={t('catalog.active')} checked={active} onChange={(e) => setActive(e.target.checked)} />}
@@ -506,7 +508,7 @@ function TaxRateForm({ tenantId, rate, onDone }: { tenantId: string; rate?: TaxR
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-3" noValidate>
       {!rate && <h2 className="font-semibold">{t('catalog.newTaxRate')}</h2>}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <TextField label={t('catalog.name')} value={name} onChange={(e) => setName(e.target.value)} maxLength={50} required error={errors.name} />
         <TextField label={t('catalog.ratePct')} inputMode="decimal" value={pct} onChange={(e) => setPct(e.target.value)} required error={errors.rate_pct} />
       </div>

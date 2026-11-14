@@ -19,7 +19,7 @@ export function StatementTable({
 }) {
   const { t, i18n } = useTranslation()
   return (
-    <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+    <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
       <table className="w-full text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">

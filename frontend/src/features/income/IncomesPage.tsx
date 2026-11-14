@@ -156,7 +156,7 @@ export function IncomesPage() {
         </Button>
       </div>
       {total !== undefined && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard label={t('income.total')} value={formatMoney(total, lang)} hint={t('income.totalHint')} tone="good" />
         </div>
       )}

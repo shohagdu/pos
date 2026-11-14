@@ -79,22 +79,36 @@ export function AccountBookPage() {
       {!b ? (
         <QueryStatus query={book} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
+        <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
+          <table className="table-stack w-full text-sm">
             <caption className="sr-only">{t('money.book')}</caption>
             <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
               <tr>
-                <th scope="col" className={`${cell} text-left`}>{t('common.date')}</th>
-                <th scope="col" className={`${cell} text-left`}>{t('money.txnType')}</th>
-                <th scope="col" className={`${cell} text-left`}>{t('money.referenceNo')}</th>
-                <th scope="col" className={`${cell} text-left`}>{t('common.note')}</th>
-                <th scope="col" className={`${cell} text-right`}>{t('money.moneyIn')}</th>
-                <th scope="col" className={`${cell} text-right`}>{t('money.moneyOut')}</th>
-                <th scope="col" className={`${cell} text-right`}>{t('money.balance')}</th>
+                <th scope="col" className={`${cell} text-left`}>
+                  {t('common.date')}
+                </th>
+                <th scope="col" className={`${cell} text-left`}>
+                  {t('money.txnType')}
+                </th>
+                <th scope="col" className={`${cell} text-left`}>
+                  {t('money.referenceNo')}
+                </th>
+                <th scope="col" className={`${cell} text-left`}>
+                  {t('common.note')}
+                </th>
+                <th scope="col" className={`${cell} text-right`}>
+                  {t('money.moneyIn')}
+                </th>
+                <th scope="col" className={`${cell} text-right`}>
+                  {t('money.moneyOut')}
+                </th>
+                <th scope="col" className={`${cell} text-right`}>
+                  {t('money.balance')}
+                </th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-border font-medium">
+              <tr className="stack-pair border-b border-border font-medium">
                 <td className={cell} colSpan={6}>
                   {t('money.openingBalance')}
                 </td>
@@ -112,12 +126,24 @@ export function AccountBookPage() {
                 return (
                   <tr key={l.id} className="border-b border-border">
                     <td className={`${cell} whitespace-nowrap`}>{formatDate(l.business_date, lang)}</td>
-                    <td className={cell}>{typeLabel(l.txn_type)}</td>
-                    <td className={cell}>{path && l.reference_no ? <TextLink to={path}>{l.reference_no}</TextLink> : (l.reference_no ?? '—')}</td>
-                    <td className={cell}>{l.note ?? ''}</td>
-                    <td className={`${num} text-brand-700`}>{money(l.money_in)}</td>
-                    <td className={`${num} text-danger`}>{money(l.money_out)}</td>
-                    <td className={num}>{formatMoney(l.balance_after, lang)}</td>
+                    <td data-label={t('money.txnType')} className={cell}>
+                      {typeLabel(l.txn_type)}
+                    </td>
+                    <td data-label={t('money.referenceNo')} className={cell}>
+                      {path && l.reference_no ? <TextLink to={path}>{l.reference_no}</TextLink> : (l.reference_no ?? '—')}
+                    </td>
+                    <td data-label={t('common.note')} className={cell}>
+                      {l.note ?? ''}
+                    </td>
+                    <td data-label={t('money.moneyIn')} className={`${num} text-brand-700`}>
+                      {money(l.money_in)}
+                    </td>
+                    <td data-label={t('money.moneyOut')} className={`${num} text-danger`}>
+                      {money(l.money_out)}
+                    </td>
+                    <td data-label={t('money.balance')} className={num}>
+                      {formatMoney(l.balance_after, lang)}
+                    </td>
                   </tr>
                 )
               })}
@@ -127,9 +153,15 @@ export function AccountBookPage() {
                 <td className={cell} colSpan={4}>
                   {t('money.closingBalance')}
                 </td>
-                <td className={num}>{formatMoney(b.total_in, lang)}</td>
-                <td className={num}>{formatMoney(b.total_out, lang)}</td>
-                <td className={num}>{formatMoney(b.closing_balance, lang)}</td>
+                <td data-label={t('money.moneyIn')} className={num}>
+                  {formatMoney(b.total_in, lang)}
+                </td>
+                <td data-label={t('money.moneyOut')} className={num}>
+                  {formatMoney(b.total_out, lang)}
+                </td>
+                <td data-label={t('money.balance')} className={num}>
+                  {formatMoney(b.closing_balance, lang)}
+                </td>
               </tr>
             </tfoot>
           </table>

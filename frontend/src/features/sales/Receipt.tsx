@@ -2,9 +2,10 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { ReceiptInfo, SaleDetail, SaleReturnDetail } from '../../api/sales'
-import { ZERO, dec, toFixed } from '../../lib/decimal'
+import { type Dec, ZERO, dec, toFixed } from '../../lib/decimal'
 import { formatDate, formatDateTime } from '../../lib/dates'
 import { formatMoney, formatQuantity } from '../../lib/format'
+import type { NetInvoice } from './returnMath'
 import { warrantyTenure } from './warranty'
 
 // Printable receipt (Requirement Analysis §7.6.5). The width follows the
@@ -71,9 +72,7 @@ function ReceiptFrame({ info, children, marker }: { info: ReceiptInfo; children:
           <>
             {info.bin_number && <div>{t('sales.receipt.partitaIva', { value: info.bin_number })}</div>}
             {info.tax_code && <div>{t('sales.receipt.taxCode', { value: info.tax_code })}</div>}
-            {info.rea_number && (
-              <div>{t('sales.receipt.rea', { office: info.registry_office ?? '', number: info.rea_number }).replace(/\s+/g, ' ')}</div>
-            )}
+            {info.rea_number && <div>{t('sales.receipt.rea', { office: info.registry_office ?? '', number: info.rea_number }).replace(/\s+/g, ' ')}</div>}
           </>
         ) : (
           info.bin_number && <div>{t('sales.receipt.bin', { bin: info.bin_number })}</div>
@@ -93,51 +92,51 @@ function ReceiptFrame({ info, children, marker }: { info: ReceiptInfo; children:
   )
 }
 
-/** A sale receipt: POS success, sale detail (reprint). */
-export function SaleReceipt({ sale }: { sale: SaleDetail }) {
+/**
+ * A sale receipt: POS success, sale detail (reprint). With `net` it prints
+ * the invoice as it stands after its returns: returned quantities and fully
+ * returned lines left out, totals reduced to match.
+ */
+export function SaleReceipt({ sale, net }: { sale: SaleDetail; net?: NetInvoice }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
   const money = (v: string) => formatMoney(v, lang)
-  const discount = dec(sale.item_discount_total) + dec(sale.invoice_discount_amount)
+  const dmoney = (v: Dec) => money(toFixed(v, 2))
+  const discount = net ? net.discount : dec(sale.item_discount_total) + dec(sale.invoice_discount_amount)
+  const lines = net
+    ? net.lines.map((l) => ({ item: l.item, quantity: toFixed(l.quantity, 3), lineTotal: toFixed(l.lineTotal, 2), lineDiscount: toFixed(l.lineDiscount, 2) }))
+    : sale.items.map((item) => ({ item, quantity: item.quantity, lineTotal: item.line_total, lineDiscount: item.line_discount }))
+  const reprint = sale.reprint_count > 0 ? t('sales.receipt.reprint', { n: sale.reprint_count }) : null
   const marker =
-    sale.status === 'cancelled'
-      ? t('sales.receipt.cancelled')
-      : sale.reprint_count > 0
-        ? t('sales.receipt.reprint', { n: sale.reprint_count })
-        : null
+    sale.status === 'cancelled' ? t('sales.receipt.cancelled') : net ? [t('sales.receipt.afterReturns'), reprint].filter(Boolean).join(' · ') : reprint
   return (
     <ReceiptFrame info={sale.receipt} marker={marker}>
       <Row label={t('sales.receipt.invoice')} value={sale.invoice_no} />
       <Row label={t('sales.receipt.date')} value={formatDateTime(sale.sale_date || sale.created_at, lang)} />
       {sale.cashier_name && <Row label={t('sales.receipt.cashier')} value={sale.cashier_name} />}
-      {!sale.is_walk_in && (
-        <Row label={t('sales.receipt.customer')} value={[sale.customer_name, sale.customer_phone].filter(Boolean).join(' · ')} />
-      )}
+      {!sale.is_walk_in && <Row label={t('sales.receipt.customer')} value={[sale.customer_name, sale.customer_phone].filter(Boolean).join(' · ')} />}
       <Rule />
       <ItemsHeader />
-      {sale.items.map((item, i) => (
+      {lines.map(({ item, quantity, lineTotal, lineDiscount }, i) => (
         <NumberedItem key={item.id} n={i + 1}>
           <div className="font-medium">{item.product_name}</div>
-          <Row
-            label={`${formatQuantity(item.quantity, lang, true)} ${item.unit_short_name} × ${money(item.unit_price)}`}
-            value={money(item.line_total)}
-          />
-          {nonZero(item.line_discount) && <Row label={t('sales.receipt.lineDiscount')} value={`−${money(item.line_discount)}`} />}
+          <Row label={`${formatQuantity(quantity, lang, true)} ${item.unit_short_name} × ${money(item.unit_price)}`} value={money(lineTotal)} />
+          {nonZero(lineDiscount) && <Row label={t('sales.receipt.lineDiscount')} value={`−${money(lineDiscount)}`} />}
           {item.warranty_expires_on && (
             <div>{t('sales.receipt.warranty', { tenure: warrantyTenure(item, t) ?? '', date: formatDate(item.warranty_expires_on, lang) })}</div>
           )}
         </NumberedItem>
       ))}
       <Rule />
-      <Row label={t('sales.receipt.subtotal')} value={money(sale.subtotal)} />
+      <Row label={t('sales.receipt.subtotal')} value={net ? dmoney(net.subtotal) : money(sale.subtotal)} />
       {discount !== ZERO && <Row label={t('sales.receipt.discount')} value={`−${money(toFixed(discount, 2))}`} />}
-      {nonZero(sale.tax_total) && (
-        <Row label={sale.prices_include_tax ? t('sales.receipt.vatIncluded') : t('sales.receipt.vat')} value={money(sale.tax_total)} />
+      {(net ? net.tax !== ZERO : nonZero(sale.tax_total)) && (
+        <Row label={sale.prices_include_tax ? t('sales.receipt.vatIncluded') : t('sales.receipt.vat')} value={net ? dmoney(net.tax) : money(sale.tax_total)} />
       )}
       {nonZero(sale.shipping_charge) && <Row label={t('sales.receipt.shipping')} value={money(sale.shipping_charge)} />}
       {nonZero(sale.other_charge) && <Row label={t('sales.receipt.otherCharge')} value={money(sale.other_charge)} />}
       {nonZero(sale.rounding_adjustment) && <Row label={t('sales.receipt.rounding')} value={money(sale.rounding_adjustment)} />}
-      <Row strong label={t('sales.receipt.grandTotal')} value={money(sale.grand_total)} />
+      <Row strong label={t('sales.receipt.grandTotal')} value={net ? dmoney(net.grandTotal) : money(sale.grand_total)} />
       <Rule />
       {sale.payments
         .filter((p) => p.status === 'posted')
@@ -146,8 +145,11 @@ export function SaleReceipt({ sale }: { sale: SaleDetail }) {
         ))}
       <Row label={t('sales.receipt.paid')} value={money(sale.paid_total)} />
       {nonZero(sale.change_given) && <Row label={t('sales.receipt.change')} value={money(sale.change_given)} />}
+      {net && net.refunded !== ZERO && <Row label={t('sales.receipt.refunded')} value={`−${dmoney(net.refunded)}`} />}
+      {net && net.credited !== ZERO && <Row label={t('sales.receipt.credited')} value={`−${dmoney(net.credited)}`} />}
       {nonZero(sale.due_total) && <Row strong label={t('sales.receipt.due')} value={money(sale.due_total)} />}
-      {nonZero(sale.returned_total) && <Row label={t('sales.receipt.returned')} value={money(sale.returned_total)} />}
+      {!net && nonZero(sale.returned_total) && <Row label={t('sales.receipt.returned')} value={money(sale.returned_total)} />}
+      {net && net.returnNos.length > 0 && <div className="mt-1">{t('sales.receipt.returnsList', { list: net.returnNos.join(', ') })}</div>}
       {sale.note && <div className="mt-1 whitespace-pre-line">{sale.note}</div>}
     </ReceiptFrame>
   )

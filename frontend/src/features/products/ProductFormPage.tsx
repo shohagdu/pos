@@ -116,9 +116,7 @@ function ProductForm({
   // Description is optional: folded away unless the product already has one.
   const [showDescription, setShowDescription] = useState(Boolean(product?.description))
   // Set once the product is saved (added or changed): the pop-up shows, then the list opens.
-  const [done, setDone] = useState<{ kind: 'created' | 'updated'; name: string; imageError: string | null; addAnother: boolean } | null>(
-    null,
-  )
+  const [done, setDone] = useState<{ kind: 'created' | 'updated'; name: string; imageError: string | null; addAnother: boolean } | null>(null)
   const units = useUnits(tenantId).data ?? []
   const taxRates = useTaxRates(tenantId).data ?? []
   const categories = useCategories(tenantId).data ?? []
@@ -244,8 +242,7 @@ function ProductForm({
   })
   // A saved product's photo changes at once, apart from the form's Save.
   const image = useMutation({
-    mutationFn: (file: File | null) =>
-      file ? catalogApi.setProductImage(product?.id ?? '', file) : catalogApi.removeProductImage(product?.id ?? ''),
+    mutationFn: (file: File | null) => (file ? catalogApi.setProductImage(product?.id ?? '', file) : catalogApi.removeProductImage(product?.id ?? '')),
     onSuccess: async (saved) => {
       queryClient.setQueryData(catalogKeys.product(tenantId, saved.id), saved)
       await refresh()
@@ -286,8 +283,7 @@ function ProductForm({
   }
 
   // Inactive choices stay listed only when the product already uses them.
-  const active = <T extends { id: string; status: string }>(list: T[], current: string) =>
-    list.filter((x) => x.status === 'active' || x.id === current)
+  const active = <T extends { id: string; status: string }>(list: T[], current: string) => list.filter((x) => x.status === 'active' || x.id === current)
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -308,7 +304,9 @@ function ProductForm({
           </Link>
           <span aria-hidden="true" className="h-5 w-px bg-border" />
           <h1 className="truncate text-xl font-bold">{product ? product.name : t('products.new')}</h1>
-          {product?.status === 'archived' && <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-ink-muted">{t('products.statuses.archived')}</span>}
+          {product?.status === 'archived' && (
+            <span className="rounded bg-canvas px-2 py-0.5 text-xs font-semibold text-ink-muted">{t('products.statuses.archived')}</span>
+          )}
         </div>
         {product && (
           <div className="flex flex-wrap items-center gap-2">
@@ -358,11 +356,11 @@ function ProductForm({
         {/* Desktop: the form cards across two columns' width plus a narrow
             sidebar (photo, stock, actions). Tablet/phone: one column, with
             the actions in a bar fixed to the bottom of the screen. */}
-        <fieldset disabled={readOnly} className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_19rem] xl:grid-rows-[auto_1fr] xl:items-start">
+        <fieldset disabled={readOnly} className="grid grid-cols-1 min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_19rem] xl:grid-rows-[auto_1fr] xl:items-start">
           <div className="flex min-w-0 flex-col gap-3 xl:row-span-2">
             <Card className={card}>
               <h2 className={cardTitle}>{t('products.details')}</h2>
-              <div className="grid items-end gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_minmax(0,3fr)]">
+              <div className="grid grid-cols-1 items-end gap-x-3 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-[minmax(0,5fr)_minmax(0,4fr)_minmax(0,3fr)]">
                 <TextField size="sm" label={t('products.name')} {...bind('name')} required maxLength={200} error={errors.name} />
                 <TextField size="sm" label={t('products.nameBn')} {...bind('name_bn')} lang="bn" maxLength={200} error={errors.name_bn} />
                 <Select
@@ -417,7 +415,7 @@ function ProductForm({
             </Card>
             <Card className={card}>
               <h2 className={cardTitle}>{t('products.classification')}</h2>
-              <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
                 <Select
                   size="sm"
                   label={t('products.category')}
@@ -466,8 +464,16 @@ function ProductForm({
                   {margin && t(margin.loss ? 'products.lossPerUnit' : 'products.profitPerUnit', { amount: margin.amount, pct: margin.pct })}
                 </p>
               </div>
-              <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-                <TextField size="sm" prefix={currency} label={t('products.sellingPrice')} inputMode="decimal" {...bind('selling_price')} required error={errors.selling_price} />
+              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+                <TextField
+                  size="sm"
+                  prefix={currency}
+                  label={t('products.sellingPrice')}
+                  inputMode="decimal"
+                  {...bind('selling_price')}
+                  required
+                  error={errors.selling_price}
+                />
                 {canViewCost && (
                   <TextField
                     size="sm"
@@ -479,15 +485,29 @@ function ProductForm({
                     error={errors.purchase_price}
                   />
                 )}
-                <TextField size="sm" prefix={currency} label={t('products.wholesalePrice')} inputMode="decimal" {...bind('wholesale_price')} error={errors.wholesale_price} />
-                <TextField size="sm" prefix={currency} label={t('products.minSellingPrice')} inputMode="decimal" {...bind('min_selling_price')} error={errors.min_selling_price} />
+                <TextField
+                  size="sm"
+                  prefix={currency}
+                  label={t('products.wholesalePrice')}
+                  inputMode="decimal"
+                  {...bind('wholesale_price')}
+                  error={errors.wholesale_price}
+                />
+                <TextField
+                  size="sm"
+                  prefix={currency}
+                  label={t('products.minSellingPrice')}
+                  inputMode="decimal"
+                  {...bind('min_selling_price')}
+                  error={errors.min_selling_price}
+                />
               </div>
 
               {product && <PriceHistory product={product} tenantId={tenantId} lang={i18n.language} />}
             </Card>
           </div>
 
-          <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:col-start-2 xl:row-start-1 xl:flex xl:flex-col">
+          <div className="grid grid-cols-1 min-w-0 gap-3 sm:grid-cols-2 xl:col-start-2 xl:row-start-1 xl:flex xl:flex-col">
             {canSetImage && (
               <Card className={card}>
                 {product ? (
@@ -529,7 +549,9 @@ function ProductForm({
             </Card>
             <Card className={card}>
               <h2 className={cardTitle}>{t('products.stockWarranty')}</h2>
-              {!isService && <Checkbox label={t('products.trackInventory')} tip={t('products.trackInventoryHint')} tipAlign="end" {...bindCheck('track_inventory')} />}
+              {!isService && (
+                <Checkbox label={t('products.trackInventory')} tip={t('products.trackInventoryHint')} tipAlign="end" {...bindCheck('track_inventory')} />
+              )}
               {!isService && values.track_inventory && (
                 <Checkbox label={t('products.trackBatches')} tip={t('products.trackBatchesHint')} tipAlign="end" {...bindCheck('track_batches')} />
               )}
@@ -540,7 +562,10 @@ function ProductForm({
                 // screen readers.
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2">
-                    <label htmlFor="warranty-period" className="text-[0.8125rem] font-medium whitespace-nowrap text-ink after:ml-0.5 after:text-danger after:content-['*']">
+                    <label
+                      htmlFor="warranty-period"
+                      className="text-[0.8125rem] font-medium whitespace-nowrap text-ink after:ml-0.5 after:text-danger after:content-['*']"
+                    >
                       {t('products.warrantyPeriod')}
                     </label>
                     <div className="flex gap-1.5">
@@ -595,18 +620,12 @@ function ProductForm({
               so on tablets and phones it sticks to the bottom of the screen
               while the form scrolls; on desktop it sits under the sidebar. */}
           {!readOnly && (
-            <div className="sticky bottom-0 z-10 -mx-4 flex gap-2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-8 sm:px-8 xl:static xl:col-start-2 xl:row-start-2 xl:mx-0 xl:self-start xl:border-0 xl:bg-transparent xl:p-0 xl:backdrop-blur-none print:hidden">
+            <div className="sticky bottom-0 z-10 -mx-4 flex gap-2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 xl:static xl:col-start-2 xl:row-start-2 xl:mx-0 xl:self-start xl:border-0 xl:bg-transparent xl:p-0 xl:backdrop-blur-none print:hidden">
               <Button type="submit" className="min-h-11 flex-1" disabled={save.isPending}>
                 {save.isPending && !save.variables ? t('common.saving') : t('common.save')}
               </Button>
               {!product && (
-                <Button
-                  type="submit"
-                  variant="dark"
-                  className="min-h-11 flex-1 px-3 xl:flex-none xl:px-4"
-                  data-action="add-another"
-                  disabled={save.isPending}
-                >
+                <Button type="submit" variant="dark" className="min-h-11 flex-1 px-3 xl:flex-none xl:px-4" data-action="add-another" disabled={save.isPending}>
                   {save.isPending && save.variables ? t('common.saving') : t('products.saveAndAdd')}
                 </Button>
               )}
@@ -638,7 +657,14 @@ function PriceHistory({ product, tenantId, lang }: { product: Product; tenantId:
         onClick={() => setOpen((o) => !o)}
         className="flex min-h-7 items-center gap-1.5 self-start rounded-md text-[0.8125rem] font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-600"
       >
-        <svg viewBox="0 0 20 20" className={`size-4 transition-transform motion-reduce:transition-none ${open ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <svg
+          viewBox="0 0 20 20"
+          className={`size-4 transition-transform motion-reduce:transition-none ${open ? 'rotate-90' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          aria-hidden="true"
+        >
           <path d="m7.5 5 5 5-5 5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {t('products.priceHistory')}

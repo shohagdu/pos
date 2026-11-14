@@ -117,7 +117,7 @@ function TransferForm() {
   const fromId = pickSource
     ? sourceLocations.some((l) => l.id === fromChoice)
       ? fromChoice
-      : (sourceLocations.find((l) => l.is_sellable) ?? sourceLocations[0])?.id ?? ''
+      : ((sourceLocations.find((l) => l.is_sellable) ?? sourceLocations[0])?.id ?? '')
     : (sourceLocations[0]?.id ?? '')
   const destinations = active.filter((l) => l.id !== fromId)
   const toId = destinations.some((l) => l.id === toChoice) ? toChoice : destinations.length === 1 ? (destinations[0]?.id ?? '') : ''
@@ -269,7 +269,7 @@ function TransferForm() {
       <PageHeader title={t('inventory.newTransfer')} subtitle={t('inventory.transferHint')} />
       {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
 
-      <form onSubmit={onSubmit} noValidate className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <form onSubmit={onSubmit} noValidate className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
         <section className="flex min-w-0 flex-col gap-3" aria-label={t('inventory.lines')}>
           <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">

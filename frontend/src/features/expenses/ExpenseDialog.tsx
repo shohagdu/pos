@@ -90,7 +90,7 @@ export function ExpenseDialog({
     <Dialog open onClose={onClose} title={t('expenses.new')} wide>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label={t('expenses.category')}
             value={categoryId}
@@ -108,7 +108,13 @@ export function ExpenseDialog({
             hint={t('expenses.amountHint')}
             error={errors.amount}
           />
-          <TextField label={`${t('expenses.vat')} (${t('common.optional')})`} value={tax} onChange={(e) => setTax(e.target.value)} inputMode="decimal" error={errors.tax_amount} />
+          <TextField
+            label={`${t('expenses.vat')} (${t('common.optional')})`}
+            value={tax}
+            onChange={(e) => setTax(e.target.value)}
+            inputMode="decimal"
+            error={errors.tax_amount}
+          />
           <Select
             label={t('expenses.paidFrom')}
             value={accountId}
@@ -119,7 +125,13 @@ export function ExpenseDialog({
               ...activeAccounts.map((a) => ({ value: a.id, label: label(a) })),
             ]}
           />
-          <TextField label={`${t('expenses.payee')} (${t('common.optional')})`} value={payee} onChange={(e) => setPayee(e.target.value)} maxLength={200} error={errors.payee} />
+          <TextField
+            label={`${t('expenses.payee')} (${t('common.optional')})`}
+            value={payee}
+            onChange={(e) => setPayee(e.target.value)}
+            maxLength={200}
+            error={errors.payee}
+          />
           <TextField
             label={`${t('expenses.reference')} (${t('common.optional')})`}
             value={reference}
@@ -127,7 +139,13 @@ export function ExpenseDialog({
             maxLength={100}
             error={errors.reference}
           />
-          <TextField label={`${t('common.note')} (${t('common.optional')})`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} error={errors.note} />
+          <TextField
+            label={`${t('common.note')} (${t('common.optional')})`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={500}
+            error={errors.note}
+          />
         </div>
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>

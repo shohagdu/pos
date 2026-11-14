@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { type ProductFilter, type ProductStatusFilter, categoryTree, useBrands, useCategories, useProducts } from '../../api/catalog'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
+import { type Column, DataTable } from '../../components/ui/DataTable'
 import { Select } from '../../components/ui/Select'
 import { Spinner } from '../../components/ui/Spinner'
 import { TextField } from '../../components/ui/TextField'
@@ -35,6 +36,59 @@ export function ProductsPage() {
   }
 
   const rows = products.data?.pages.flatMap((p) => p.data) ?? []
+  const columns: Column<(typeof rows)[number]>[] = [
+    {
+      key: 'name',
+      header: t('products.name'),
+      render: (p) => (
+        <div className="flex items-center gap-3">
+          <ProductThumb fileId={p.image_file_id} size="md" />
+          <div className="min-w-0">
+            <Link to={`/products/${p.id}`} className="font-medium text-brand-700 hover:underline">
+              {p.name}
+            </Link>
+            {p.name_bn && <span className="block text-xs text-ink-muted">{p.name_bn}</span>}
+          </div>
+        </div>
+      ),
+    },
+    { key: 'sku', header: t('products.sku'), render: (p) => <span className="font-mono text-xs">{p.sku}</span> },
+    { key: 'category', header: t('products.category'), render: (p) => p.category_name ?? '—' },
+    {
+      key: 'price',
+      header: t('products.sellingPrice'),
+      align: 'right',
+      render: (p) => (
+        <>
+          {formatMoney(p.selling_price, i18n.language)}
+          <span className="text-xs font-normal text-ink-muted"> / {p.unit_short_name}</span>
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      header: t('products.status'),
+      render: (p) => (
+        <span className={`rounded px-2 py-0.5 text-xs font-semibold ${p.status === 'active' ? 'bg-brand-50 text-brand-700' : 'bg-canvas text-ink-muted'}`}>
+          {t(`products.statuses.${p.status}`)}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: <span className="sr-only">{t('common.actions')}</span>,
+      align: 'right',
+      render: (p) => (
+        <Link
+          to={`/labels?variants=${p.variant_id}`}
+          aria-label={t('labels.printBarcodeOf', { name: p.name })}
+          className="inline-flex min-h-11 items-center text-sm font-medium whitespace-nowrap text-brand-700 hover:underline lg:min-h-0"
+        >
+          {t('labels.printBarcode')}
+        </Link>
+      ),
+    },
+  ]
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -47,7 +101,10 @@ export function ProductsPage() {
             >
               {t('imports.products.nav')}
             </Link>
-            <Link to="/products/new" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
+            <Link
+              to="/products/new"
+              className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+            >
               {t('products.new')}
             </Link>
           </div>
@@ -57,7 +114,7 @@ export function ProductsPage() {
       <div className="flex flex-col gap-3">
         <form onSubmit={onSearch} className="flex flex-wrap items-end gap-2" role="search">
           <TextField
-            className="min-w-60 flex-1"
+            className="min-w-0 flex-1"
             label={t('products.search')}
             type="search"
             value={text}
@@ -66,7 +123,7 @@ export function ProductsPage() {
           />
           <Button type="submit">{t('products.searchButton')}</Button>
         </form>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label={t('products.category')}
             value={filter.category_id ?? ''}
@@ -97,62 +154,15 @@ export function ProductsPage() {
       ) : rows.length === 0 ? (
         <p className="text-sm text-ink-muted">{filter.q ? t('products.noMatches') : t('products.none')}</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
-              <tr>
-                <th scope="col" className="px-4 py-3">{t('products.name')}</th>
-                <th scope="col" className="px-4 py-3">{t('products.sku')}</th>
-                <th scope="col" className="px-4 py-3">{t('products.category')}</th>
-                <th scope="col" className="px-4 py-3 text-right">{t('products.sellingPrice')}</th>
-                <th scope="col" className="px-4 py-3">{t('products.status')}</th>
-                <th scope="col" className="px-4 py-3">
-                  <span className="sr-only">{t('common.actions')}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-b-0 hover:bg-canvas">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-3">
-                      <ProductThumb fileId={p.image_file_id} size="md" />
-                      <div className="min-w-0">
-                        <Link to={`/products/${p.id}`} className="font-medium text-brand-700 hover:underline">
-                          {p.name}
-                        </Link>
-                        {p.name_bn && <span className="block text-xs text-ink-muted">{p.name_bn}</span>}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs">{p.sku}</td>
-                  <td className="px-4 py-3">{p.category_name ?? '—'}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatMoney(p.selling_price, i18n.language)}
-                    <span className="text-xs text-ink-muted"> / {p.unit_short_name}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${p.status === 'active' ? 'bg-brand-50 text-brand-700' : 'bg-canvas text-ink-muted'}`}>
-                      {t(`products.statuses.${p.status}`)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Link
-                      to={`/labels?variants=${p.variant_id}`}
-                      aria-label={t('labels.printBarcodeOf', { name: p.name })}
-                      className="text-sm font-medium text-brand-700 hover:underline"
-                    >
-                      {t('labels.printBarcode')}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable caption={t('products.title')} columns={columns} rows={rows} rowKey={(p) => p.id} />
       )}
       {products.hasNextPage && (
-        <Button variant="secondary" className="self-center" disabled={products.isFetchingNextPage} onClick={() => void products.fetchNextPage()}>
+        <Button
+          variant="secondary"
+          className="self-stretch sm:self-center"
+          disabled={products.isFetchingNextPage}
+          onClick={() => void products.fetchNextPage()}
+        >
           {products.isFetchingNextPage ? t('common.loading') : t('products.loadMore')}
         </Button>
       )}

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Link, NavLink, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 
 import { type Invitation, useInvitations, useMembers, useRoles, usersApi, usersKeys } from '../../api/users'
 import { Alert } from '../../components/ui/Alert'
@@ -9,6 +9,7 @@ import { ConfirmButton } from '../../components/ui/ConfirmButton'
 import { Spinner } from '../../components/ui/Spinner'
 import { Button } from '../../components/ui/Button'
 import { problemMessage } from '../../lib/problem'
+import { Tabs } from '../../components/ui/Tabs'
 import { useSession } from '../auth/session'
 import { ImpersonateButton } from './Impersonation'
 import { roleName } from './labels'
@@ -35,31 +36,24 @@ export function UsersPage() {
         <h1 className="text-2xl font-bold">{t('users.title')}</h1>
         <div className="flex gap-2">
           {current === 'roles' && can('users.manage_roles') && (
-            <Link to="/users/roles/new" className="inline-flex min-h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-canvas">
+            <Link
+              to="/users/roles/new"
+              className="inline-flex min-h-11 items-center rounded-lg border border-border bg-surface px-4 text-sm font-semibold hover:bg-canvas"
+            >
               {t('roles.new')}
             </Link>
           )}
           {can('users.invite') && (
-            <Link to="/users/invite" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700">
+            <Link
+              to="/users/invite"
+              className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white hover:bg-brand-700"
+            >
               {t('users.addMember')}
             </Link>
           )}
         </div>
       </div>
-      <nav aria-label={t('users.title')} className="flex flex-wrap gap-1 border-b border-border">
-        {tabs.map((s) => (
-          <NavLink
-            key={s}
-            to={s === 'members' ? '/users' : `/users/${s}`}
-            end
-            className={({ isActive }) =>
-              `-mb-px border-b-2 px-3 py-2 text-sm font-medium ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`
-            }
-          >
-            {t(`users.tabs.${s}`)}
-          </NavLink>
-        ))}
-      </nav>
+      <Tabs label={t('users.title')} items={tabs.map((s) => ({ to: s === 'members' ? '/users' : `/users/${s}`, label: t(`users.tabs.${s}`) }))} />
       {current === 'members' && <MembersList tenantId={tenantId} />}
       {current === 'invitations' && <InvitationsList tenantId={tenantId} />}
       {current === 'roles' && <RolesList tenantId={tenantId} />}
@@ -70,11 +64,7 @@ export function UsersPage() {
 function StatusBadge({ status }: { status: string }) {
   const { t } = useTranslation()
   const tone =
-    status === 'active' || status === 'accepted'
-      ? 'bg-brand-50 text-brand-700'
-      : status === 'pending'
-        ? 'bg-warning/15 text-ink'
-        : 'bg-canvas text-ink-muted'
+    status === 'active' || status === 'accepted' ? 'bg-brand-50 text-brand-700' : status === 'pending' ? 'bg-warning/15 text-ink' : 'bg-canvas text-ink-muted'
   return <span className={`rounded px-2 py-0.5 text-xs font-semibold ${tone}`}>{t(`users.status.${status}`)}</span>
 }
 
@@ -171,7 +161,7 @@ function RolesList({ tenantId }: { tenantId: string }) {
   if (roles.isPending) return <Spinner />
   if (roles.isError) return <Alert tone="danger">{problemMessage(roles.error, t)}</Alert>
   return (
-    <ul className="grid gap-2 sm:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {roles.data.map((r) => (
         <li key={r.id}>
           <Link to={`/users/roles/${r.id}`} className="flex h-full flex-col gap-1 rounded-xl border border-border bg-surface p-4 hover:border-brand-500">
@@ -179,9 +169,7 @@ function RolesList({ tenantId }: { tenantId: string }) {
               {roleName(t, r)}
               <span className="text-xs font-medium text-ink-muted">{r.is_system ? t('roles.system') : t('roles.custom')}</span>
             </span>
-            <span className="text-sm text-ink-muted">
-              {t('roles.summary', { permissions: r.permissions.length, members: r.member_count })}
-            </span>
+            <span className="text-sm text-ink-muted">{t('roles.summary', { permissions: r.permissions.length, members: r.member_count })}</span>
           </Link>
         </li>
       ))}

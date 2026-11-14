@@ -111,18 +111,32 @@ function ReturnForm({ tenantId, purchase }: { tenantId: string; purchase: Purcha
       </Link>
       <PageHeader title={t('purchases.return.title')} subtitle={`${purchase.purchase_no ?? ''} · ${purchase.supplier_name}`} />
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
+        <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
+          <table className="table-stack w-full text-sm">
             <caption className="sr-only">{t('purchases.return.lines')}</caption>
             <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
               <tr>
-                <th scope="col" className="px-3 py-2.5 text-left">{t('purchases.product')}</th>
-                <th scope="col" className="px-3 py-2.5 text-right">{t('purchases.received')}</th>
-                <th scope="col" className="px-3 py-2.5 text-right">{t('purchases.returned')}</th>
-                <th scope="col" className="px-3 py-2.5 text-right">{t('purchases.return.returnable')}</th>
-                <th scope="col" className="px-3 py-2.5 text-right">{t('purchases.lineTotal')}</th>
-                <th scope="col" className="w-32 px-3 py-2.5 text-left">{t('purchases.return.quantity')}</th>
-                <th scope="col" className="px-3 py-2.5 text-right">{t('purchases.return.credit')}</th>
+                <th scope="col" className="px-3 py-2.5 text-left">
+                  {t('purchases.product')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-right">
+                  {t('purchases.received')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-right">
+                  {t('purchases.returned')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-right">
+                  {t('purchases.return.returnable')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-right">
+                  {t('purchases.lineTotal')}
+                </th>
+                <th scope="col" className="w-32 px-3 py-2.5 text-left">
+                  {t('purchases.return.quantity')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-right">
+                  {t('purchases.return.credit')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -134,23 +148,36 @@ function ReturnForm({ tenantId, purchase }: { tenantId: string; purchase: Purcha
                       <span className="font-medium">{x.item.product_name}</span>
                       <span className="block font-mono text-xs text-ink-muted">{x.item.sku}</span>
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{formatQuantity(x.item.received_quantity, lang, true)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{formatQuantity(x.item.returned_quantity, lang, true)}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{`${formatQuantity(toPlain(x.left), lang, true)} ${x.item.unit_short_name}`}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(x.item.line_total, lang)}</td>
-                    <td className="px-3 py-2.5">
-                      <input
-                        aria-label={`${t('purchases.return.quantity')} ${x.item.product_name}`}
-                        inputMode="decimal"
-                        disabled={x.left === ZERO}
-                        value={qty[x.item.id] ?? ''}
-                        onChange={(e) => setQty((q) => ({ ...q, [x.item.id]: e.target.value }))}
-                        aria-invalid={error ? true : undefined}
-                        className="min-h-11 w-full rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-canvas aria-invalid:border-danger"
-                      />
-                      {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+                    <td data-label={t('purchases.received')} className="px-3 py-2.5 text-right tabular-nums">
+                      {formatQuantity(x.item.received_quantity, lang, true)}
                     </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(toFixed(x.credit, 2), lang)}</td>
+                    <td data-label={t('purchases.returned')} className="px-3 py-2.5 text-right tabular-nums">
+                      {formatQuantity(x.item.returned_quantity, lang, true)}
+                    </td>
+                    <td
+                      data-label={t('purchases.return.returnable')}
+                      className="px-3 py-2.5 text-right tabular-nums"
+                    >{`${formatQuantity(toPlain(x.left), lang, true)} ${x.item.unit_short_name}`}</td>
+                    <td data-label={t('purchases.lineTotal')} className="px-3 py-2.5 text-right tabular-nums">
+                      {formatMoney(x.item.line_total, lang)}
+                    </td>
+                    <td data-label={t('purchases.return.quantity')} className="px-3 py-2.5">
+                      <div className="flex w-32 flex-col items-end lg:w-full lg:items-start">
+                        <input
+                          aria-label={`${t('purchases.return.quantity')} ${x.item.product_name}`}
+                          inputMode="decimal"
+                          disabled={x.left === ZERO}
+                          value={qty[x.item.id] ?? ''}
+                          onChange={(e) => setQty((q) => ({ ...q, [x.item.id]: e.target.value }))}
+                          aria-invalid={error ? true : undefined}
+                          className="min-h-11 w-full rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-canvas aria-invalid:border-danger"
+                        />
+                        {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+                      </div>
+                    </td>
+                    <td data-label={t('purchases.return.credit')} className="px-3 py-2.5 text-right font-semibold tabular-nums lg:font-normal">
+                      {formatMoney(toFixed(x.credit, 2), lang)}
+                    </td>
                   </tr>
                 )
               })}
@@ -180,7 +207,7 @@ function ReturnForm({ tenantId, purchase }: { tenantId: string; purchase: Purcha
           />
           <p className="text-sm text-ink-muted">{t(`purchases.return.modeHints.${mode}`, { due: formatMoney(purchase.due_total, lang) })}</p>
           {mode === 'refund' && (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Select
                 label={t('purchases.return.refundMethod')}
                 value={methodId}
@@ -203,7 +230,10 @@ function ReturnForm({ tenantId, purchase }: { tenantId: string; purchase: Purcha
         </Card>
         {submit.isError && hasFormError(submit.error) && <Alert tone="danger">{problemMessage(submit.error, t)}</Alert>}
         <div className="flex flex-wrap justify-end gap-2">
-          <Link to={`/purchases/${purchase.id}`} className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold text-ink-muted hover:bg-canvas">
+          <Link
+            to={`/purchases/${purchase.id}`}
+            className="inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-semibold text-ink-muted hover:bg-canvas"
+          >
             {t('common.cancel')}
           </Link>
           <Button type="submit" disabled={submit.isPending}>

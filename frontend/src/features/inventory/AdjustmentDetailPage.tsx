@@ -99,7 +99,7 @@ export function AdjustmentDetailPage() {
         }
       />
       <Card>
-        <dl className="grid gap-4 text-sm sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-ink-muted">{t('common.reason')}</dt>
             <dd>
@@ -143,11 +143,7 @@ export function AdjustmentDetailPage() {
         columns={columns}
         rows={a.items}
         rowKey={(i) => i.id}
-        footer={
-          hasCost && a.total_value !== null
-            ? [t('common.total'), '', ...(hasBatches ? [''] : []), '', formatMoney(a.total_value, lang), '']
-            : undefined
-        }
+        footer={hasCost && a.total_value !== null ? [t('common.total'), '', ...(hasBatches ? [''] : []), '', formatMoney(a.total_value, lang), ''] : undefined}
       />
     </div>
   )

@@ -33,7 +33,9 @@ export function RoleEditorPage() {
   const role = id ? roles.data.find((r) => r.id === id) : undefined
   if (id && !role) return <Alert tone="danger">{t('problems.NOT_FOUND')}</Alert>
   const template = roles.data.find((r) => r.id === search.get('from'))
-  return <RoleForm key={role ? `edit-${role.id}` : `new-${template?.id ?? ''}`} role={role} template={template} catalogue={catalogue.data} tenantId={tenantId} />
+  return (
+    <RoleForm key={role ? `edit-${role.id}` : `new-${template?.id ?? ''}`} role={role} template={template} catalogue={catalogue.data} tenantId={tenantId} />
+  )
 }
 
 function RoleForm({ role, template, catalogue, tenantId }: { role?: Role; template?: Role; catalogue: Permission[]; tenantId: string }) {
@@ -108,7 +110,13 @@ function RoleForm({ role, template, catalogue, tenantId }: { role?: Role; templa
       <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
         <Card className="flex flex-col gap-4">
           <TextField label={t('roles.name')} value={name} onChange={(e) => setName(e.target.value)} disabled={readOnly} required error={errors.name} />
-          <TextField label={t('roles.description')} value={description} onChange={(e) => setDescription(e.target.value)} disabled={readOnly} error={errors.description} />
+          <TextField
+            label={t('roles.description')}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            disabled={readOnly}
+            error={errors.description}
+          />
           <TextField
             label={t('roles.maxDiscount')}
             inputMode="decimal"
@@ -138,7 +146,7 @@ function RoleForm({ role, template, catalogue, tenantId }: { role?: Role; templa
                     </button>
                   )}
                 </legend>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {perms.map((p) => (
                     <label key={p.code} className={`flex items-start gap-2 text-sm ${grantable(p.code) ? '' : 'text-ink-muted'}`}>
                       <input

@@ -438,9 +438,7 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
             variant_id: l.variant_id,
             quantity: !opening && l.direction === 'remove' ? `-${qty}` : qty,
             unit_cost: showCost ? optional(l.unit_cost) : undefined,
-            ...(incoming(l)
-              ? { batch_no: optional(l.batch_no), expiry_date: optional(l.expiry_date) }
-              : { batch_id: optional(l.batch_id) }),
+            ...(incoming(l) ? { batch_no: optional(l.batch_no), expiry_date: optional(l.expiry_date) } : { batch_id: optional(l.batch_id) }),
           }
         }),
       }
@@ -577,7 +575,7 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
 
       <form onSubmit={onSubmit} className="flex flex-col gap-6" noValidate>
         <Card className="flex flex-col gap-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {!opening && (
               <Select
                 label={t('common.reason')}
@@ -597,7 +595,13 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
               />
             )}
           </div>
-          <TextField label={`${t('common.note')} (${t('common.optional')})`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} error={errors.note} />
+          <TextField
+            label={`${t('common.note')} (${t('common.optional')})`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={2000}
+            error={errors.note}
+          />
         </Card>
 
         <Card className="flex flex-col gap-3 p-0 sm:p-0">
@@ -633,16 +637,36 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
             <p className="px-6 pb-5 text-sm text-ink-muted">{opening ? t('inventory.noLinesOpening') : t('inventory.noLines')}</p>
           ) : (
             <div className="max-h-[65vh] overflow-auto">
-              <table className="w-full text-sm">
+              <table className="table-stack w-full text-sm">
                 <caption className="sr-only">{t('inventory.lines')}</caption>
                 <thead className="sticky top-0 z-10 border-y border-border bg-canvas text-xs text-ink-muted uppercase">
                   <tr>
-                    <th scope="col" className="px-3 py-2 text-left">{t('inventory.product')}</th>
-                    {!opening && <th scope="col" className="px-3 py-2 text-left">{t('inventory.direction')}</th>}
-                    <th scope="col" className="px-3 py-2 text-left">{t('inventory.quantity')}</th>
-                    {showBatch && <th scope="col" className="px-3 py-2 text-left">{t('inventory.batch')}</th>}
-                    {showCost && <th scope="col" className="px-3 py-2 text-left">{t('inventory.unitCost')}</th>}
-                    {showCost && <th scope="col" className="px-3 py-2 text-right">{t('inventory.value')}</th>}
+                    <th scope="col" className="px-3 py-2 text-left">
+                      {t('inventory.product')}
+                    </th>
+                    {!opening && (
+                      <th scope="col" className="px-3 py-2 text-left">
+                        {t('inventory.direction')}
+                      </th>
+                    )}
+                    <th scope="col" className="px-3 py-2 text-left">
+                      {t('inventory.quantity')}
+                    </th>
+                    {showBatch && (
+                      <th scope="col" className="px-3 py-2 text-left">
+                        {t('inventory.batch')}
+                      </th>
+                    )}
+                    {showCost && (
+                      <th scope="col" className="px-3 py-2 text-left">
+                        {t('inventory.unitCost')}
+                      </th>
+                    )}
+                    {showCost && (
+                      <th scope="col" className="px-3 py-2 text-right">
+                        {t('inventory.value')}
+                      </th>
+                    )}
                     <th scope="col" className="px-3 py-2">
                       <span className="sr-only">{t('common.actions')}</span>
                     </th>
@@ -668,7 +692,7 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                           {vErr && <p className="text-sm text-danger">{vErr}</p>}
                         </td>
                         {!opening && (
-                          <td className="px-3 py-2">
+                          <td data-label={t('inventory.direction')} className="px-3 py-2">
                             <select
                               aria-label={t('inventory.directionFor', { name: l.name })}
                               className={INPUT}
@@ -680,7 +704,7 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                             </select>
                           </td>
                         )}
-                        <td className="px-3 py-2">
+                        <td data-label={t('inventory.quantity')} className="px-3 py-2">
                           <div className="flex items-center gap-2">
                             <input
                               id={`qty-${l.key}`}
@@ -698,7 +722,7 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                           {qErr && <p className="text-sm text-danger">{qErr}</p>}
                         </td>
                         {showBatch && (
-                          <td className="px-3 py-2">
+                          <td data-label={t('inventory.batch')} className="px-3 py-2">
                             {incoming(l) && l.track_batches ? (
                               <div className="flex flex-col gap-1">
                                 <input
@@ -719,7 +743,11 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                                   value={l.expiry_date}
                                   onChange={(e) => update(l.key, { expiry_date: e.target.value })}
                                 />
-                                <button type="button" className="self-start text-xs font-semibold text-brand-700 hover:underline" onClick={() => addBatchLine(l)}>
+                                <button
+                                  type="button"
+                                  className="self-start text-xs font-semibold text-brand-700 hover:underline"
+                                  onClick={() => addBatchLine(l)}
+                                >
                                   {t('inventory.anotherBatch')}
                                 </button>
                               </div>
@@ -739,7 +767,11 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                                 ))}
                               </select>
                             ) : incoming(l) ? (
-                              <button type="button" className="text-xs font-semibold text-brand-700 hover:underline" onClick={() => update(l.key, { track_batches: true })}>
+                              <button
+                                type="button"
+                                className="text-xs font-semibold text-brand-700 hover:underline"
+                                onClick={() => update(l.key, { track_batches: true })}
+                              >
                                 {t('inventory.addBatch')}
                               </button>
                             ) : (
@@ -750,7 +782,7 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                           </td>
                         )}
                         {showCost && (
-                          <td className="px-3 py-2">
+                          <td data-label={t('inventory.unitCost')} className="px-3 py-2">
                             <input
                               aria-label={t('inventory.costFor', { name: l.name })}
                               aria-invalid={cErr ? true : undefined}
@@ -765,12 +797,17 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                           </td>
                         )}
                         {showCost && (
-                          <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
+                          <td data-label={t('inventory.value')} className="px-3 py-2 text-right tabular-nums whitespace-nowrap">
                             {blank ? '—' : formatMoney(toFixed(mul(dec(l.quantity), dec(l.unit_cost))), lang)}
                           </td>
                         )}
-                        <td className="px-3 py-2 text-right">
-                          <Button variant="ghost" className="min-h-9" onClick={() => removeLine(l.key)} aria-label={t('inventory.removeLine', { name: l.name })}>
+                        <td data-label={''} className="px-3 py-2 text-right">
+                          <Button
+                            variant="ghost"
+                            className="min-h-9"
+                            onClick={() => removeLine(l.key)}
+                            aria-label={t('inventory.removeLine', { name: l.name })}
+                          >
                             {t('common.remove')}
                           </Button>
                         </td>
@@ -784,7 +821,9 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
                       <td className="px-3 py-2" colSpan={showBatch ? 4 : 3}>
                         {t('common.total')}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatMoney(toFixed(totalValue), lang)}</td>
+                      <td data-label={t('inventory.value')} className="px-3 py-2 text-right tabular-nums">
+                        {formatMoney(toFixed(totalValue), lang)}
+                      </td>
                       <td />
                     </tr>
                   </tfoot>
@@ -795,11 +834,7 @@ function AdjustmentForm({ opening }: { opening: boolean }) {
         </Card>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" disabled={save.isPending}>
-            {save.isPending
-              ? t('common.saving')
-              : opening
-                ? t('inventory.saveOpeningCount', { count: filled.length })
-                : t('inventory.saveAdjustment')}
+            {save.isPending ? t('common.saving') : opening ? t('inventory.saveOpeningCount', { count: filled.length }) : t('inventory.saveAdjustment')}
           </Button>
           <Link to="/inventory/adjustments" className="inline-flex min-h-11 items-center px-4 text-sm font-semibold text-ink-muted hover:text-ink">
             {t('common.cancel')}

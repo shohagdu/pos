@@ -62,7 +62,7 @@ export function AdminTenantsPage() {
           />
           <Button type="submit">{t('common.search')}</Button>
         </form>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label={t('admin.tenants.subscriptionState')}
             value={filter.subscription_status ?? ''}
@@ -87,9 +87,7 @@ export function AdminTenantsPage() {
               { value: '', label: t('common.all') },
               ...(plans.data ?? []).map((p) => ({ value: p.code, label: planLabel(t, p.code, p.name) })),
               // Keep a plan code from a link visible even before plans load.
-              ...(filter.plan_code && !plans.data?.some((p) => p.code === filter.plan_code)
-                ? [{ value: filter.plan_code, label: filter.plan_code }]
-                : []),
+              ...(filter.plan_code && !plans.data?.some((p) => p.code === filter.plan_code) ? [{ value: filter.plan_code, label: filter.plan_code }] : []),
             ]}
           />
         </div>

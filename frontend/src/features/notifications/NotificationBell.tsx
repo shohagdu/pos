@@ -16,7 +16,7 @@ export function NotificationBell() {
       to="/notifications"
       aria-label={label}
       title={label}
-      className="relative inline-flex size-10 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink"
+      className="relative inline-flex size-11 items-center lg:size-10 justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink"
     >
       <svg aria-hidden viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />

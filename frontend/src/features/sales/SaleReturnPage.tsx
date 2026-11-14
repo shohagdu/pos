@@ -20,7 +20,8 @@ import { REFUND_MODES } from './constants'
 import { checkQty, estimatedRefund, returnable } from './returnMath'
 
 type Condition = 'restock' | 'damaged'
-const inputClass = 'min-h-10 rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
+const inputClass =
+  'min-h-10 rounded-lg border border-border bg-surface px-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
 
 /** Return items of a sale (E5.4): quantities, condition, reason and refund mode. */
 export function SaleReturnPage() {
@@ -88,33 +89,39 @@ function ReturnForm({ sale, tenantId }: { sale: SaleDetail; tenantId: string }) 
       <Link to={`/sales/${sale.id}`} className="text-sm font-medium text-brand-700 hover:underline">
         ← {t('sales.invoiceTitle', { no: sale.invoice_no })}
       </Link>
-      <PageHeader
-        title={t('sales.returnTitle')}
-        subtitle={`${sale.invoice_no} · ${sale.is_walk_in ? t('sales.walkIn') : sale.customer_name}`}
-      />
+      <PageHeader title={t('sales.returnTitle')} subtitle={`${sale.invoice_no} · ${sale.is_walk_in ? t('sales.walkIn') : sale.customer_name}`} />
       {!returnableStatus || items.length === 0 ? (
         <Alert tone="warning">{t('sales.nothingToReturn')}</Alert>
       ) : (
         <>
           <div className="flex justify-end">
-            <Button
-              variant="secondary"
-              onClick={() => setQty(Object.fromEntries(items.map((i) => [i.id, toPlain(returnable(i))])))}
-            >
+            <Button variant="secondary" onClick={() => setQty(Object.fromEntries(items.map((i) => [i.id, toPlain(returnable(i))])))}>
               {t('sales.returnAll')}
             </Button>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-            <table className="w-full text-sm">
+          <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
+            <table className="table-stack w-full text-sm">
               <caption className="sr-only">{t('sales.items')}</caption>
               <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
                 <tr>
-                  <th scope="col" className="px-3 py-2.5 text-left">{t('sales.product')}</th>
-                  <th scope="col" className="px-3 py-2.5 text-right">{t('sales.sold')}</th>
-                  <th scope="col" className="px-3 py-2.5 text-right">{t('sales.returnable')}</th>
-                  <th scope="col" className="px-3 py-2.5 text-left">{t('sales.returnQty')}</th>
-                  <th scope="col" className="px-3 py-2.5 text-left">{t('sales.condition')}</th>
-                  <th scope="col" className="px-3 py-2.5 text-right">{t('sales.estimatedRefund')}</th>
+                  <th scope="col" className="px-3 py-2.5 text-left">
+                    {t('sales.product')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-right">
+                    {t('sales.sold')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-right">
+                    {t('sales.returnable')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-left">
+                    {t('sales.returnQty')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-left">
+                    {t('sales.condition')}
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 text-right">
+                    {t('sales.estimatedRefund')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -129,23 +136,29 @@ function ReturnForm({ sale, tenantId }: { sale: SaleDetail; tenantId: string }) 
                           {money(item.line_total)} / {formatQuantity(item.quantity, lang, true)} {item.unit_short_name}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{formatQuantity(item.quantity, lang, true)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{formatQuantity(toPlain(left), lang, true)}</td>
-                      <td className="px-3 py-2.5">
-                        <input
-                          className={`${inputClass} w-24`}
-                          inputMode="decimal"
-                          aria-label={t('sales.returnQtyFor', { name: item.product_name })}
-                          aria-invalid={error ? true : undefined}
-                          max={toPlain(left)}
-                          min="0"
-                          value={qty[item.id] ?? ''}
-                          placeholder="0"
-                          onChange={(e) => setQty((q) => ({ ...q, [item.id]: e.target.value }))}
-                        />
-                        {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+                      <td data-label={t('sales.sold')} className="px-3 py-2.5 text-right tabular-nums">
+                        {formatQuantity(item.quantity, lang, true)}
                       </td>
-                      <td className="px-3 py-2.5">
+                      <td data-label={t('sales.returnable')} className="px-3 py-2.5 text-right tabular-nums">
+                        {formatQuantity(toPlain(left), lang, true)}
+                      </td>
+                      <td data-label={t('sales.returnQty')} className="px-3 py-2.5">
+                        <div className="flex flex-col items-end lg:items-start">
+                          <input
+                            className={`${inputClass} w-24`}
+                            inputMode="decimal"
+                            aria-label={t('sales.returnQtyFor', { name: item.product_name })}
+                            aria-invalid={error ? true : undefined}
+                            max={toPlain(left)}
+                            min="0"
+                            value={qty[item.id] ?? ''}
+                            placeholder="0"
+                            onChange={(e) => setQty((q) => ({ ...q, [item.id]: e.target.value }))}
+                          />
+                          {error && <p className="mt-1 text-xs text-danger">{error}</p>}
+                        </div>
+                      </td>
+                      <td data-label={t('sales.condition')} className="px-3 py-2.5">
                         <select
                           className={inputClass}
                           aria-label={t('sales.conditionFor', { name: item.product_name })}
@@ -156,7 +169,7 @@ function ReturnForm({ sale, tenantId }: { sale: SaleDetail; tenantId: string }) 
                           <option value="damaged">{t('sales.conditions.damaged')}</option>
                         </select>
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">
+                      <td data-label={t('sales.estimatedRefund')} className="px-3 py-2.5 text-right font-semibold tabular-nums lg:font-normal">
                         {money(toFixed(check.ok ? estimatedRefund(item, check.qty) : ZERO, 2))}
                       </td>
                     </tr>
@@ -167,7 +180,7 @@ function ReturnForm({ sale, tenantId }: { sale: SaleDetail; tenantId: string }) 
           </div>
           {touched && chosen.length === 0 && !invalid && <Alert tone="warning">{t('sales.chooseQty')}</Alert>}
 
-          <div className="grid gap-6 md:grid-cols-[1fr_20rem]">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_20rem]">
             <div className="flex flex-col gap-4">
               <TextField
                 label={t('common.reason')}

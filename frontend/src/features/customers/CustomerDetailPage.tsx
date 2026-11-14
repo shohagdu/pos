@@ -103,7 +103,7 @@ function CustomerDetail({ customer: c, tenantId }: { customer: Customer; tenantI
       {remove.isError && <Alert tone="danger">{inUse ? t('customers.inUse') : problemMessage(remove.error, t)}</Alert>}
 
       <Card>
-        <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <dt className="text-ink-muted">{t('customers.balance')}</dt>
             <dd className="mt-1 text-lg">

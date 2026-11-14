@@ -58,9 +58,9 @@ export function PurchaseReturnDetailPage() {
           </Button>
         }
       />
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <Card>
-          <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <Info label={t('purchases.supplier')}>
               <Link to={`/suppliers/${r.supplier_id}`} className={LINK}>
                 {r.supplier_name}

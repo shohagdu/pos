@@ -132,7 +132,7 @@ export function TransferDetailPage() {
       />
       {actionError && <Alert tone="danger">{problemMessage(actionError, t)}</Alert>}
       <Card>
-        <dl className="grid gap-4 text-sm sm:grid-cols-3">
+        <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
             <dt className="text-ink-muted">{t('common.status')}</dt>
             <dd>
@@ -202,9 +202,7 @@ export function TransferDetailPage() {
 /** Receives a dispatched transfer; only lines that arrived short are sent. */
 function ReceiveDialog({ transfer, onDone, onClose }: { transfer: Transfer; onDone: (saved: Transfer) => Promise<void>; onClose: () => void }) {
   const { t, i18n } = useTranslation()
-  const [received, setReceived] = useState<Record<string, string>>(() =>
-    Object.fromEntries(transfer.items.map((i) => [i.id, toPlain(dec(i.quantity_sent))])),
-  )
+  const [received, setReceived] = useState<Record<string, string>>(() => Object.fromEntries(transfer.items.map((i) => [i.id, toPlain(dec(i.quantity_sent))])))
   const [note, setNote] = useState('')
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({})
   const [key] = useState(newKey)

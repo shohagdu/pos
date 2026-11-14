@@ -63,19 +63,7 @@ function StepCard({ title, intro, children }: { title: string; intro: string; ch
   )
 }
 
-function StepActions({
-  pending,
-  onSkip,
-  last,
-  mode,
-  saved,
-}: {
-  pending: boolean
-  onSkip: () => void
-  last: boolean
-  mode: FormMode
-  saved: boolean
-}) {
+function StepActions({ pending, onSkip, last, mode, saved }: { pending: boolean; onSkip: () => void; last: boolean; mode: FormMode; saved: boolean }) {
   const { t } = useTranslation()
   if (mode === 'settings') {
     return (
@@ -195,8 +183,18 @@ function RegionalForm({ settings, tenantId, mode }: { settings: BusinessSettings
           {...bind('currency_code')}
         />
         <p className="-mt-2 text-sm text-ink-muted">{t('onboarding.regional.currencyHint')}</p>
-        <Select label={t('onboarding.regional.timezone')} options={TIMEZONES.map((z) => ({ value: z, label: z }))} error={errors.timezone} {...bind('timezone')} />
-        <Select label={t('onboarding.regional.language')} options={LANGUAGES.map((l) => ({ value: l.code, label: l.label }))} error={errors.locale} {...bind('locale')} />
+        <Select
+          label={t('onboarding.regional.timezone')}
+          options={TIMEZONES.map((z) => ({ value: z, label: z }))}
+          error={errors.timezone}
+          {...bind('timezone')}
+        />
+        <Select
+          label={t('onboarding.regional.language')}
+          options={LANGUAGES.map((l) => ({ value: l.code, label: l.label }))}
+          error={errors.locale}
+          {...bind('locale')}
+        />
         <Select
           label={t('onboarding.regional.fiscalYear')}
           options={MONTHS.map((m) => ({ value: String(m), label: monthName(m) }))}
@@ -257,18 +255,18 @@ function InvoiceForm({ settings, tenantId, mode }: { settings: BusinessSettings;
           error={errors.receipt_paper}
           {...bind('receipt_paper')}
         />
-        <TextField label={t('onboarding.invoice.footer')} maxLength={500} error={errors.receipt_footer} hint={t('onboarding.invoice.footerHint')} {...bind('receipt_footer')} />
-        <Checkbox label={t('onboarding.invoice.autoPrint')} {...bindCheck('auto_print_receipt')} />
-        <Checkbox
-          label={t('onboarding.invoice.showProductPanel')}
-          hint={t('onboarding.invoice.showProductPanelHint')}
-          {...bindCheck('show_product_panel')}
+        <TextField
+          label={t('onboarding.invoice.footer')}
+          maxLength={500}
+          error={errors.receipt_footer}
+          hint={t('onboarding.invoice.footerHint')}
+          {...bind('receipt_footer')}
         />
+        <Checkbox label={t('onboarding.invoice.autoPrint')} {...bindCheck('auto_print_receipt')} />
+        <Checkbox label={t('onboarding.invoice.showProductPanel')} hint={t('onboarding.invoice.showProductPanelHint')} {...bindCheck('show_product_panel')} />
         <Checkbox
-          className="ml-8"
           label={t('onboarding.invoice.showProductImages')}
-          hint={values.show_product_panel ? t('onboarding.invoice.showProductImagesHint') : t('onboarding.invoice.showProductImagesPanelOff')}
-          disabled={!values.show_product_panel}
+          hint={t('onboarding.invoice.showProductImagesHint')}
           {...bindCheck('show_product_images')}
         />
         <Checkbox label={t('onboarding.invoice.vatRegistered')} hint={t('onboarding.invoice.vatHint')} {...bindCheck('is_vat_registered')} />

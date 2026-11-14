@@ -55,18 +55,18 @@ export function AppLayout() {
   const title = titleKey ? t(titleKey) : ''
 
   return (
-    <div className="flex min-h-svh flex-col md:flex-row">
+    <div className="flex min-h-svh flex-col lg:flex-row">
       <Sidebar open={menuOpen} onClose={closeMenu} collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="print:hidden">
           <ImpersonationBanner />
           <TrialBanner />
         </div>
-        <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-surface/95 px-4 py-2 backdrop-blur sm:gap-3 sm:px-8 print:hidden">
+        <header className="sticky top-0 z-20 flex items-center gap-1 border-b border-border bg-surface/95 px-4 py-1.5 backdrop-blur sm:gap-3 sm:px-8 lg:py-2 print:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            className="-ml-1.5 rounded-lg p-1.5 text-ink-muted hover:bg-canvas hover:text-ink md:hidden"
+            className="-ml-2 flex size-11 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas hover:text-ink lg:hidden"
             aria-label={t('nav.openMenu')}
             aria-expanded={menuOpen}
           >
@@ -76,14 +76,14 @@ export function AppLayout() {
           {can('pos.sell') && !OWN_NEW_SALE.includes(pathname) && (
             <Link
               to="/pos"
-              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-semibold text-white hover:bg-brand-700"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm lg:min-h-9 lg:min-w-0 font-semibold text-white hover:bg-brand-700"
               aria-label={t('nav.newSale')}
             >
               <Icon name="plus" className="size-4" />
               <span className="hidden sm:inline">{t('nav.newSale')}</span>
             </Link>
           )}
-          <label className="relative inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-sm font-medium text-ink-muted hover:bg-canvas hover:text-ink">
+          <label className="relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg px-2 lg:min-h-9 lg:min-w-0 text-sm font-medium text-ink-muted hover:bg-canvas hover:text-ink">
             <Icon name="language" className="size-5" />
             <span className="sr-only">{t('common.language')}</span>
             {/* Each option is written in its own language. */}
@@ -103,9 +103,7 @@ export function AppLayout() {
           <NotificationBell />
           <UserMenu />
         </header>
-        <main className="flex-1 px-4 py-6 sm:px-8 print:p-0">
-          {suspended ? <SuspendedNotice /> : <Outlet />}
-        </main>
+        <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-4 2xl:py-6 print:p-0">{suspended ? <SuspendedNotice /> : <Outlet />}</main>
       </div>
     </div>
   )

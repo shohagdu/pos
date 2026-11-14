@@ -83,7 +83,12 @@ export function LabelPrintPage() {
 
   const source = useMemo(() => {
     if (purchaseId) return purchase.data ? purchaseCopies(purchase.data) : null
-    return new Map(variantParam.split(',').filter(Boolean).map((id) => [id, 1]))
+    return new Map(
+      variantParam
+        .split(',')
+        .filter(Boolean)
+        .map((id) => [id, 1]),
+    )
   }, [purchaseId, purchase.data, variantParam])
 
   const ids = source ? [...source.keys()] : []
@@ -183,7 +188,7 @@ function LabelEditor({ tenantId, initial, back }: { tenantId: string; initial: L
           }
         />
 
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
           <Card>
             <div className="flex flex-col gap-4">
               <PurchaseProductSearch tenantId={tenantId} inputRef={searchRef} onAdd={(p) => add.mutate(p)} />
@@ -356,26 +361,12 @@ function LabelPage({
   }
   return (
     <div className="grid shrink-0 overflow-hidden bg-white text-black shadow ring-1 ring-border print:shadow-none print:ring-0" style={style}>
-      {cells.map((cell, i) =>
-        cell ? <Label key={i} label={cell} layout={layout} options={options} business={business} lang={lang} /> : <div key={i} />,
-      )}
+      {cells.map((cell, i) => (cell ? <Label key={i} label={cell} layout={layout} options={options} business={business} lang={lang} /> : <div key={i} />))}
     </div>
   )
 }
 
-function Label({
-  label,
-  layout,
-  options,
-  business,
-  lang,
-}: {
-  label: LabelInfo
-  layout: LabelLayout
-  options: LabelOptions
-  business: string
-  lang: string
-}) {
+function Label({ label, layout, options, business, lang }: { label: LabelInfo; layout: LabelLayout; options: LabelOptions; business: string; lang: string }) {
   const code = label.barcode ?? label.sku
   // Text scales with the label: about 9 % of its height, at least 1.8 mm.
   const font = Math.max(1.8, layout.labelHeight * 0.09)

@@ -48,7 +48,9 @@ export function AccountsPage() {
       render: (a) => [a.account_number, a.bank_name].filter(Boolean).join(' · ') || '—',
     },
     ...(showBalances
-      ? ([{ key: 'balance', header: t('money.balance'), align: 'right', render: (a) => formatMoney(a.current_balance, lang) }] satisfies Column<PaymentAccount>[])
+      ? ([
+          { key: 'balance', header: t('money.balance'), align: 'right', render: (a) => formatMoney(a.current_balance, lang) },
+        ] satisfies Column<PaymentAccount>[])
       : []),
     {
       key: 'status',
@@ -61,7 +63,12 @@ export function AccountsPage() {
             key: 'actions',
             header: <span className="sr-only">{t('common.actions')}</span>,
             render: (a) => (
-              <Button variant="ghost" className="min-h-9" onClick={() => setDialog({ kind: 'edit', account: a })} aria-label={t('money.editAccountName', { name: a.name })}>
+              <Button
+                variant="ghost"
+                className="min-h-9"
+                onClick={() => setDialog({ kind: 'edit', account: a })}
+                aria-label={t('money.editAccountName', { name: a.name })}
+              >
                 {t('common.edit')}
               </Button>
             ),
@@ -91,7 +98,7 @@ export function AccountsPage() {
         }
       />
       {showBalances && accounts.isSuccess && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label={t('money.totalBalance')} value={formatMoney(total, lang)} />
           {(['cash', 'bank', 'mobile_wallet'] as const).map((type) => {
             const ofType = activeList.filter((a) => a.account_type === type)

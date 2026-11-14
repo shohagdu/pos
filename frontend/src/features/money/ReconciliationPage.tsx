@@ -46,8 +46,7 @@ function Worksheet({ rec, tenantId }: { rec: Reconciliation; tenantId: string })
     onSuccess: saved,
   })
   const action = useMutation({
-    mutationFn: (kind: 'complete' | 'cancel') =>
-      kind === 'complete' ? moneyApi.completeReconciliation(rec.id) : moneyApi.cancelReconciliation(rec.id),
+    mutationFn: (kind: 'complete' | 'cancel') => (kind === 'complete' ? moneyApi.completeReconciliation(rec.id) : moneyApi.cancelReconciliation(rec.id)),
     onSuccess: saved,
   })
   const reopen = useMutation({
@@ -138,7 +137,7 @@ function Worksheet({ rec, tenantId }: { rec: Reconciliation; tenantId: string })
       {(tick.isError || action.isError) && <Alert tone="danger">{problemMessage(tick.error ?? action.error, t)}</Alert>}
       {rec.note && <p className="text-sm whitespace-pre-line">{rec.note}</p>}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('money.reconcile.statementBalance')} value={money(rec.statement_balance)} />
         <StatCard label={t('money.reconcile.openingBalance')} value={money(rec.opening_balance)} />
         <StatCard
@@ -147,11 +146,7 @@ function Worksheet({ rec, tenantId }: { rec: Reconciliation; tenantId: string })
           hint={`+ ${money(rec.cleared_in)} / − ${money(rec.cleared_out)}`}
         />
         <div aria-live="polite">
-          <StatCard
-            label={t('money.reconcile.difference')}
-            value={money(rec.difference)}
-            hint={difference === 0n ? '✓' : t('money.reconcile.completeHint')}
-          />
+          <StatCard label={t('money.reconcile.difference')} value={money(rec.difference)} hint={difference === 0n ? '✓' : t('money.reconcile.completeHint')} />
         </div>
       </div>
       <p className="text-sm text-ink-muted">

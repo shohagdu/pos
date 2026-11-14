@@ -63,7 +63,7 @@ export function ReportsPage() {
           <h2 id={`reports-${g.key}`} className="text-lg font-semibold">
             {t(`reports.groups.${g.key}`)}
           </h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {g.cards.map((c) => (
               <li key={c.key}>
                 <Link

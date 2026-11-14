@@ -91,7 +91,7 @@ export function DuesReportPage({ party }: { party: Party }) {
       <Loaded query={report}>
         {(r) => (
           <>
-            <dl className="grid gap-3 sm:grid-cols-3">
+            <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="rounded-xl border border-border bg-surface p-4">
                 <dt className="text-sm text-ink-muted">{t(`${k}.due`)}</dt>
                 <dd className="text-xl font-bold text-danger">{money(r.totals.due_total, lang)}</dd>

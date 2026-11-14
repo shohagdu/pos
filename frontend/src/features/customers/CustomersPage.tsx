@@ -42,9 +42,9 @@ export function CustomersPage() {
 
   const columns: Column<Customer>[] = [
     { key: 'code', header: t('customers.code'), render: (c) => <span className="font-mono text-xs">{c.code}</span> },
-    { key: 'name', header: t('customers.name'), render: (c) => <TextLink to={`/customers/${c.id}`}>{c.name}</TextLink> },
+    { key: 'name', header: t('customers.name'), card: 'title', render: (c) => <TextLink to={`/customers/${c.id}`}>{c.name}</TextLink> },
     { key: 'phone', header: t('customers.phone'), render: (c) => c.phone ?? '—' },
-    { key: 'balance', header: t('customers.balance'), align: 'right', render: (c) => <Balance value={c.current_balance} /> },
+    { key: 'balance', header: t('customers.balance'), align: 'right', card: 'amount', render: (c) => <Balance value={c.current_balance} /> },
     {
       key: 'limit',
       header: t('customers.creditLimit'),
@@ -109,14 +109,19 @@ export function CustomersPage() {
             onChange={(e) => set({ status: e.target.value as PartyFilter['status'] })}
             options={STATUSES.map((s) => ({ value: s, label: t(`customers.statuses.${s}`) }))}
           />
-          <Checkbox className="pb-3" label={t('customers.dueOnly')} checked={filter.due_only ?? false} onChange={(e) => set({ due_only: e.target.checked || undefined })} />
+          <Checkbox
+            className="pb-3"
+            label={t('customers.dueOnly')}
+            checked={filter.due_only ?? false}
+            onChange={(e) => set({ due_only: e.target.checked || undefined })}
+          />
           <Button variant="secondary" className="ms-auto" disabled={rows.length === 0} onClick={() => void exportCsv()}>
             {t('common.exportCsv')}
           </Button>
         </div>
       </div>
       {totalDue !== undefined && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard label={t('customers.totalDue')} value={formatMoney(totalDue, lang)} tone="bad" hint={t('customers.totalDueHint')} />
         </div>
       )}

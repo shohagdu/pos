@@ -12,8 +12,14 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks())
 
 const cash = {
-  id: 'm-cash', name: 'Cash', method_type: 'cash', default_account_id: 'a1', default_account_name: 'Cash drawer',
-  requires_reference: false, sort_order: 0, is_active: true,
+  id: 'm-cash',
+  name: 'Cash',
+  method_type: 'cash',
+  default_account_id: 'a1',
+  default_account_name: 'Cash drawer',
+  requires_reference: false,
+  sort_order: 0,
+  is_active: true,
 }
 
 function routes(extra: Record<string, unknown> = {}) {
@@ -131,7 +137,9 @@ describe('POS', () => {
     await within(grid).findByRole('button', { name: 'Add Miniket Rice 5kg to cart' })
 
     await userEvent.type(filter, 'P0000')
-    await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/pos/products' && c.search.includes('q=P0000') && c.search.includes('limit=48'))).toBe(true))
+    await waitFor(() =>
+      expect(calls.some((c) => c.path === '/api/v1/pos/products' && c.search.includes('q=P0000') && c.search.includes('limit=48'))).toBe(true),
+    )
     expect(within(grid).getByRole('button', { name: 'Add Miniket Rice 5kg to cart' })).toBeInTheDocument()
 
     await userEvent.type(filter, 'zz')
@@ -165,7 +173,7 @@ describe('POS', () => {
     expect(screen.getByRole('combobox', { name: 'Search products' })).toHaveFocus()
   })
 
-  it('lays cards out as name on top, thumbnail beside code, price and stock, and drops the thumbnail when images are off', async () => {
+  it('lays cards out as name on top, thumbnail beside code, price and stock, and drops the thumbnails (cards and cart) when images are off', async () => {
     mockApi(routes())
     const first = renderRoute('/pos')
     let card = await within(await screen.findByRole('region', { name: 'Products' })).findByRole('button', { name: 'Add Miniket Rice 5kg to cart' })
@@ -181,7 +189,10 @@ describe('POS', () => {
     expect(card.querySelector('svg')).toBeNull()
     expect(card).toHaveTextContent(/P000001.*450\.50.*10 pcs in stock/)
     await userEvent.click(card)
-    expect(await screen.findByLabelText('Quantity of Miniket Rice 5kg')).toHaveValue('1')
+    const qty = await screen.findByLabelText('Quantity of Miniket Rice 5kg')
+    expect(qty).toHaveValue('1')
+    // The cart line drops its thumbnail too.
+    expect(qty.closest('li')?.querySelector('svg')).toBeNull()
   })
 
   it('hides the product panel when it is turned off in settings and the cart still works', async () => {
@@ -288,8 +299,19 @@ describe('POS', () => {
 
   it('finds a customer by phone in the inline search and puts them on the cart', async () => {
     const karim = {
-      id: 'c1', code: 'C0001', name: 'Karim Mia', phone: '01711000002', email: null, address: null, credit_limit: null,
-      opening_balance: '0.00', current_balance: '250.00', is_walk_in: false, notes: null, status: 'active', version: 1,
+      id: 'c1',
+      code: 'C0001',
+      name: 'Karim Mia',
+      phone: '01711000002',
+      email: null,
+      address: null,
+      credit_limit: null,
+      opening_balance: '0.00',
+      current_balance: '250.00',
+      is_walk_in: false,
+      notes: null,
+      status: 'active',
+      version: 1,
     }
     const calls = mockApi(routes({ 'GET /api/v1/customers': { data: [karim], next_cursor: null } }))
     renderRoute('/pos')
@@ -316,8 +338,19 @@ describe('POS', () => {
         'POST /api/v1/customers': (call: { body: unknown }) =>
           Response.json(
             {
-              id: 'c9', code: 'C0009', name: 'Salma Begum', phone: '01811000009', email: null, address: null, credit_limit: null,
-              opening_balance: '0.00', current_balance: '0.00', is_walk_in: false, notes: null, status: 'active', version: 1,
+              id: 'c9',
+              code: 'C0009',
+              name: 'Salma Begum',
+              phone: '01811000009',
+              email: null,
+              address: null,
+              credit_limit: null,
+              opening_balance: '0.00',
+              current_balance: '0.00',
+              is_walk_in: false,
+              notes: null,
+              status: 'active',
+              version: 1,
               ...(call.body as object),
             },
             { status: 201 },

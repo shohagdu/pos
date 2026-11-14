@@ -33,15 +33,23 @@ export function PaymentMethodsSection({ tenantId, accounts }: { tenantId: string
       {!methods.data ? (
         <QueryStatus query={methods} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
+        <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
+          <table className="table-stack w-full text-sm">
             <caption className="sr-only">{t('money.methods')}</caption>
             <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
               <tr>
-                <th scope="col" className="px-3 py-2.5 text-left">{t('money.method')}</th>
-                <th scope="col" className="px-3 py-2.5 text-left">{t('money.defaultAccount')}</th>
-                <th scope="col" className="px-3 py-2.5 text-center">{t('money.requiresReference')}</th>
-                <th scope="col" className="px-3 py-2.5 text-center">{t('money.active')}</th>
+                <th scope="col" className="px-3 py-2.5 text-left">
+                  {t('money.method')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-left">
+                  {t('money.defaultAccount')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-center">
+                  {t('money.requiresReference')}
+                </th>
+                <th scope="col" className="px-3 py-2.5 text-center">
+                  {t('money.active')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -51,7 +59,7 @@ export function PaymentMethodsSection({ tenantId, accounts }: { tenantId: string
                     <div className="font-medium">{m.name}</div>
                     <div className="text-xs text-ink-muted">{t(`money.methodTypes.${m.method_type}`, { defaultValue: m.method_type })}</div>
                   </td>
-                  <td className="px-3 py-2">
+                  <td data-label={t('money.defaultAccount')} className="px-3 py-2">
                     {m.method_type === 'customer_credit' ? (
                       <span className="text-ink-muted">—</span>
                     ) : (
@@ -74,7 +82,7 @@ export function PaymentMethodsSection({ tenantId, accounts }: { tenantId: string
                       </select>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-center">
+                  <td data-label={t('money.requiresReference')} className="px-3 py-2 text-center">
                     <input
                       type="checkbox"
                       className="size-5 accent-brand-600"
@@ -84,7 +92,7 @@ export function PaymentMethodsSection({ tenantId, accounts }: { tenantId: string
                       onChange={(e) => change(m, { requires_reference: e.target.checked })}
                     />
                   </td>
-                  <td className="px-3 py-2 text-center">
+                  <td data-label={t('money.active')} className="px-3 py-2 text-center">
                     <input
                       type="checkbox"
                       className="size-5 accent-brand-600"

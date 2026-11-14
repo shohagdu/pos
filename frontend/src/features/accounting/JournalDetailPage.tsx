@@ -73,7 +73,7 @@ export function JournalDetailPage() {
         j && (
           <>
             <Card className="p-4">
-              <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr_auto_1fr]">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr_auto_1fr]">
                 <dt className="text-ink-muted">{t('common.date')}</dt>
                 <dd>{formatDate(j.entry_date, lang)}</dd>
                 <dt className="text-ink-muted">{t('common.status')}</dt>

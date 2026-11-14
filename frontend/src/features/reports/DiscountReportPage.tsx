@@ -70,7 +70,7 @@ export function DiscountReportPage() {
       <Loaded query={report}>
         {(r) => (
           <>
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <StatCard label={t('reports.discounts.gross')} value={money(r.gross, lang)} />
               <StatCard label={t('reports.discounts.itemDiscount')} value={money(r.item_discount, lang)} />
               <StatCard label={t('reports.discounts.invoiceDiscount')} value={money(r.invoice_discount, lang)} />
@@ -90,9 +90,22 @@ export function DiscountReportPage() {
                   { key: 'gross', header: t('reports.discounts.gross'), align: 'right', render: (c) => money(c.gross, lang) },
                   { key: 'item', header: t('reports.discounts.itemDiscount'), align: 'right', render: (c) => money(c.item_discount, lang) },
                   { key: 'invoice', header: t('reports.discounts.invoiceDiscount'), align: 'right', render: (c) => money(c.invoice_discount, lang) },
-                  { key: 'total', header: t('reports.discounts.totalDiscount'), align: 'right', render: (c) => <span className="font-semibold">{money(c.total_discount, lang)}</span> },
+                  {
+                    key: 'total',
+                    header: t('reports.discounts.totalDiscount'),
+                    align: 'right',
+                    render: (c) => <span className="font-semibold">{money(c.total_discount, lang)}</span>,
+                  },
                 ]}
-                footer={[t('common.totals'), null, null, money(r.gross, lang), money(r.item_discount, lang), money(r.invoice_discount, lang), money(r.total_discount, lang)]}
+                footer={[
+                  t('common.totals'),
+                  null,
+                  null,
+                  money(r.gross, lang),
+                  money(r.item_discount, lang),
+                  money(r.invoice_discount, lang),
+                  money(r.total_discount, lang),
+                ]}
               />
             </Section>
             <Section title={t('reports.discounts.topInvoices')}>
@@ -115,7 +128,12 @@ export function DiscountReportPage() {
                   { key: 'customer', header: t('reports.discounts.customer'), render: (s) => s.customer_name },
                   { key: 'cashier', header: t('reports.discounts.cashier'), render: (s) => cashier(s.cashier_name) },
                   { key: 'subtotal', header: t('reports.discounts.subtotal'), align: 'right', render: (s) => money(s.subtotal, lang) },
-                  { key: 'discount', header: t('reports.discounts.discount'), align: 'right', render: (s) => <span className="font-semibold">{money(s.discount, lang)}</span> },
+                  {
+                    key: 'discount',
+                    header: t('reports.discounts.discount'),
+                    align: 'right',
+                    render: (s) => <span className="font-semibold">{money(s.discount, lang)}</span>,
+                  },
                   { key: 'total', header: t('reports.discounts.grandTotal'), align: 'right', render: (s) => money(s.grand_total, lang) },
                 ]}
               />

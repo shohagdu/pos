@@ -49,16 +49,23 @@ export function Dialog({
         e.preventDefault()
         onClose()
       }}
-      className={`m-auto w-[calc(100%-2rem)] rounded-xl border border-border bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40 ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
+      className={`m-auto w-[calc(100%-2rem)] rounded-xl border border-border bg-surface p-0 text-ink shadow-xl backdrop:bg-ink/40 max-sm:mb-0 max-sm:w-full max-sm:max-w-none max-sm:rounded-b-none ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
     >
-      <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-3">
+      <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-2 sm:px-5 sm:py-3">
         <h2 className="text-lg font-semibold">{title}</h2>
-        <button type="button" onClick={onClose} className="rounded p-1 text-ink-muted hover:bg-canvas" aria-label={t('common.close')}>
+        <button
+          type="button"
+          onClick={onClose}
+          className="-mr-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-ink-muted hover:bg-canvas lg:size-9"
+          aria-label={t('common.close')}
+        >
           ✕
         </button>
       </div>
-      <div className="max-h-[70vh] overflow-y-auto px-5 py-4">{children}</div>
-      {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
+      <div className="dialog-body max-h-[70svh] overflow-y-auto px-4 py-4 sm:px-5">{children}</div>
+      {footer && (
+        <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">{footer}</div>
+      )}
     </dialog>
   )
 }

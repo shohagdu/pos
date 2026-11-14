@@ -46,12 +46,14 @@ function Settings({ tenantId, saved, hasEmail }: { tenantId: string; saved: Noti
       <PageHeader title={t('notifications.settings')} subtitle={t('notifications.settingsHint')} />
       {!hasEmail && <Alert>{t('notifications.noEmail')}</Alert>}
       {!smsAvailable && <p className="text-sm text-ink-muted">{t('notifications.smsUnavailable')}</p>}
-      <div className="overflow-x-auto rounded-xl border border-border bg-surface">
+      <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
         <table className="w-full text-sm">
           <caption className="sr-only">{t('notifications.settings')}</caption>
           <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
             <tr>
-              <th scope="col" className="px-4 py-2 text-left">{t('notifications.type')}</th>
+              <th scope="col" className="px-4 py-2 text-left">
+                {t('notifications.type')}
+              </th>
               {CHANNELS.map((c) => (
                 <th key={c} scope="col" className="px-4 py-2 text-center">
                   {t(`notifications.channels.${c}`)}

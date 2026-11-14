@@ -44,7 +44,7 @@ export function Renewal({
       {plans.length === 0 ? (
         <p className="text-sm text-ink-muted">{t('billing.choose.none')}</p>
       ) : (
-        <ul className="grid gap-4 md:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {plans.map((plan) => (
             <PlanCard
               key={plan.id}

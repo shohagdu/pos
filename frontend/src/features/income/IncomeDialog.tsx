@@ -85,7 +85,7 @@ export function IncomeDialog({
     <Dialog open onClose={onClose} title={t('income.new')} wide>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label={t('income.category')}
             value={categoryId}
@@ -105,7 +105,13 @@ export function IncomeDialog({
               ...activeAccounts.map((a) => ({ value: a.id, label: label(a) })),
             ]}
           />
-          <TextField label={`${t('income.source')} (${t('common.optional')})`} value={source} onChange={(e) => setSource(e.target.value)} maxLength={200} error={errors.source} />
+          <TextField
+            label={`${t('income.source')} (${t('common.optional')})`}
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            maxLength={200}
+            error={errors.source}
+          />
           <TextField
             label={`${t('income.reference')} (${t('common.optional')})`}
             value={reference}

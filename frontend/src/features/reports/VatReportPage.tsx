@@ -30,7 +30,10 @@ export function VatReportPage() {
   const exports: ExportAction[] = []
   const d = report.data
   if (d) {
-    const rows = [...d.output.map((r) => ({ side: t('reports.vat.outputVat'), label: rateLabel(r, 'output'), ...r })), ...d.input.map((r) => ({ side: t('reports.vat.inputVat'), label: rateLabel(r, 'input'), ...r }))]
+    const rows = [
+      ...d.output.map((r) => ({ side: t('reports.vat.outputVat'), label: rateLabel(r, 'output'), ...r })),
+      ...d.input.map((r) => ({ side: t('reports.vat.inputVat'), label: rateLabel(r, 'input'), ...r })),
+    ]
     exports.push({
       run: () =>
         downloadCsv(`vat-summary-${range.from}-${range.to}`, rows, [
@@ -72,7 +75,7 @@ export function VatReportPage() {
           return (
             <>
               {!r.is_vat_registered && <Alert tone="info">{t('reports.vat.notRegistered')}</Alert>}
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <StatCard label={t('reports.vat.outputVat')} value={money(r.output_vat, lang)} />
                 <StatCard label={t('reports.vat.inputVat')} value={money(r.input_vat, lang)} />
                 <StatCard

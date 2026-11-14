@@ -19,10 +19,7 @@ import { fieldErrors, hasFormError, problemMessage } from '../../lib/problem'
 function useRefreshMoney(tenantId: string) {
   const queryClient = useQueryClient()
   return () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: moneyKeys.all(tenantId) }),
-      queryClient.invalidateQueries({ queryKey: ['reports', tenantId] }),
-    ])
+    Promise.all([queryClient.invalidateQueries({ queryKey: moneyKeys.all(tenantId) }), queryClient.invalidateQueries({ queryKey: ['reports', tenantId] })])
 }
 
 /** Create (no `account`) or edit a payment account. Mount only while open. */
@@ -179,8 +176,14 @@ export function TransferDialog({
     <Dialog open onClose={onClose} title={t('money.transfer')}>
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         {transfer.isError && hasFormError(transfer.error) && <Alert tone="danger">{problemMessage(transfer.error, t)}</Alert>}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Select label={t('money.fromAccount')} value={from} onChange={(e) => setFrom(e.target.value)} error={errors.from_account_id} options={active.map(option)} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Select
+            label={t('money.fromAccount')}
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            error={errors.from_account_id}
+            options={active.map(option)}
+          />
           <Select label={t('money.toAccount')} value={to} onChange={(e) => setTo(e.target.value)} error={errors.to_account_id} options={active.map(option)} />
           <TextField label={t('common.amount')} value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" required error={errors.amount} />
           <TextField
@@ -192,8 +195,20 @@ export function TransferDialog({
             error={errors.fee_amount}
           />
         </div>
-        <TextField label={`${t('money.reference')} (${t('common.optional')})`} value={reference} onChange={(e) => setReference(e.target.value)} maxLength={100} error={errors.reference} />
-        <TextField label={`${t('common.note')} (${t('common.optional')})`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} error={errors.note} />
+        <TextField
+          label={`${t('money.reference')} (${t('common.optional')})`}
+          value={reference}
+          onChange={(e) => setReference(e.target.value)}
+          maxLength={100}
+          error={errors.reference}
+        />
+        <TextField
+          label={`${t('common.note')} (${t('common.optional')})`}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          maxLength={500}
+          error={errors.note}
+        />
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}

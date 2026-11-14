@@ -12,8 +12,8 @@ import { Icon } from '../../app/layouts/Icon'
 import { ProductThumb } from '../products/ProductThumb'
 
 const input =
-  'min-h-10 rounded-lg border border-border bg-surface px-2 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
-const stepButton = 'size-10 shrink-0 rounded-lg border border-border bg-surface text-lg font-semibold hover:bg-canvas'
+  'min-h-11 rounded-lg border border-border bg-surface px-2 text-base tabular-nums lg:min-h-10 lg:text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
+const stepButton = 'size-11 lg:size-10 shrink-0 rounded-lg border border-border bg-surface text-lg font-semibold hover:bg-canvas'
 
 // Narrow: name, total and remove on top; quantity, price and discount below.
 // Wide (@4xl): one row with a column per field, under a matching header.
@@ -33,6 +33,7 @@ export function CartTable({
   canOverridePrice,
   businessDate,
   flash = null,
+  showImages = true,
 }: {
   lines: CartLine[]
   /** Priced lines in cart order; `null` while an input is invalid. */
@@ -46,6 +47,8 @@ export function CartTable({
   businessDate: string
   /** The line just added; `n` changes on every add so a repeat add flashes again. */
   flash?: { id: string; n: number } | null
+  /** Thumbnails on the lines (Settings → Invoice, tax & POS). */
+  showImages?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const rows = useRef(new Map<string, HTMLLIElement>())
@@ -89,9 +92,12 @@ export function CartTable({
         // A container query picks the layout: table-like columns when the
         // cart is wide, two rows per line when it sits beside the products.
         <div className="@container lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-          <div aria-hidden="true" className={`${rowGrid} sticky top-0 z-10 hidden border-b border-border bg-surface px-3 py-2 text-xs text-ink-muted @4xl:grid`}>
+          <div
+            aria-hidden="true"
+            className={`${rowGrid} sticky top-0 z-10 hidden border-b border-border bg-surface px-3 py-2 text-xs text-ink-muted @4xl:grid`}
+          >
             <span className="flex gap-2 [grid-area:item]">
-              <span className="w-5 shrink-0 text-right">{t('pos.sl')}</span>
+              <span className="w-6 shrink-0 text-center">{t('pos.sl')}</span>
               {t('pos.item')}
             </span>
             <span className="[grid-area:qty]">{t('common.quantity')}</span>
@@ -126,12 +132,17 @@ export function CartTable({
                   className={`${rowGrid} border-b border-border px-3 py-2.5 last:border-b-0 ${isSelected ? 'bg-brand-50/60 shadow-[inset_3px_0_0_var(--color-brand-600)]' : ''}`}
                 >
                   <div className="flex min-w-0 items-start gap-2 [grid-area:item]">
-                    {/* Serial number of the line (SL), as on the receipt. */}
-                    <span className="mt-2 w-5 shrink-0 text-right text-xs font-semibold text-ink-muted tabular-nums">
+                    {/* Serial number of the line (SL), as on the receipt: a numbered
+                        badge, filled on the selected line. */}
+                    <span
+                      className={`mt-1.5 flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-bold tabular-nums transition-colors ${
+                        isSelected ? 'bg-brand-600 text-white' : 'bg-brand-100 text-brand-700'
+                      }`}
+                    >
                       <span className="sr-only">{t('pos.sl')} </span>
                       {i + 1}
                     </span>
-                    <ProductThumb fileId={item.image_file_id} />
+                    {showImages && <ProductThumb fileId={item.image_file_id} />}
                     <div className="min-w-0">
                       <span className="block leading-snug font-medium">{name}</span>
                       <span className="block text-xs text-ink-muted">
@@ -161,9 +172,16 @@ export function CartTable({
 
                   <div className="flex flex-wrap items-end gap-x-3 gap-y-2 [grid-area:controls] @4xl:contents">
                     <div className="[grid-area:qty]">
-                      <span aria-hidden="true" className={narrowLabel}>{t('common.quantity')}</span>
+                      <span aria-hidden="true" className={narrowLabel}>
+                        {t('common.quantity')}
+                      </span>
                       <div className="flex items-center gap-1">
-                        <button type="button" className={stepButton} aria-label={t('pos.decrease', { name })} onClick={() => dispatch({ type: 'step', variantId: id, delta: -1 })}>
+                        <button
+                          type="button"
+                          className={stepButton}
+                          aria-label={t('pos.decrease', { name })}
+                          onClick={() => dispatch({ type: 'step', variantId: id, delta: -1 })}
+                        >
                           −
                         </button>
                         <input
@@ -174,14 +192,21 @@ export function CartTable({
                           value={line.quantity}
                           onChange={(e) => dispatch({ type: 'quantity', variantId: id, quantity: e.target.value })}
                         />
-                        <button type="button" className={stepButton} aria-label={t('pos.increase', { name })} onClick={() => dispatch({ type: 'step', variantId: id, delta: 1 })}>
+                        <button
+                          type="button"
+                          className={stepButton}
+                          aria-label={t('pos.increase', { name })}
+                          onClick={() => dispatch({ type: 'step', variantId: id, delta: 1 })}
+                        >
                           +
                         </button>
                       </div>
                     </div>
 
                     <div className="@4xl:text-right [grid-area:price]">
-                      <span aria-hidden="true" className={narrowLabel}>{t('common.price')}</span>
+                      <span aria-hidden="true" className={narrowLabel}>
+                        {t('common.price')}
+                      </span>
                       {canOverridePrice ? (
                         <input
                           className={`${input} w-24 text-right`}
@@ -192,12 +217,14 @@ export function CartTable({
                           onChange={(e) => dispatch({ type: 'price', variantId: id, price: e.target.value })}
                         />
                       ) : (
-                        <span className="flex min-h-10 items-center tabular-nums @4xl:justify-end">{formatMoney(line.unitPrice, lang)}</span>
+                        <span className="flex min-h-11 items-center tabular-nums lg:min-h-10 @4xl:justify-end">{formatMoney(line.unitPrice, lang)}</span>
                       )}
                     </div>
 
                     <div className="[grid-area:disc]">
-                      <span aria-hidden="true" className={narrowLabel}>{t('pos.discount')}</span>
+                      <span aria-hidden="true" className={narrowLabel}>
+                        {t('pos.discount')}
+                      </span>
                       <div className="flex items-center gap-1">
                         <input
                           className={`${input} w-16 text-right`}
@@ -213,7 +240,9 @@ export function CartTable({
                           className={input}
                           aria-label={t('pos.discountTypeFor', { name })}
                           value={line.discountType}
-                          onChange={(e) => dispatch({ type: 'discount', variantId: id, discountType: e.target.value as DiscountType, value: line.discountValue })}
+                          onChange={(e) =>
+                            dispatch({ type: 'discount', variantId: id, discountType: e.target.value as DiscountType, value: line.discountValue })
+                          }
                         >
                           <option value="amount">{currencySymbol()}</option>
                           <option value="percent">{t('pos.discountPercent')}</option>
@@ -233,7 +262,7 @@ export function CartTable({
 
                   <button
                     type="button"
-                    className="-mt-1 -mr-1 size-9 justify-self-end rounded-lg text-ink-muted [grid-area:remove] hover:bg-danger/10 hover:text-danger @4xl:mt-0.5"
+                    className="-mt-1 -mr-1 size-11 justify-self-end lg:size-9 rounded-lg text-ink-muted [grid-area:remove] hover:bg-danger/10 hover:text-danger @4xl:mt-0.5"
                     aria-label={t('pos.removeLine', { name })}
                     onClick={(e) => {
                       e.stopPropagation()

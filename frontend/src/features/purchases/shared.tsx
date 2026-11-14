@@ -47,7 +47,7 @@ export function PaymentFields({
   const accounts = (usePaymentAccounts(tenantId).data ?? []).filter((a) => a.status === 'active')
   const method = methods.find((m) => m.id === value.method_id)
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Select
         label={t('purchases.pay.method')}
         value={value.method_id}
@@ -349,13 +349,7 @@ export function PostDialog({
         </div>
         <p className="text-sm text-ink-muted">{t('purchases.post.hint', { total: formatMoney(grandTotal, i18n.language) })}</p>
         {canPay && (
-          <Checkbox
-            label={t('purchases.post.withPayment')}
-            checked={withPayment}
-            onChange={(e) => setWithPayment(e.target.checked)}
-            autoFocus
-            data-autofocus
-          />
+          <Checkbox label={t('purchases.post.withPayment')} checked={withPayment} onChange={(e) => setWithPayment(e.target.checked)} autoFocus data-autofocus />
         )}
         {withPayment && <PaymentFields tenantId={tenantId} value={values} onChange={setValues} errors={errors} />}
         {post.isError && hasFormError(post.error) && <Alert tone="danger">{problemMessage(post.error, t)}</Alert>}

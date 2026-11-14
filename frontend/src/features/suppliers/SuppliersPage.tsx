@@ -98,7 +98,12 @@ export function SuppliersPage() {
             onChange={(e) => set({ status: e.target.value as PartyFilter['status'] })}
             options={STATUSES.map((s) => ({ value: s, label: t(`suppliers.statuses.${s}`) }))}
           />
-          <Checkbox label={t('suppliers.dueOnly')} checked={Boolean(filter.due_only)} onChange={(e) => set({ due_only: e.target.checked || undefined })} className="pb-3" />
+          <Checkbox
+            label={t('suppliers.dueOnly')}
+            checked={Boolean(filter.due_only)}
+            onChange={(e) => set({ due_only: e.target.checked || undefined })}
+            className="pb-3"
+          />
           <Button
             variant="secondary"
             disabled={rows.length === 0}
@@ -119,7 +124,7 @@ export function SuppliersPage() {
         </div>
       </div>
       {totalPayable !== undefined && (
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatCard label={t('suppliers.totalPayable')} value={formatMoney(totalPayable, lang)} tone="bad" hint={t('suppliers.totalPayableHint')} />
         </div>
       )}

@@ -25,6 +25,21 @@
   --animate-alert-pop: alert-pop 0.25s ease-out;
   --animate-alert-draw: alert-draw 0.45s ease-out 0.15s both;
   --animate-alert-countdown: alert-countdown linear forwards;
+
+  /* POS customer & discount bottom sheet (features/pos/PosPage.tsx) */
+  --animate-sheet-in: sheet-in 0.2s ease-out;
+  --animate-fade-in: fade-in 0.2s ease-out;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
 }
 
 @keyframes alert-pop {
@@ -60,5 +75,132 @@
   /* Bengali script needs more line height to avoid clipped vowel signs */
   :lang(bn) {
     line-height: 1.7;
+  }
+}
+
+/*
+ * Phones and tablets: form fields at 16px at least, so iOS does not zoom the
+ * page when one is focused. Unlayered on purpose, so it wins over the
+ * `text-sm` utilities on individual fields; from lg the utilities apply again.
+ */
+@media screen and (width < 64rem) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
+  select,
+  textarea {
+    font-size: max(1rem, 1em);
+  }
+}
+
+/*
+ * `table-stack`: a hand-written table that turns into one card per row below
+ * lg. Each <td> gets `data-label` (its column name, shown on the left); the
+ * first cell is the card's title. Cells without a label span the card.
+ */
+@media screen and (width < 64rem) {
+  .table-stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .table-stack,
+  .table-stack tbody,
+  .table-stack tfoot,
+  .table-stack tr,
+  .table-stack td,
+  .table-stack th[scope='row'] {
+    display: block;
+    width: 100%;
+  }
+  .table-stack tr {
+    border-bottom: 1px solid var(--color-border);
+    padding: 0.625rem 0.75rem;
+  }
+  .table-stack tr:last-child {
+    border-bottom: 0;
+  }
+  .table-stack td,
+  .table-stack th[scope='row'] {
+    padding: 0.2rem 0 !important;
+    text-align: right !important;
+    white-space: normal !important;
+  }
+  .table-stack td[data-label] {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .table-stack td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    max-width: 50%;
+    text-align: left;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--color-ink-muted);
+  }
+  .table-stack td[data-label=''] {
+    justify-content: flex-end;
+  }
+  .table-stack td[data-label='']::before {
+    content: none;
+  }
+  .table-stack tr > :first-child:not([data-label]) {
+    text-align: left !important;
+    font-weight: 500;
+  }
+  .table-stack td:empty {
+    display: none;
+  }
+  /* A totals row: label and amount on one line. */
+  .table-stack tfoot tr {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .table-stack tfoot td {
+    width: auto;
+  }
+  /* Totals rows with several amounts stack like the body rows. */
+  .table-stack tfoot tr:has(> td:nth-child(3)) {
+    display: block;
+  }
+  .table-stack tfoot tr:has(> td:nth-child(3)) > td {
+    width: 100%;
+  }
+  /* A label + amount row inside the body (opening balance). */
+  .table-stack tr.stack-pair {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .table-stack tr.stack-pair > td {
+    width: auto;
+  }
+}
+
+/*
+ * Dialogs whose form ends with its own row of buttons (Save / Cancel): keep
+ * that row pinned to the bottom of the dialog while the fields scroll, so the
+ * primary action is always reachable on short screens.
+ */
+.dialog-body form > :last-child:has([type='submit']) {
+  position: sticky;
+  bottom: -1rem;
+  z-index: 1;
+  margin: 0 -1rem -1rem;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+@media (min-width: 40rem) {
+  .dialog-body form > :last-child:has([type='submit']) {
+    margin: 0 -1.25rem -1rem;
+    padding: 0.75rem 1.25rem;
   }
 }

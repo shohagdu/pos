@@ -94,7 +94,7 @@ export function StockPage() {
     },
     { key: 'sku', header: t('inventory.sku'), render: (r) => <span className="font-mono text-xs">{r.sku}</span> },
     { key: 'category', header: t('inventory.category'), render: (r) => r.category_name ?? '—' },
-    { key: 'qty', header: t('inventory.quantity'), align: 'right', render: qty },
+    { key: 'qty', header: t('inventory.quantity'), align: 'right', card: 'amount', render: qty },
     ...(canCost
       ? ([
           { key: 'avg', header: t('inventory.avgCost'), align: 'right', render: (r) => (r.avg_cost === null ? '—' : formatMoney(r.avg_cost, lang)) },
@@ -179,7 +179,7 @@ export function StockPage() {
           />
           <Button type="submit">{t('common.search')}</Button>
         </form>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Select
             label={t('inventory.category')}
             value={filter.category_id ?? ''}

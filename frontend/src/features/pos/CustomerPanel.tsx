@@ -86,7 +86,7 @@ export function CustomerPanel({
     <section className="flex flex-col gap-2" aria-label={t('pos.customer')}>
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-xs font-medium text-ink-muted uppercase">{t('pos.customer')}</h2>
-        <kbd className="text-xs text-ink-muted">F4</kbd>
+        <kbd className="hidden text-xs text-ink-muted lg:inline">F4</kbd>
       </div>
 
       <div className="flex gap-2">
@@ -113,7 +113,7 @@ export function CustomerPanel({
               blurTimer.current = setTimeout(() => setOpen(false), 150)
             }}
             onKeyDown={onKeyDown}
-            className="min-h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+            className="min-h-11 w-full rounded-lg border border-border bg-surface px-3 text-base outline-none lg:min-h-10 lg:text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
           />
           {showList && (
             <ul
@@ -124,9 +124,7 @@ export function CustomerPanel({
               onMouseDown={() => blurTimer.current && clearTimeout(blurTimer.current)}
             >
               {found.isFetching && results.length === 0 && <li className="px-3 py-2 text-sm text-ink-muted">{t('common.loading')}</li>}
-              {!found.isFetching && q !== '' && results.length === 0 && (
-                <li className="px-3 py-2 text-sm text-ink-muted">{t('pos.noCustomerFound')}</li>
-              )}
+              {!found.isFetching && q !== '' && results.length === 0 && <li className="px-3 py-2 text-sm text-ink-muted">{t('pos.noCustomerFound')}</li>}
               {results.map((c, i) => (
                 <li
                   key={c.id}
@@ -161,7 +159,7 @@ export function CustomerPanel({
             </ul>
           )}
         </div>
-        <Button variant="secondary" className="min-h-10 shrink-0" onClick={() => onNew('')}>
+        <Button variant="secondary" className="min-h-11 shrink-0 lg:min-h-10" onClick={() => onNew('')}>
           + {t('pos.quickAdd')}
         </Button>
       </div>
@@ -185,7 +183,7 @@ export function CustomerPanel({
           </div>
         </div>
         {customer && (
-          <Button variant="ghost" className="min-h-9 shrink-0 text-sm" onClick={() => onSelect(null)}>
+          <Button variant="ghost" className="min-h-11 shrink-0 text-sm lg:min-h-9" onClick={() => onSelect(null)}>
             {t('pos.useWalkIn')}
           </Button>
         )}

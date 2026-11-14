@@ -65,7 +65,7 @@ export function ProfitReportPage() {
               <StatCard label={t('reports.profit.netProfit')} value={money(r.net_profit, lang)} tone={dec(r.net_profit) < 0n ? 'bad' : 'good'} />
               <StatCard label={t('reports.profit.netMargin')} value={pct(r.net_margin_pct)} />
             </div>
-            <div className="max-w-xl overflow-x-auto rounded-xl border border-border bg-surface">
+            <div className="relative max-w-xl overflow-x-auto rounded-xl border border-border bg-surface">
               <table className="w-full text-sm">
                 <caption className="sr-only">{t('reports.profit.title')}</caption>
                 <thead className="sr-only">

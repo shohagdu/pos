@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { NavLink } from 'react-router'
+import { Tabs } from '../../components/ui/Tabs'
 
 import { useSession } from '../auth/session'
 
@@ -15,20 +15,5 @@ export function CatalogNav() {
     ...(can('settings.manage') ? [{ to: '/products/setup/tax-rates', key: 'products.tabs.taxRates' }] : []),
     { to: '/labels', key: 'labels.nav' },
   ]
-  return (
-    <nav aria-label={t('products.tabs.label')} className="flex flex-wrap gap-1 border-b border-border">
-      {tabs.map((tab) => (
-        <NavLink
-          key={tab.to}
-          to={tab.to}
-          end
-          className={({ isActive }) =>
-            `-mb-px border-b-2 px-3 py-2 text-sm font-medium ${isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-muted hover:text-ink'}`
-          }
-        >
-          {t(tab.key)}
-        </NavLink>
-      ))}
-    </nav>
-  )
+  return <Tabs label={t('products.tabs.label')} items={tabs.map((tab) => ({ to: tab.to, label: t(tab.key) }))} />
 }

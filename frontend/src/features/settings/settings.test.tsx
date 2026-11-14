@@ -8,12 +8,37 @@ import { renderRoute } from '../../test/render'
 afterEach(() => vi.restoreAllMocks())
 
 const settings = {
-  name: 'Rahim Store', slug: 'rahim-store', legal_name: null, business_type: 'grocery', phone: null, email: null,
-  address: null, district: null, country_code: 'BD', bin_number: null, trade_license_no: null, tax_code: null,
-  rea_number: null, registry_office: null, currency_code: 'BDT', timezone: 'Asia/Dhaka', locale: 'en',
-  fiscal_year_start_month: 7, invoice_prefix: 'INV', receipt_paper: '80mm', receipt_footer: null,
-  sku_prefix: 'P', sku_digits: 6, barcode_prefix: '20', barcode_digits: 7,
-  auto_print_receipt: true, show_product_panel: true, show_product_images: true, is_vat_registered: false, prices_include_tax: false, version: 3,
+  name: 'Rahim Store',
+  slug: 'rahim-store',
+  legal_name: null,
+  business_type: 'grocery',
+  phone: null,
+  email: null,
+  address: null,
+  district: null,
+  country_code: 'BD',
+  bin_number: null,
+  trade_license_no: null,
+  tax_code: null,
+  rea_number: null,
+  registry_office: null,
+  currency_code: 'BDT',
+  timezone: 'Asia/Dhaka',
+  locale: 'en',
+  fiscal_year_start_month: 7,
+  invoice_prefix: 'INV',
+  receipt_paper: '80mm',
+  receipt_footer: null,
+  sku_prefix: 'P',
+  sku_digits: 6,
+  barcode_prefix: '20',
+  barcode_digits: 7,
+  auto_print_receipt: true,
+  show_product_panel: true,
+  show_product_images: true,
+  is_vat_registered: false,
+  prices_include_tax: false,
+  version: 3,
 }
 
 describe('settings: invoice, tax & POS', () => {
@@ -38,7 +63,7 @@ describe('settings: invoice, tax & POS', () => {
     expect(patch?.headers.get('If-Match')).toContain('3')
   })
 
-  it('greys out the image toggle while the product panel is off and still saves it', async () => {
+  it('keeps the image toggle usable while the product panel is off (it also covers cart and search) and saves both', async () => {
     const calls = mockApi({
       'POST /api/v1/auth/refresh': token('t1'),
       'GET /api/v1/auth/me': { user, memberships: [membership('t1', 'Rahim Store')], tenant: currentTenant('t1', 'Rahim Store', ['settings.manage']) },
@@ -52,9 +77,9 @@ describe('settings: invoice, tax & POS', () => {
     expect(images).toBeChecked()
     await userEvent.click(images)
     await userEvent.click(screen.getByRole('checkbox', { name: 'Show product panel on POS screen' }))
-    expect(images).toBeDisabled()
+    expect(images).toBeEnabled()
     expect(images).not.toBeChecked()
-    expect(images).toHaveAccessibleDescription('Only applies when the product panel is shown.')
+    expect(images).toHaveAccessibleDescription(/cart lines and search results/)
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(calls.some((c) => c.method === 'PATCH')).toBe(true))

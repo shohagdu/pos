@@ -45,6 +45,10 @@ export function StatementTab({ customerId, customerName }: { customerId: string;
     { key: 'credit', header: t('customers.credit'), align: 'right', render: (e) => money(e.credit) },
     { key: 'balance', header: t('customers.balance'), align: 'right', render: (e) => formatMoney(e.balance, lang) },
   ]
+  const headerText = (i: number) => {
+    const h = columns[i]?.header
+    return typeof h === 'string' ? h : ''
+  }
 
   function exportCsv() {
     if (!s) return
@@ -78,8 +82,8 @@ export function StatementTab({ customerId, customerName }: { customerId: string;
       {!s ? (
         <QueryStatus query={statement} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-sm">
+        <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
+          <table className="table-stack w-full text-sm">
             <caption className="sr-only">{t('customers.statement')}</caption>
             <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
               <tr>
@@ -91,7 +95,7 @@ export function StatementTab({ customerId, customerName }: { customerId: string;
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-border bg-canvas/50 font-medium">
+              <tr className="stack-pair border-b border-border bg-canvas/50 font-medium">
                 <td className="px-3 py-2.5" colSpan={6}>
                   {t('customers.openingBalance')}
                 </td>
@@ -106,8 +110,12 @@ export function StatementTab({ customerId, customerName }: { customerId: string;
               )}
               {s.entries.map((e, i) => (
                 <tr key={e.id} className="border-b border-border">
-                  {columns.map((c) => (
-                    <td key={c.key} className={`px-3 py-2.5 ${c.align === 'right' ? 'text-right tabular-nums whitespace-nowrap' : ''}`}>
+                  {columns.map((c, ci) => (
+                    <td
+                      key={c.key}
+                      data-label={ci === 0 ? undefined : typeof c.header === 'string' ? c.header : ''}
+                      className={`px-3 py-2.5 ${c.align === 'right' ? 'text-right tabular-nums whitespace-nowrap' : ''}`}
+                    >
                       {c.render(e, i)}
                     </td>
                   ))}
@@ -119,9 +127,15 @@ export function StatementTab({ customerId, customerName }: { customerId: string;
                 <td className="px-3 py-2.5" colSpan={4}>
                   {t('customers.closingBalance')}
                 </td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(s.total_debit, lang)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(s.total_credit, lang)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums">{formatMoney(s.closing_balance, lang)}</td>
+                <td data-label={headerText(4)} className="px-3 py-2.5 text-right tabular-nums">
+                  {formatMoney(s.total_debit, lang)}
+                </td>
+                <td data-label={headerText(5)} className="px-3 py-2.5 text-right tabular-nums">
+                  {formatMoney(s.total_credit, lang)}
+                </td>
+                <td data-label={headerText(6)} className="px-3 py-2.5 text-right tabular-nums">
+                  {formatMoney(s.closing_balance, lang)}
+                </td>
               </tr>
             </tfoot>
           </table>

@@ -10,6 +10,8 @@ export function useDebounced<T>(value: T, ms = 200): T {
   return debounced
 }
 
+export { useMediaQuery } from '../../lib/useMediaQuery'
+
 /** Tracks `navigator.onLine` (offline banner). */
 export function useOnline(): boolean {
   const [online, setOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine))

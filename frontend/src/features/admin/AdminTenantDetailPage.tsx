@@ -58,7 +58,7 @@ export function AdminTenantDetailPage() {
         ← {t('admin.tenants.title')}
       </Link>
       <Header tenant={d} />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Contact tenant={d} />
         <Usage tenant={d} />
       </div>
@@ -149,9 +149,7 @@ function Header({ tenant: d }: { tenant: TenantDetail }) {
         <Fact label={t('admin.tenant.price')}>{d.price_amount ? formatMoney(d.price_amount, lang) : '—'}</Fact>
         <Fact label={t('admin.tenant.daysLeft')}>{d.days_left === null ? '—' : t('plan.daysLeft', { count: d.days_left })}</Fact>
         <Fact label={t('admin.tenant.trialEnd')}>{formatDate(d.trial_ends_at, lang)}</Fact>
-        <Fact label={t('admin.tenant.periodEnd')}>
-          {d.billing_cycle === 'lifetime' ? t('admin.licence.noEnd') : formatDate(d.current_period_end, lang)}
-        </Fact>
+        <Fact label={t('admin.tenant.periodEnd')}>{d.billing_cycle === 'lifetime' ? t('admin.licence.noEnd') : formatDate(d.current_period_end, lang)}</Fact>
         <Fact label={t('admin.tenant.lastActivity')}>{formatDateTime(d.last_activity_at, lang)}</Fact>
         <Fact label={t('admin.tenants.created')}>{formatDate(d.created_at, lang)}</Fact>
       </dl>
@@ -274,7 +272,7 @@ function Entitlements({ tenant: d }: { tenant: TenantDetail }) {
   const { t } = useTranslation()
   return (
     <Section title={t('admin.tenant.entitlements')}>
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {d.entitlements.map((e) => (
           <li key={e.code} className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm">
             <span>
@@ -333,7 +331,12 @@ function Overrides({ tenant: d }: { tenant: TenantDetail }) {
         columns={[
           { key: 'feature', header: t('admin.tenant.feature'), render: (o) => featureName(t, { code: o.feature_code, name: o.feature_name }) },
           { key: 'value', header: t('admin.tenant.value'), render: (o) => overrideValue(t, o) },
-          { key: 'expires', header: t('admin.tenant.expires'), className: 'whitespace-nowrap', render: (o) => (o.expires_at ? formatDate(o.expires_at, lang) : t('admin.tenant.never')) },
+          {
+            key: 'expires',
+            header: t('admin.tenant.expires'),
+            className: 'whitespace-nowrap',
+            render: (o) => (o.expires_at ? formatDate(o.expires_at, lang) : t('admin.tenant.never')),
+          },
           { key: 'reason', header: t('common.reason'), render: (o) => o.reason },
           {
             key: 'by',

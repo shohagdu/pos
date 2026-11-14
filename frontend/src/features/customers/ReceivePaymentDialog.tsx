@@ -96,12 +96,7 @@ export function ReceivePaymentDialog({ customer, tenantId, onClose }: { customer
 
   if (result) {
     return (
-      <Dialog
-        open
-        onClose={onClose}
-        title={t('customers.receivePayment')}
-        footer={<Button onClick={onClose}>{t('common.close')}</Button>}
-      >
+      <Dialog open onClose={onClose} title={t('customers.receivePayment')} footer={<Button onClick={onClose}>{t('common.close')}</Button>}>
         <div className="flex flex-col gap-2">
           <Alert tone="success">{t('customers.paymentReceived', { no: result.payment_no, amount: formatMoney(result.amount, lang) })}</Alert>
           {isPositive(result.unallocated_amount) && (
@@ -123,8 +118,15 @@ export function ReceivePaymentDialog({ customer, tenantId, onClose }: { customer
           </p>
           {collect.isError && hasFormError(collect.error) && <Alert tone="danger">{problemMessage(collect.error, t)}</Alert>}
           {methods.isError && <Alert tone="danger">{problemMessage(methods.error, t)}</Alert>}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextField label={t('common.amount')} value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" required error={errors.amount} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <TextField
+              label={t('common.amount')}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              required
+              error={errors.amount}
+            />
             <Select
               label={t('customers.method')}
               value={method?.id ?? ''}
@@ -142,7 +144,10 @@ export function ReceivePaymentDialog({ customer, tenantId, onClose }: { customer
                 onChange={(e) => setAccountId(e.target.value)}
                 error={errors.account_id}
                 options={[
-                  { value: '', label: method?.default_account_name ? t('customers.methodAccount', { name: method.default_account_name }) : t('customers.defaultAccount') },
+                  {
+                    value: '',
+                    label: method?.default_account_name ? t('customers.methodAccount', { name: method.default_account_name }) : t('customers.defaultAccount'),
+                  },
                   ...accountOptions.map((a) => ({ value: a.id, label: a.name })),
                 ]}
               />
@@ -156,7 +161,13 @@ export function ReceivePaymentDialog({ customer, tenantId, onClose }: { customer
               error={errors.reference}
             />
           </div>
-          <TextField label={`${t('common.note')} (${t('common.optional')})`} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} error={errors.note} />
+          <TextField
+            label={`${t('common.note')} (${t('common.optional')})`}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={500}
+            error={errors.note}
+          />
           <Checkbox
             label={t('customers.chooseInvoices')}
             hint={t('customers.chooseInvoicesHint')}
@@ -205,15 +216,23 @@ function OpenInvoices({
     .filter(([, v]) => (tryParse(v) ?? 0n) > 0n)
     .map(([id]) => id)
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
+    <div className="relative overflow-x-auto rounded-lg border border-border">
       <table className="w-full text-sm">
         <caption className="sr-only">{t('customers.openInvoices')}</caption>
         <thead className="bg-canvas text-xs text-ink-muted uppercase">
           <tr>
-            <th scope="col" className="px-3 py-2 text-left">{t('customers.invoiceNo')}</th>
-            <th scope="col" className="px-3 py-2 text-left">{t('common.date')}</th>
-            <th scope="col" className="px-3 py-2 text-right">{t('customers.due')}</th>
-            <th scope="col" className="px-3 py-2 text-right">{t('customers.apply')}</th>
+            <th scope="col" className="px-3 py-2 text-left">
+              {t('customers.invoiceNo')}
+            </th>
+            <th scope="col" className="px-3 py-2 text-left">
+              {t('common.date')}
+            </th>
+            <th scope="col" className="px-3 py-2 text-right">
+              {t('customers.due')}
+            </th>
+            <th scope="col" className="px-3 py-2 text-right">
+              {t('customers.apply')}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -226,11 +245,7 @@ function OpenInvoices({
                 <td className="px-3 py-2 text-right tabular-nums">{formatMoney(s.due_total, lang)}</td>
                 <td className="px-3 py-2 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      className="min-h-9 px-2 text-xs"
-                      onClick={() => setShares((sh) => ({ ...sh, [s.id]: trimDecimal(s.due_total) }))}
-                    >
+                    <Button variant="ghost" className="min-h-9 px-2 text-xs" onClick={() => setShares((sh) => ({ ...sh, [s.id]: trimDecimal(s.due_total) }))}>
                       {t('customers.full')}
                     </Button>
                     <input

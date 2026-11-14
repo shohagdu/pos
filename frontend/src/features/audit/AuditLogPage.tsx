@@ -144,17 +144,29 @@ function AuditLog({ tenantId }: { tenantId: string }) {
       ) : rows.length === 0 ? (
         <p className="text-sm text-ink-muted">{t('audit.none')}</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border bg-surface">
-          <table className="w-full text-left text-sm">
+        <div className="relative overflow-x-auto rounded-xl border border-border bg-surface">
+          <table className="table-stack w-full text-left text-sm">
             <caption className="sr-only">{t('audit.title')}</caption>
             <thead className="border-b border-border bg-canvas text-xs text-ink-muted uppercase">
               <tr>
-                <th scope="col" className="px-3 py-2.5 whitespace-nowrap">{t('audit.time')}</th>
-                <th scope="col" className="px-3 py-2.5">{t('audit.actor')}</th>
-                <th scope="col" className="px-3 py-2.5">{t('audit.action')}</th>
-                <th scope="col" className="px-3 py-2.5">{t('audit.entity')}</th>
-                <th scope="col" className="px-3 py-2.5">{t('common.reason')}</th>
-                <th scope="col" className="px-3 py-2.5">{t('audit.ip')}</th>
+                <th scope="col" className="px-3 py-2.5 whitespace-nowrap">
+                  {t('audit.time')}
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  {t('audit.actor')}
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  {t('audit.action')}
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  {t('audit.entity')}
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  {t('common.reason')}
+                </th>
+                <th scope="col" className="px-3 py-2.5">
+                  {t('audit.ip')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -173,7 +185,7 @@ function AuditLog({ tenantId }: { tenantId: string }) {
                             e.stopPropagation()
                             toggle()
                           }}
-                          className="text-left hover:underline"
+                          className="flex min-h-11 items-center text-left hover:underline lg:min-h-0"
                         >
                           <span aria-hidden className="mr-1 inline-block w-3 text-ink-muted">
                             {expanded ? '▾' : '▸'}
@@ -182,8 +194,8 @@ function AuditLog({ tenantId }: { tenantId: string }) {
                           <span className="sr-only"> — {t('audit.details')}</span>
                         </button>
                       </td>
-                      <td className="px-3 py-2.5">
-                        <div className="flex flex-wrap items-center gap-2">
+                      <td data-label={t('audit.actor')} className="px-3 py-2.5">
+                        <div className="flex flex-wrap items-center justify-end gap-2 lg:justify-start">
                           {r.actor_id ? (
                             <button
                               type="button"
@@ -202,8 +214,10 @@ function AuditLog({ tenantId }: { tenantId: string }) {
                           <Badge tone={ACTOR_TONE[r.actor_type] ?? 'neutral'}>{t(`audit.actorTypes.${r.actor_type}`)}</Badge>
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-xs">{r.action}</td>
-                      <td className="px-3 py-2.5">
+                      <td data-label={t('audit.action')} className="px-3 py-2.5 font-mono text-xs break-all">
+                        {r.action}
+                      </td>
+                      <td data-label={t('audit.entity')} className="px-3 py-2.5">
                         {r.entity_type ? (
                           <>
                             {t(`audit.entities.${r.entity_type}`, { defaultValue: r.entity_type })}
@@ -217,8 +231,12 @@ function AuditLog({ tenantId }: { tenantId: string }) {
                           '—'
                         )}
                       </td>
-                      <td className="px-3 py-2.5">{r.reason ?? '—'}</td>
-                      <td className="px-3 py-2.5 font-mono text-xs whitespace-nowrap">{r.ip_address ?? '—'}</td>
+                      <td data-label={t('common.reason')} className="px-3 py-2.5">
+                        {r.reason ?? '—'}
+                      </td>
+                      <td data-label={t('audit.ip')} className="px-3 py-2.5 font-mono text-xs whitespace-nowrap">
+                        {r.ip_address ?? '—'}
+                      </td>
                     </tr>
                     {expanded && (
                       <tr className="border-b border-border">

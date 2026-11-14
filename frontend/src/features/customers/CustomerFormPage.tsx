@@ -89,12 +89,12 @@ function CustomerForm({ customer, tenantId }: { customer?: Customer; tenantId: s
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-6">
         <Card className="flex flex-col gap-4">
           <TextField label={t('customers.name')} {...bind('name')} required maxLength={200} error={errors.name} />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField label={t('customers.phone')} {...bind('phone')} type="tel" inputMode="tel" placeholder="01XXXXXXXXX" error={errors.phone} />
             <TextField label={t('customers.email')} {...bind('email')} type="email" error={errors.email} />
           </div>
           <TextField label={t('customers.address')} {...bind('address')} maxLength={500} error={errors.address} />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <TextField
               label={t('customers.creditLimit')}
               {...bind('credit_limit')}

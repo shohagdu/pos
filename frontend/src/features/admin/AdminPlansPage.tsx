@@ -33,11 +33,7 @@ export function AdminPlansPage() {
     <div className="flex max-w-6xl flex-col gap-6">
       <PageHeader
         title={t('admin.plans.title')}
-        actions={
-          editable && plans.data && (
-            <Button onClick={() => setEditing('new')}>{t('admin.plans.new')}</Button>
-          )
-        }
+        actions={editable && plans.data && <Button onClick={() => setEditing('new')}>{t('admin.plans.new')}</Button>}
       />
       {plans.isPending ? (
         <Spinner />
@@ -46,18 +42,14 @@ export function AdminPlansPage() {
       ) : plans.data.length === 0 ? (
         <p className="text-sm text-ink-muted">{t('common.none')}</p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {plans.data.map((p) => (
             <PlanCard key={p.id} plan={p} onEdit={editable ? () => setEditing(p) : undefined} />
           ))}
         </div>
       )}
       {editing !== null && plans.data && (
-        <PlanEditor
-          plan={editing === 'new' ? null : editing}
-          template={plans.data[0]?.features ?? []}
-          onClose={() => setEditing(null)}
-        />
+        <PlanEditor plan={editing === 'new' ? null : editing} template={plans.data[0]?.features ?? []} onClose={() => setEditing(null)} />
       )}
     </div>
   )
@@ -123,15 +115,7 @@ interface FeatureRow {
   limit: string
 }
 
-function PlanEditor({
-  plan,
-  template,
-  onClose,
-}: {
-  plan: AdminPlan | null
-  template: AdminPlan['features']
-  onClose: () => void
-}) {
+function PlanEditor({ plan, template, onClose }: { plan: AdminPlan | null; template: AdminPlan['features']; onClose: () => void }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const creating = plan === null
@@ -213,7 +197,7 @@ function PlanEditor({
     >
       <form id="plan-form" onSubmit={submit} className="flex flex-col gap-4" noValidate>
         {save.isError && hasFormError(save.error) && <Alert tone="danger">{problemMessage(save.error, t)}</Alert>}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {creating ? (
             <TextField
               label={t('admin.plans.code')}
@@ -279,7 +263,7 @@ function PlanEditor({
           <legend className="text-sm font-semibold">{t('admin.plans.prices')}</legend>
           <p className="text-sm text-ink-muted">{t('admin.plans.pricesHint')}</p>
           {errors.prices && <p className="text-sm text-danger">{errors.prices}</p>}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {CYCLES.map((c) => (
               <TextField
                 key={c}
@@ -299,12 +283,7 @@ function PlanEditor({
           <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
             {features.map((f) => (
               <li key={f.code} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
-                <Checkbox
-                  label={featureName(t, f)}
-                  hint={f.code}
-                  checked={f.enabled}
-                  onChange={(e) => setFeature(f.code, { enabled: e.target.checked })}
-                />
+                <Checkbox label={featureName(t, f)} hint={f.code} checked={f.enabled} onChange={(e) => setFeature(f.code, { enabled: e.target.checked })} />
                 {f.kind === 'limit' && (
                   <TextField
                     className="w-40"

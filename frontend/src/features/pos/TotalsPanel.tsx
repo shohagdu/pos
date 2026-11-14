@@ -8,7 +8,7 @@ import type { Totals } from '../../lib/pricing'
 import type { LineProblem } from './cart'
 
 const input =
-  'min-h-10 rounded-lg border border-border bg-surface px-2 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
+  'min-h-11 rounded-lg border border-border bg-surface px-2 text-base tabular-nums lg:min-h-10 lg:text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 aria-invalid:border-danger'
 
 /** Invoice discount (F7) and the totals from the pricing engine. */
 export function TotalsPanel({
@@ -44,7 +44,7 @@ export function TotalsPanel({
     <div className="flex flex-col gap-3">
       <div>
         <label htmlFor="pos-invoice-discount" className="text-sm font-medium">
-          {t('pos.invoiceDiscount')} <kbd className="text-xs text-ink-muted">F7</kbd>
+          {t('pos.invoiceDiscount')} <kbd className="hidden text-xs text-ink-muted lg:inline">F7</kbd>
         </label>
         <div className="mt-1 flex gap-1">
           <input

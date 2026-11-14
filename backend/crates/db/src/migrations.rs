@@ -26,6 +26,7 @@ const RELEASED_CHECKSUMS: &[(i64, &str)] = &[
     (105, "4103f34bbe4e9bdcba107317b2e36ad900f7e1d6b15eb345f86326cf7894087a908a59b58c531263d6c84626c9966823"),
     (106, "080d289fca345f593ff2f7f3f6d61c45dde8dad5edd67dd9e108f839f15d9c7d660443fbfb79b728964d5b680b0b21af"),
     (110, "cec010c74ddf813371a43ea1b586a7f50d11694caf5a38996a4ae009f31a6e3ee7800905905f513d6dff6c4a4140fe52"),
+    (120, "45ce0c2cfa9dd492adc54cd5e9b2c4278d6b49f2332eaa24385bc0d3d94197c1e17bbe6518a440022c1a542862df8875"),
 ];
 
 /// Embedded migrations from `backend/migrations` (compiled into the binary).

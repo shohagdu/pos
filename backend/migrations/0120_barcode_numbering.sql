@@ -4,7 +4,8 @@
 -- Product codes. They were fixed in-store EAN-13s (`20` + 10 digits + check
 -- digit) before; those stay on their products and keep scanning.
 
-ALTER TABLE document_sequences DROP CHECK ck_docseq_type;
+-- DROP CONSTRAINT (not DROP CHECK) so it also runs on MariaDB.
+ALTER TABLE document_sequences DROP CONSTRAINT ck_docseq_type;
 ALTER TABLE document_sequences ADD CONSTRAINT ck_docseq_type CHECK (doc_type IN ('sale','sale_return','purchase',
     'purchase_return','goods_receipt','payment_in','payment_out','expense','income','adjustment','transfer','count',
     'journal','customer','supplier','product','barcode'));

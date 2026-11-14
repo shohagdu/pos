@@ -69,8 +69,18 @@ export interface BusinessSettings {
   auto_print_receipt: boolean
   /** Show the product grid beside the cart on the POS screen. */
   show_product_panel: boolean
-  /** Show photos on the POS product cards (only matters with the panel on). */
+  /** Show photos on the POS product cards, cart lines and search results. */
   show_product_images: boolean
+  /** Discounts: stackable automatic promotions combine on a line. */
+  promotions_stack?: boolean
+  /** Discounts: a coupon combines with automatic promotions (else the better one wins). */
+  coupon_stacks?: boolean
+  /** Discounts: the invoice discount is allowed on top of promotions. */
+  manual_discount_with_promotions?: boolean
+  /** Discounts: a fully returned sale gives its coupon use back. */
+  restore_coupon_on_full_return?: boolean
+  /** Discounts: largest manual discount % for roles without their own limit. */
+  cashier_max_discount_pct?: string
   is_vat_registered: boolean
   prices_include_tax: boolean
   version: number

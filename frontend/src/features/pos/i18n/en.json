@@ -80,7 +80,8 @@
       "discount": "Enter a valid discount (percent up to 100).",
       "discountTooLarge": "The discount is larger than the amount.",
       "discountOverLimit": "This discount is above your limit; ask a manager.",
-      "amount": "Enter a valid amount."
+      "amount": "Enter a valid amount.",
+      "invoiceWithPromotions": "An invoice discount cannot be added to a cart with offers (Settings → Discounts)."
     },
     "shortcuts": {
       "title": "Keyboard shortcuts",
@@ -92,7 +93,8 @@
       "hold": "Hold",
       "held": "Held carts",
       "removeLine": "Remove line",
-      "close": "Close dialog"
+      "close": "Close dialog",
+      "coupon": "Coupon"
     },
     "noCustomerFound": "No customer found.",
     "addAsNew": "+ Add “{{text}}” as a new customer",
@@ -127,6 +129,43 @@
     "noProductsFound": "No products found",
     "regularPrice": "Regular price",
     "percentOff": "{{pct}}% off: −{{amount}}",
-    "sl": "SL"
+    "sl": "SL",
+    "promotions": "Promotions",
+    "couponWithCode": "Coupon {{code}}",
+    "freeUnits": "{{qty}} free",
+    "flashPartial": "Flash limit reached: only part of the quantity is discounted.",
+    "promoCappedByMin": "Offer reduced to keep the minimum selling price.",
+    "removeOffer": "Remove offer",
+    "offerRemoved": "Offer removed.",
+    "restoreOffer": "Undo",
+    "beforeOffers": "Before offers",
+    "offerEnded": "Offer ended — prices updated.",
+    "offerPromptsLabel": "Free items you can add",
+    "offerPrompt": "{{promo}}: add {{qty}} free {{name}}?",
+    "offerPromptProduct": "{{promo}}: add {{qty}} free item?",
+    "offerPromptCategory": "{{promo}}: the customer can take {{qty}} more item from the offer free.",
+    "addFree": "Add free",
+    "noThanks": "No thanks",
+    "offerNotAvailable": "The free item could not be added (not found or not for sale).",
+    "coupon": {
+      "label": "Coupon",
+      "placeholder": "Code",
+      "apply": "Apply",
+      "remove": "Remove",
+      "saved": "Applied: saves {{amount}}",
+      "notBetter": "Not applied: the automatic offers already give more.",
+      "minPurchase": "Not applied: needs a purchase of at least {{amount}}.",
+      "noItems": "Not applied: no item in the cart qualifies.",
+      "gone": "The coupon is no longer valid and was removed."
+    },
+    "offer": {
+      "percent": "-{{pct}}%",
+      "amount": "-{{amount}}",
+      "fixedPrice": "Now {{price}}",
+      "flash": "Flash {{off}}",
+      "bxgy": "Buy {{buy}} Get {{get}}",
+      "bxgyPercent": "Buy {{buy}}, get {{get}} {{pct}}% off",
+      "endsIn": "Ends in"
+    }
   }
 }

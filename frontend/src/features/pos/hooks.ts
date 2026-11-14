@@ -27,3 +27,29 @@ export function useOnline(): boolean {
   }, [])
   return online
 }
+
+/**
+ * The business's local time now (`YYYY-MM-DDTHH:MM:SS`), from the server's
+ * clock (`PosContext.local_now`) plus the time since it was read, ticking
+ * every 15 s: promotion schedules follow the shop's clock, not the device's.
+ */
+export function useLocalClock(serverNow: string | undefined): string | null {
+  const [ms, setMs] = useState<number | null>(null)
+  useEffect(() => {
+    if (!serverNow) return
+    const [date, time = '00:00:00'] = serverNow.split('T')
+    const [y, m, d] = (date ?? '').split('-').map(Number)
+    const [hh, mm, ss] = time.split(':').map((v) => Number.parseInt(v, 10))
+    const start = Date.UTC(y!, m! - 1, d!, hh ?? 0, mm ?? 0, ss ?? 0)
+    const at = Date.now()
+    const update = () => setMs(start + Date.now() - at)
+    const first = setTimeout(update, 0)
+    const id = setInterval(update, 15_000)
+    return () => {
+      clearTimeout(first)
+      clearInterval(id)
+    }
+  }, [serverNow])
+  if (ms === null) return serverNow?.slice(0, 19) ?? null
+  return new Date(ms).toISOString().slice(0, 19)
+}

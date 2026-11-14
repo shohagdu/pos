@@ -93,6 +93,10 @@ export interface PromotionSummary {
   quantity_used: string
   quantity_limit: string | null
   coupon_count: number
+  bxgy_buy_quantity: string | null
+  bxgy_get_quantity: string | null
+  bxgy_get_discount_type: 'free' | 'percent' | null
+  bxgy_get_discount_value: string | null
   branches: string[]
   first_used_at: string | null
   created_at: string
@@ -187,8 +191,7 @@ export const promotionsApi = {
     apiFetch<PromotionDetail>(`/api/v1/promotions/${id}`, { method: 'PUT', body: input, ifMatch: version }),
   remove: (id: string) => apiFetch<void>(`/api/v1/promotions/${id}`, { method: 'DELETE' }),
   action: (id: string, action: PromotionAction) => apiFetch<PromotionDetail>(`/api/v1/promotions/${id}/${action}`, { method: 'POST' }),
-  targetCount: (targets: TargetInput[]) =>
-    apiFetch<{ matched_products: number }>('/api/v1/promotions/target-count', { method: 'POST', body: { targets } }),
+  targetCount: (targets: TargetInput[]) => apiFetch<{ matched_products: number }>('/api/v1/promotions/target-count', { method: 'POST', body: { targets } }),
   coupons: (id: string, filter: { q?: string; status?: string; limit?: number; offset?: number }) =>
     apiFetch<{ data: Coupon[]; total: number }>(`/api/v1/promotions/${id}/coupons${queryString(filter)}`),
   addCoupon: (id: string, input: CouponInput) => apiFetch<Coupon>(`/api/v1/promotions/${id}/coupons`, { method: 'POST', body: input }),

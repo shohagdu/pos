@@ -37,7 +37,8 @@
       "stock": "Magazzino",
       "money": "Denaro",
       "business": "Attività"
-    }
+    },
+    "promotions": "Promozioni"
   },
   "auth": {
     "signIn": "Accedi",
@@ -199,7 +200,8 @@
       "branches": "Filiali",
       "registers": "Casse",
       "data": "Dati",
-      "codes": "Codici prodotto"
+      "codes": "Codici prodotto",
+      "discounts": "Sconti"
     },
     "legalName": "Ragione sociale (facoltativa)",
     "address": "Indirizzo dell'attività: {{slug}}",
@@ -261,6 +263,20 @@
       "carryOn": "La numerazione prosegue dall'ultimo codice; i prodotti che hanno già un codice lo mantengono.",
       "prefixInvalid": "Usa 1–10 lettere o cifre.",
       "retailLength": "Un codice a barre di sole cifre lungo 8, 12 o 13 è un formato commerciale (EAN/UPC). Scegli un altro numero di cifre o aggiungi una lettera."
+    },
+    "discounts": {
+      "intro": "Come si combinano in cassa promozioni, coupon e sconti manuali.",
+      "promotionsStack": "Promozioni cumulabili tra loro",
+      "promotionsStackHint": "No: su una riga vale solo l'offerta più conveniente. Sì: le offerte \"cumulabili\" si applicano una dopo l'altra.",
+      "couponStacks": "Coupon cumulabili con le promozioni automatiche",
+      "couponStacksHint": "No: vale il migliore tra coupon e offerte automatiche, e il cassiere viene avvisato.",
+      "manualWithPromotions": "Consenti lo sconto fattura su carrelli con offerte",
+      "manualWithPromotionsHint": "Lo sconto fattura del cassiere (F7) oltre alle promozioni.",
+      "restoreCoupon": "Restituisci il coupon su reso totale",
+      "restoreCouponHint": "Una vendita resa per intero libera di nuovo l'uso del coupon.",
+      "maxManual": "Sconto manuale massimo per i cassieri",
+      "maxManualHint": "Per i ruoli senza un limite proprio (Utenti → Ruoli). Le promozioni non contano.",
+      "couponsPerInvoice": "Un coupon per scontrino."
     }
   },
   "subscription": {
@@ -542,7 +558,28 @@
     "FILE_TOO_LARGE": "L'immagine deve essere al massimo di 2 MB.",
     "CLAIM_AMOUNT_SHORT": "L'importo pagato è inferiore al totale della fattura. Rifiuta la richiesta o chiedi il resto.",
     "ACCOUNT_CHOICE_NOT_ALLOWED": "Il denaro va sul conto del metodo di pagamento. Solo chi gestisce i conti può sceglierne un altro.",
-    "BRANCH_NOT_ALLOWED": "Appartiene a una filiale in cui non puoi lavorare."
+    "BRANCH_NOT_ALLOWED": "Appartiene a una filiale in cui non puoi lavorare.",
+    "COUPON_NOT_FOUND": "Nessun coupon con questo codice.",
+    "COUPON_INACTIVE": "Questo coupon non è attivo.",
+    "COUPON_EXPIRED": "Questo coupon è scaduto.",
+    "COUPON_NOT_NOW": "Questo coupon non si può usare in questo momento.",
+    "COUPON_WRONG_BRANCH": "Questo coupon non vale in questa sede.",
+    "COUPON_USED_UP": "Questo coupon è esaurito.",
+    "COUPON_CUSTOMER_REQUIRED": "Scegli prima il cliente: il coupon è per clienti registrati.",
+    "COUPON_NOT_FOR_CUSTOMER": "Questo coupon è di un altro cliente.",
+    "COUPON_CUSTOMER_LIMIT": "Questo cliente ha già usato il coupon.",
+    "COUPON_MIN_PURCHASE": "Il carrello è sotto la spesa minima del coupon.",
+    "COUPON_NOT_BETTER": "Le offerte automatiche danno già più di questo coupon.",
+    "COUPON_NO_ITEMS": "Nessun articolo del carrello è incluso nel coupon.",
+    "COUPON_DENIED": "Non puoi applicare coupon.",
+    "PROMOTION_REMOVAL_DENIED": "Non puoi togliere un'offerta da una riga.",
+    "PROMOTION_LOCKED": "La promozione è stata usata: vantaggio e prodotti non si possono cambiare. Terminala e duplicala.",
+    "PROMOTION_USED": "Una promozione usata non si può eliminare; terminala.",
+    "PROMOTION_ENDED": "La promozione è terminata; duplicala per riproporla.",
+    "INVOICE_DISCOUNT_WITH_PROMOTIONS": "Non si può aggiungere uno sconto fattura a un carrello con offerte.",
+    "NOT_A_COUPON": "I codici appartengono alle promozioni coupon.",
+    "CODE_TAKEN": "Un altro coupon ha già questo codice.",
+    "INVALID_COUPON_CODE": "Usa 3–40 lettere, cifre, - o _."
   },
   "users": {
     "title": "Utenti e ruoli",
@@ -702,7 +739,8 @@
     "reports": "Report",
     "users": "Utenti",
     "settings": "Impostazioni",
-    "audit": "Registro attività"
+    "audit": "Registro attività",
+    "promotions": "Promozioni"
   },
   "permissions": {
     "dashboard_view": "Visualizzare la dashboard",
@@ -769,7 +807,11 @@
     "settings_manage": "Modificare le impostazioni dell'attività",
     "branches_manage": "Gestire le filiali",
     "subscription_manage": "Gestire l'abbonamento",
-    "audit_view": "Visualizzare il registro attività"
+    "audit_view": "Visualizzare il registro attività",
+    "promotions_view": "Vedere promozioni e coupon",
+    "promotions_manage": "Creare e modificare promozioni e coupon",
+    "pos_apply_coupon": "Applicare coupon in cassa",
+    "pos_remove_promotion": "Togliere un'offerta da una riga"
   },
   "plan": {
     "title": "Piano e utilizzo",

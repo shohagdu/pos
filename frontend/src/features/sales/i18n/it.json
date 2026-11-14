@@ -149,7 +149,12 @@
       "rea": "REA {{office}} {{number}}",
       "sl": "N.",
       "item": "Articolo",
-      "total": "Totale"
+      "total": "Totale",
+      "freeUnits": "{{qty}} GRATIS ({{name}})",
+      "couponLine": "Coupon {{code}}",
+      "promotions": "Promozioni",
+      "coupon": "Coupon {{code}}",
+      "youSaved": "Hai risparmiato {{amount}}"
     },
     "warrantyUntil": "Garanzia fino al {{date}}",
     "warrantyExpired": "Garanzia scaduta il {{date}}",
@@ -186,6 +191,9 @@
       "searchHint": "Fattura, telefono, prodotto, SKU o scansiona un codice",
       "none": "Nessun articolo venduto con garanzia.",
       "noMatch": "Nessun articolo in garanzia corrisponde a “{{q}}”."
-    }
+    },
+    "promotions": "Promozioni",
+    "couponWithCode": "Coupon {{code}}",
+    "freeUnits": "{{qty}} gratis"
   }
 }

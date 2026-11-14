@@ -6,6 +6,8 @@ import type { Customer } from '../../api/parties'
 import type { DiscountType, PosContext, PosItem, SaleInput, SalePaymentInput } from '../../api/sales'
 import { type Dec, ZERO, dec, mul, round, toFixed, toPlain, tryParse } from '../../lib/decimal'
 import { type Discount, PricingError, type Totals, calculate } from '../../lib/pricing'
+import { type EngineLine, type Output as PromoOutput, type Promotion, applyPromotions, scheduleOpen } from '../../lib/promotions'
+import type { LivePromotion } from '../../api/promotions'
 
 export interface CartLine {
   item: PosItem
@@ -13,6 +15,8 @@ export interface CartLine {
   unitPrice: string
   discountType: DiscountType
   discountValue: string
+  /** Automatic promotions removed from this line by the cashier (`pos.remove_promotion`). */
+  promotionsOff?: boolean
 }
 
 export interface CartCustomer {
@@ -34,9 +38,11 @@ export interface Cart {
   customer: CartCustomer | null
   invoiceDiscountType: DiscountType
   invoiceDiscountValue: string
+  /** A coupon the server validated for this cart (`POST /pos/coupons/validate`). */
+  coupon?: Promotion | null
 }
 
-export const emptyCart: Cart = { lines: [], customer: null, invoiceDiscountType: 'amount', invoiceDiscountValue: '' }
+export const emptyCart: Cart = { lines: [], customer: null, invoiceDiscountType: 'amount', invoiceDiscountValue: '', coupon: null }
 
 export type CartAction =
   | { type: 'add'; item: PosItem }
@@ -47,6 +53,8 @@ export type CartAction =
   | { type: 'remove'; variantId: string }
   | { type: 'customer'; customer: CartCustomer | null }
   | { type: 'invoiceDiscount'; discountType: DiscountType; value: string }
+  | { type: 'promotionsOff'; variantId: string; off: boolean }
+  | { type: 'coupon'; coupon: Promotion | null }
   | { type: 'replace'; cart: Cart }
   | { type: 'clear' }
 
@@ -87,6 +95,10 @@ export function cartReducer(cart: Cart, action: CartAction): Cart {
       return { ...cart, customer: action.customer }
     case 'invoiceDiscount':
       return { ...cart, invoiceDiscountType: action.discountType, invoiceDiscountValue: action.value }
+    case 'promotionsOff':
+      return update(cart, action.variantId, (l) => ({ ...l, promotionsOff: action.off }))
+    case 'coupon':
+      return { ...cart, coupon: action.coupon }
     case 'replace':
       return action.cart
     case 'clear':
@@ -95,13 +107,43 @@ export function cartReducer(cart: Cart, action: CartAction): Cart {
 }
 
 /** What is wrong with a line's inputs (translation key under `pos.errors`). */
-export type LineProblem = 'quantity' | 'wholeNumber' | 'price' | 'discount' | 'discountTooLarge' | 'discountOverLimit'
+export type LineProblem = 'quantity' | 'wholeNumber' | 'price' | 'discount' | 'discountTooLarge' | 'discountOverLimit' | 'invoiceWithPromotions'
 
 export interface CartTotals {
   totals: Totals | null
   /** Per variant id. */
   lineProblems: Record<string, LineProblem>
   invoiceProblem: LineProblem | null
+  /** Promotions and coupon on the cart (engine result, lines in cart order). */
+  promotions: PromoOutput | null
+}
+
+/** Promotions the cart is priced with. */
+export interface PromoInput {
+  live: LivePromotion[]
+  /** The business's local time now (`YYYY-MM-DDTHH:MM:SS`). */
+  now: string | null
+  promotionsStack: boolean
+  couponStacks: boolean
+  /** The invoice discount (F7) is allowed together with promotions. */
+  manualWithPromotions: boolean
+}
+
+export const noPromotions: PromoInput = { live: [], now: null, promotionsStack: false, couponStacks: false, manualWithPromotions: true }
+
+/** The engine's view of a cart line. */
+export function engineLine(l: CartLine, quantity: Dec, unitPrice: Dec): EngineLine {
+  const i = l.item
+  return {
+    variantId: i.variant_id,
+    productId: i.product_id,
+    categoryIds: [i.category_id, i.category_parent_id, i.category_grandparent_id].filter((c): c is string => !!c),
+    brandId: i.brand_id ?? null,
+    quantity,
+    unitPrice,
+    minUnitPrice: i.min_selling_price === null ? null : dec(i.min_selling_price),
+    promotionsOff: !!l.promotionsOff,
+  }
 }
 
 function discountOf(type: DiscountType, value: string): Discount | null | 'invalid' {
@@ -116,6 +158,7 @@ export function priceCart(
   cart: Cart,
   ctx: Pick<PosContext, 'prices_include_tax' | 'cash_rounding' | 'cashier_max_discount_pct'>,
   canDiscountOverLimit: boolean,
+  promo: PromoInput = noPromotions,
 ): CartTotals {
   const lineProblems: Record<string, LineProblem> = {}
   const inputs = cart.lines.map((l) => {
@@ -136,12 +179,25 @@ export function priceCart(
   })
   const invoice = discountOf(cart.invoiceDiscountType, cart.invoiceDiscountValue)
   let invoiceProblem: LineProblem | null = invoice === 'invalid' || (invoice?.type === 'percent' && invoice.value > dec(100)) ? 'discount' : null
-  if (Object.keys(lineProblems).length > 0 || invoiceProblem) return { totals: null, lineProblems, invoiceProblem }
+  if (Object.keys(lineProblems).length > 0 || invoiceProblem) return { totals: null, lineProblems, invoiceProblem, promotions: null }
+
+  // Promotions live now (the server's clock), then the coupon (§5 steps 2–4).
+  const live = promo.now === null ? promo.live : promo.live.filter((p) => scheduleOpen(p, promo.now!))
+  const promotions = applyPromotions(
+    cart.lines.map((l, i) => engineLine(l, inputs[i]!.quantity, inputs[i]!.unitPrice)),
+    live,
+    cart.coupon ?? null,
+    { promotionsStack: promo.promotionsStack, couponStacks: promo.couponStacks },
+  )
+  if (!promo.manualWithPromotions && invoice && invoice !== 'invalid' && promotions.lines.some((l) => l.amount > ZERO)) {
+    invoiceProblem = 'invoiceWithPromotions'
+    return { totals: null, lineProblems, invoiceProblem, promotions }
+  }
 
   let totals: Totals
   try {
     totals = calculate({
-      lines: inputs,
+      lines: inputs.map((l, i) => ({ ...l, promoDiscount: promotions.lines[i]!.amount })),
       invoiceDiscount: invoice === 'invalid' ? null : invoice,
       pricesIncludeTax: ctx.prices_include_tax,
       cashRounding: dec(ctx.cash_rounding),
@@ -153,25 +209,26 @@ export function priceCart(
     const problem: LineProblem = err.code === 'DISCOUNT_TOO_LARGE' ? 'discountTooLarge' : 'discount'
     if (line) lineProblems[line.item.variant_id] = problem
     else invoiceProblem = problem
-    return { totals: null, lineProblems, invoiceProblem }
+    return { totals: null, lineProblems, invoiceProblem, promotions }
   }
 
-  // Discount limit (POS-R03), as the server checks it: discount / base × 100.
+  // Discount limit (POS-R03), as the server checks it: discount / base × 100,
+  // on the price after promotions (promotions are the business's own offers).
   if (!canDiscountOverLimit) {
     const limit = dec(ctx.cashier_max_discount_pct)
     const over = (disc: Dec, base: Dec) => base > ZERO && disc * 100n > mul(limit, base)
     totals.lines.forEach((r, i) => {
       const line = cart.lines[i]
-      if (line && over(r.lineDiscount, r.gross)) lineProblems[line.item.variant_id] = 'discountOverLimit'
+      if (line && over(r.lineDiscount, r.gross - r.promoDiscount)) lineProblems[line.item.variant_id] = 'discountOverLimit'
     })
     const net = totals.lines.reduce((s, r) => s + r.netBeforeInvoice, ZERO)
     if (over(totals.invoiceDiscount, net)) invoiceProblem = 'discountOverLimit'
   }
-  return { totals, lineProblems, invoiceProblem }
+  return { totals, lineProblems, invoiceProblem, promotions }
 }
 
 /** The `POST /sales` body for this cart and tendered payments. */
-export function saleInput(cart: Cart, totals: Totals, payments: SalePaymentInput[], note: string): SaleInput {
+export function saleInput(cart: Cart, totals: Totals, payments: SalePaymentInput[], note: string, couponApplied = false): SaleInput {
   const input: SaleInput = {
     lines: cart.lines.map((l) => {
       const line: SaleInput['lines'][number] = { variant_id: l.item.variant_id, quantity: toPlain(dec(l.quantity)) }
@@ -180,12 +237,15 @@ export function saleInput(cart: Cart, totals: Totals, payments: SalePaymentInput
         line.discount_type = l.discountType
         line.discount_value = toPlain(dec(l.discountValue))
       }
+      if (l.promotionsOff) line.no_promotions = true
       return line
     }),
     payments,
     expected_total: toFixed(totals.grandTotal, 2),
   }
   if (cart.customer) input.customer_id = cart.customer.id
+  // Only a coupon the engine applied is sent (the server checks it again).
+  if (cart.coupon?.coupon_code && couponApplied) input.coupon_code = cart.coupon.coupon_code
   if (dec(cart.invoiceDiscountValue) > ZERO) {
     input.invoice_discount_type = cart.invoiceDiscountType
     input.invoice_discount_value = toPlain(dec(cart.invoiceDiscountValue))
@@ -219,11 +279,14 @@ export function deserializeCart(raw: Record<string, unknown>): Cart {
           unitPrice: str(l.unitPrice, item.selling_price),
           discountType: type(l.discountType),
           discountValue: str(l.discountValue),
+          promotionsOff: l.promotionsOff === true,
         }
       }),
     customer: isObject(raw.customer) ? (raw.customer as unknown as CartCustomer) : null,
     invoiceDiscountType: type(raw.invoiceDiscountType),
     invoiceDiscountValue: str(raw.invoiceDiscountValue),
+    // The coupon is checked again when the cart is resumed.
+    coupon: isObject(raw.coupon) ? (raw.coupon as unknown as Promotion) : null,
   }
 }
 

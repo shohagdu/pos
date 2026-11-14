@@ -149,7 +149,12 @@
       "rea": "REA {{office}} {{number}}",
       "sl": "SL",
       "item": "Item",
-      "total": "Total"
+      "total": "Total",
+      "freeUnits": "{{qty}} FREE ({{name}})",
+      "couponLine": "Coupon {{code}}",
+      "promotions": "Promotions",
+      "coupon": "Coupon {{code}}",
+      "youSaved": "You saved {{amount}}"
     },
     "warrantyUntil": "Warranty until {{date}}",
     "warrantyExpired": "Warranty expired {{date}}",
@@ -186,6 +191,9 @@
       "searchHint": "Invoice, phone, product, SKU or scan a barcode",
       "none": "No items sold with a warranty yet.",
       "noMatch": "Nothing sold with a warranty matches “{{q}}”."
-    }
+    },
+    "promotions": "Promotions",
+    "couponWithCode": "Coupon {{code}}",
+    "freeUnits": "{{qty}} free"
   }
 }

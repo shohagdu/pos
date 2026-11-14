@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { DiscountType } from '../../api/sales'
@@ -19,6 +19,9 @@ export function TotalsPanel({
   discountProblem,
   onDiscount,
   discountRef,
+  couponTotal,
+  couponCode,
+  coupon,
 }: {
   totals: Totals | null
   pricesIncludeTax: boolean
@@ -27,12 +30,25 @@ export function TotalsPanel({
   discountProblem: LineProblem | null
   onDiscount: (type: DiscountType, value: string) => void
   discountRef: RefObject<HTMLInputElement | null>
+  /** The coupon part of `totals.promotionTotal`. */
+  couponTotal?: Dec
+  couponCode?: string | null
+  /** The coupon field, shown under the invoice discount. */
+  coupon?: ReactNode
 }) {
   const { t, i18n } = useTranslation()
   const money = (v: Dec) => formatMoney(toFixed(v, 2), i18n.language)
   const rows: { key: string; label: string; value: Dec; negative?: boolean; always?: boolean }[] = totals
     ? [
         { key: 'subtotal', label: t('pos.subtotal'), value: totals.subtotal, always: true },
+        // Subtotal → Promotions → Coupon → manual discounts → VAT (§6).
+        { key: 'promotions', label: t('pos.promotions'), value: totals.promotionTotal - (couponTotal ?? ZERO), negative: true },
+        {
+          key: 'coupon',
+          label: couponCode ? t('pos.couponWithCode', { code: couponCode }) : t('pos.coupon.label'),
+          value: couponTotal ?? ZERO,
+          negative: true,
+        },
         { key: 'itemDiscount', label: t('pos.itemDiscounts'), value: totals.itemDiscountTotal, negative: true },
         { key: 'invoiceDiscount', label: t('pos.invoiceDiscount'), value: totals.invoiceDiscount, negative: true },
         { key: 'vat', label: pricesIncludeTax ? t('pos.vatIncluded') : t('pos.vat'), value: totals.taxTotal, always: true },
@@ -73,12 +89,13 @@ export function TotalsPanel({
           </p>
         )}
       </div>
+      {coupon}
       <dl className="flex flex-col gap-1 text-sm">
         {rows
           .filter((r) => r.always || r.value !== ZERO)
           .map((r) => (
-            <div key={r.key} className="flex justify-between gap-3">
-              <dt className="text-ink-muted">{r.label}</dt>
+            <div key={r.key} className={`flex justify-between gap-3 ${r.key === 'promotions' || r.key === 'coupon' ? 'text-brand-700' : ''}`}>
+              <dt className={r.key === 'promotions' || r.key === 'coupon' ? '' : 'text-ink-muted'}>{r.label}</dt>
               <dd className="tabular-nums">
                 {r.negative ? '−' : ''}
                 {money(r.value)}

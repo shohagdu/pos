@@ -38,12 +38,10 @@ const line = (l: RawLine): EngineLine => ({
 describe('promotion engine (shared vectors)', () => {
   for (const v of vectors) {
     it(v.name, () => {
-      const out = applyPromotions(
-        (v.lines as RawLine[]).map(line),
-        v.promotions as unknown as Promotion[],
-        (v.coupon as unknown as Promotion | null) ?? null,
-        { promotionsStack: v.settings.promotions_stack, couponStacks: v.settings.coupon_stacks },
-      )
+      const out = applyPromotions((v.lines as RawLine[]).map(line), v.promotions as unknown as Promotion[], (v.coupon as unknown as Promotion | null) ?? null, {
+        promotionsStack: v.settings.promotions_stack,
+        couponStacks: v.settings.coupon_stacks,
+      })
       const e = v.expected as unknown as Expected
       expect(toFixed(out.promotionTotal)).toBe(toFixed(dec(e.promotion_total)))
       expect(toFixed(out.couponTotal)).toBe(toFixed(dec(e.coupon_total)))

@@ -37,7 +37,8 @@
       "stock": "Stock",
       "money": "Money",
       "business": "Business"
-    }
+    },
+    "promotions": "Promotions"
   },
   "auth": {
     "signIn": "Sign in",
@@ -199,7 +200,8 @@
       "branches": "Branches",
       "registers": "Registers",
       "data": "Data",
-      "codes": "Product codes"
+      "codes": "Product codes",
+      "discounts": "Discounts"
     },
     "legalName": "Legal name (optional)",
     "address": "Business address: {{slug}}",
@@ -261,6 +263,20 @@
       "carryOn": "Numbering carries on from the last code; products that already have codes keep them.",
       "prefixInvalid": "Use 1–10 letters or digits.",
       "retailLength": "An all-digit barcode of 8, 12 or 13 digits is a retail format (EAN/UPC). Choose another number of digits or add a letter."
+    },
+    "discounts": {
+      "intro": "How promotions, coupons and manual discounts combine at the POS.",
+      "promotionsStack": "Promotions stack with each other",
+      "promotionsStackHint": "Off: only the offer that gives the customer most applies on a line. On: offers marked \"can combine\" apply one after another.",
+      "couponStacks": "Coupons stack with automatic promotions",
+      "couponStacksHint": "Off: the better of the coupon or the automatic offers applies, and the cashier is told.",
+      "manualWithPromotions": "Allow an invoice discount on carts with offers",
+      "manualWithPromotionsHint": "The cashier's invoice discount (F7) on top of promotions.",
+      "restoreCoupon": "Give the coupon back on a full return",
+      "restoreCouponHint": "A fully returned sale frees its coupon use again.",
+      "maxManual": "Largest manual discount for cashiers",
+      "maxManualHint": "For roles without their own limit (Users → Roles). Promotions are not counted.",
+      "couponsPerInvoice": "One coupon per invoice."
     }
   },
   "subscription": {
@@ -542,7 +558,28 @@
     "FILE_TOO_LARGE": "The image must be 2 MB or smaller.",
     "CLAIM_AMOUNT_SHORT": "The amount paid is less than the invoice total. Reject the claim or ask for the rest.",
     "ACCOUNT_CHOICE_NOT_ALLOWED": "The money goes to the payment method's account. Only account managers can choose another account.",
-    "BRANCH_NOT_ALLOWED": "This belongs to a branch you cannot work in."
+    "BRANCH_NOT_ALLOWED": "This belongs to a branch you cannot work in.",
+    "COUPON_NOT_FOUND": "No coupon has this code.",
+    "COUPON_INACTIVE": "This coupon is not active.",
+    "COUPON_EXPIRED": "This coupon has expired.",
+    "COUPON_NOT_NOW": "This coupon cannot be used at this time.",
+    "COUPON_WRONG_BRANCH": "This coupon is not valid in this branch.",
+    "COUPON_USED_UP": "This coupon has been used up.",
+    "COUPON_CUSTOMER_REQUIRED": "Choose the customer first: this coupon is for registered customers.",
+    "COUPON_NOT_FOR_CUSTOMER": "This coupon belongs to another customer.",
+    "COUPON_CUSTOMER_LIMIT": "This customer has already used this coupon.",
+    "COUPON_MIN_PURCHASE": "The cart is below the coupon's minimum purchase.",
+    "COUPON_NOT_BETTER": "The automatic offers already give more than this coupon.",
+    "COUPON_NO_ITEMS": "No item in the cart qualifies for this coupon.",
+    "COUPON_DENIED": "You may not apply coupons.",
+    "PROMOTION_REMOVAL_DENIED": "You may not remove an offer from a line.",
+    "PROMOTION_LOCKED": "This promotion has been used: its benefit and products cannot change. End it and duplicate it.",
+    "PROMOTION_USED": "A used promotion cannot be deleted; end it instead.",
+    "PROMOTION_ENDED": "This promotion has ended; duplicate it to run it again.",
+    "INVOICE_DISCOUNT_WITH_PROMOTIONS": "An invoice discount cannot be added to a cart with offers.",
+    "NOT_A_COUPON": "Codes belong to coupon promotions.",
+    "CODE_TAKEN": "Another coupon already has this code.",
+    "INVALID_COUPON_CODE": "Use 3–40 letters, digits, - or _."
   },
   "users": {
     "title": "Users & roles",
@@ -702,7 +739,8 @@
     "reports": "Reports",
     "users": "Users",
     "settings": "Settings",
-    "audit": "Audit"
+    "audit": "Audit",
+    "promotions": "Promotions"
   },
   "permissions": {
     "dashboard_view": "View dashboard",
@@ -769,7 +807,11 @@
     "settings_manage": "Change business settings",
     "branches_manage": "Manage branches",
     "subscription_manage": "Manage subscription",
-    "audit_view": "View the audit log"
+    "audit_view": "View the audit log",
+    "promotions_view": "View promotions and coupons",
+    "promotions_manage": "Create and change promotions and coupons",
+    "pos_apply_coupon": "Apply coupons at the POS",
+    "pos_remove_promotion": "Remove an offer from a cart line"
   },
   "plan": {
     "title": "Plan & usage",

@@ -80,7 +80,8 @@
       "discount": "Inserisci uno sconto valido (percentuale fino a 100).",
       "discountTooLarge": "Lo sconto supera l'importo.",
       "discountOverLimit": "Questo sconto supera il tuo limite; chiedi a un responsabile.",
-      "amount": "Inserisci un importo valido."
+      "amount": "Inserisci un importo valido.",
+      "invoiceWithPromotions": "Non si può aggiungere uno sconto fattura a un carrello con offerte (Impostazioni → Sconti)."
     },
     "shortcuts": {
       "title": "Scorciatoie da tastiera",
@@ -92,7 +93,8 @@
       "hold": "Sospendi",
       "held": "Carrelli sospesi",
       "removeLine": "Rimuovi riga",
-      "close": "Chiudi finestra"
+      "close": "Chiudi finestra",
+      "coupon": "Coupon"
     },
     "noCustomerFound": "Nessun cliente trovato.",
     "addAsNew": "+ Aggiungi “{{text}}” come nuovo cliente",
@@ -127,6 +129,43 @@
     "noProductsFound": "Nessun prodotto trovato",
     "regularPrice": "Prezzo di listino",
     "percentOff": "Sconto {{pct}}%: −{{amount}}",
-    "sl": "N."
+    "sl": "N.",
+    "promotions": "Promozioni",
+    "couponWithCode": "Coupon {{code}}",
+    "freeUnits": "{{qty}} gratis",
+    "flashPartial": "Limite flash raggiunto: è scontata solo una parte della quantità.",
+    "promoCappedByMin": "Offerta ridotta per rispettare il prezzo minimo.",
+    "removeOffer": "Togli offerta",
+    "offerRemoved": "Offerta tolta.",
+    "restoreOffer": "Annulla",
+    "beforeOffers": "Prima delle offerte",
+    "offerEnded": "Offerta terminata — prezzi aggiornati.",
+    "offerPromptsLabel": "Articoli gratuiti da aggiungere",
+    "offerPrompt": "{{promo}}: aggiungere {{qty}} {{name}} gratis?",
+    "offerPromptProduct": "{{promo}}: aggiungere {{qty}} articolo gratis?",
+    "offerPromptCategory": "{{promo}}: il cliente può prendere gratis altri {{qty}} articoli dell'offerta.",
+    "addFree": "Aggiungi gratis",
+    "noThanks": "No, grazie",
+    "offerNotAvailable": "Impossibile aggiungere l'articolo gratuito (non trovato o non in vendita).",
+    "coupon": {
+      "label": "Coupon",
+      "placeholder": "Codice",
+      "apply": "Applica",
+      "remove": "Rimuovi",
+      "saved": "Applicato: risparmi {{amount}}",
+      "notBetter": "Non applicato: le offerte automatiche danno di più.",
+      "minPurchase": "Non applicato: serve una spesa di almeno {{amount}}.",
+      "noItems": "Non applicato: nessun articolo del carrello è incluso.",
+      "gone": "Il coupon non è più valido ed è stato rimosso."
+    },
+    "offer": {
+      "percent": "-{{pct}}%",
+      "amount": "-{{amount}}",
+      "fixedPrice": "Ora {{price}}",
+      "flash": "Flash {{off}}",
+      "bxgy": "Prendi {{buy}} + {{get}} gratis",
+      "bxgyPercent": "Prendi {{buy}}, {{get}} al -{{pct}}%",
+      "endsIn": "Termina tra"
+    }
   }
 }

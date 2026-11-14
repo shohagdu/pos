@@ -19,9 +19,10 @@ import { RegistersSection } from '../branches/RegistersSection'
 import { BranchStep, SettingsStep } from '../onboarding/WizardStepPage'
 import { countryOptions, profileLabels } from '../onboarding/country'
 import { DataResetSection } from './DataResetSection'
+import { DiscountsSection } from './DiscountsSection'
 import { ProductCodesSection } from './ProductCodesSection'
 
-const SECTIONS = ['profile', 'regional', 'branch', 'invoice', 'codes', 'branches', 'registers', 'data'] as const
+const SECTIONS = ['profile', 'regional', 'branch', 'invoice', 'discounts', 'codes', 'branches', 'registers', 'data'] as const
 type Section = (typeof SECTIONS)[number]
 /** Sections for `branches.manage`; the rest need `settings.manage`. */
 const BRANCH_SECTIONS: readonly Section[] = ['branches', 'registers']
@@ -72,6 +73,7 @@ export function SettingsPage() {
         {section === 'data' && <DataResetSection tenantId={tenantId} />}
         {section === 'regional' && <SettingsStep step="regional" tenantId={tenantId} mode="settings" />}
         {section === 'invoice' && <SettingsStep step="invoice" tenantId={tenantId} mode="settings" />}
+        {section === 'discounts' && <DiscountsSection tenantId={tenantId} />}
         {section === 'codes' && <ProductCodesSection tenantId={tenantId} />}
         {section === 'branch' && <BranchStep tenantId={tenantId} mode="settings" />}
         {section === 'branches' && <BranchesSection tenantId={tenantId} />}

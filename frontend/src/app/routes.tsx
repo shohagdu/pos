@@ -4,6 +4,8 @@ import { ChangePasswordPage } from '../features/account/ChangePasswordPage'
 import { SessionsPage } from '../features/account/SessionsPage'
 import { AdminClaimsPage } from '../features/admin/AdminClaimsPage'
 import { AdminDashboardPage } from '../features/admin/AdminDashboardPage'
+import { PromotionFormPage } from '../features/promotions/PromotionFormPage'
+import { PromotionsPage } from '../features/promotions/PromotionsPage'
 import { AdminLayout } from '../features/admin/AdminLayout'
 import { AdminPlansPage } from '../features/admin/AdminPlansPage'
 import { AdminSettingsPage } from '../features/admin/AdminSettingsPage'
@@ -188,6 +190,9 @@ export const routes: RouteObject[] = [
                   { path: '/suppliers/new', element: <SupplierFormPage /> },
                   { path: '/suppliers/:id', element: <SupplierDetailPage /> },
                   { path: '/suppliers/:id/edit', element: <SupplierFormPage /> },
+                  { path: '/promotions', element: <PromotionsPage /> },
+                  { path: '/promotions/new', element: <PromotionFormPage /> },
+                  { path: '/promotions/:id', element: <PromotionFormPage /> },
                   { path: '/customers', element: <CustomersPage /> },
                   { path: '/customers/new', element: <CustomerFormPage /> },
                   { path: '/customers/:id', element: <CustomerDetailPage /> },

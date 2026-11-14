@@ -260,6 +260,12 @@ pub struct SaleItemDiscount {
     pub amount: Decimal,
     #[schema(value_type = String)]
     pub free_quantity: Decimal,
+    /// Buy X Get Y on the same product: the rule (for return estimates).
+    #[schema(value_type = Option<String>)]
+    pub bxgy_buy_quantity: Option<Decimal>,
+    #[schema(value_type = Option<String>)]
+    pub bxgy_get_quantity: Option<Decimal>,
+    pub bxgy_get_target_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
@@ -533,7 +539,8 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, seller: Seller) -> AppResult<SaleD
     }
     let discounts: Vec<SaleItemDiscount> = sqlx::query_as(
         "SELECT sale_item_id, promotion_id, coupon_code, promotion_type, promotion_name_snapshot AS name, \
-         promotion_name_bn AS name_bn, discount_type, discount_value, discount_amount AS amount, free_quantity \
+         promotion_name_bn AS name_bn, discount_type, discount_value, discount_amount AS amount, free_quantity, \
+         bxgy_buy_quantity, bxgy_get_quantity, bxgy_get_target_type \
          FROM sale_item_discounts WHERE tenant_id = ? AND sale_id = ? ORDER BY created_at, id",
     )
     .bind(tenant_id)

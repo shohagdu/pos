@@ -106,6 +106,8 @@ export function SaleReceipt({ sale, net }: { sale: SaleDetail; net?: NetInvoice 
   const lines = net
     ? net.lines.map((l) => ({ item: l.item, quantity: toFixed(l.quantity, 3), lineTotal: toFixed(l.lineTotal, 2), lineDiscount: toFixed(l.lineDiscount, 2) }))
     : sale.items.map((item) => ({ item, quantity: item.quantity, lineTotal: item.line_total, lineDiscount: item.line_discount }))
+  // Promotions, coupon and the cashier's discounts together (§9).
+  const saved = dec(sale.promotion_discount_total) + dec(sale.coupon_discount_total) + dec(sale.item_discount_total) + dec(sale.invoice_discount_amount)
   const reprint = sale.reprint_count > 0 ? t('sales.receipt.reprint', { n: sale.reprint_count }) : null
   const marker =
     sale.status === 'cancelled' ? t('sales.receipt.cancelled') : net ? [t('sales.receipt.afterReturns'), reprint].filter(Boolean).join(' · ') : reprint
@@ -121,6 +123,21 @@ export function SaleReceipt({ sale, net }: { sale: SaleDetail; net?: NetInvoice 
         <NumberedItem key={item.id} n={i + 1}>
           <div className="font-medium">{item.product_name}</div>
           <Row label={`${formatQuantity(quantity, lang, true)} ${item.unit_short_name} × ${money(item.unit_price)}`} value={money(lineTotal)} />
+          {(item.discounts ?? []).map((d) => (
+            <Row
+              key={`${d.promotion_id}-${d.coupon_code ?? ''}`}
+              label={
+                nonZero(d.free_quantity)
+                  ? t('sales.receipt.freeUnits', { qty: formatQuantity(d.free_quantity, lang, true), name: lang === 'bn' && d.name_bn ? d.name_bn : d.name })
+                  : d.coupon_code
+                    ? t('sales.receipt.couponLine', { code: d.coupon_code })
+                    : lang === 'bn' && d.name_bn
+                      ? d.name_bn
+                      : d.name
+              }
+              value={`−${money(d.amount)}`}
+            />
+          ))}
           {nonZero(lineDiscount) && <Row label={t('sales.receipt.lineDiscount')} value={`−${money(lineDiscount)}`} />}
           {item.warranty_expires_on && (
             <div>{t('sales.receipt.warranty', { tenure: warrantyTenure(item, t) ?? '', date: formatDate(item.warranty_expires_on, lang) })}</div>
@@ -129,6 +146,12 @@ export function SaleReceipt({ sale, net }: { sale: SaleDetail; net?: NetInvoice 
       ))}
       <Rule />
       <Row label={t('sales.receipt.subtotal')} value={net ? dmoney(net.subtotal) : money(sale.subtotal)} />
+      {!net && nonZero(sale.promotion_discount_total) && (
+        <Row label={t('sales.receipt.promotions')} value={`−${money(sale.promotion_discount_total ?? '0')}`} />
+      )}
+      {!net && nonZero(sale.coupon_discount_total) && (
+        <Row label={t('sales.receipt.coupon', { code: sale.coupon_code ?? '' })} value={`−${money(sale.coupon_discount_total ?? '0')}`} />
+      )}
       {discount !== ZERO && <Row label={t('sales.receipt.discount')} value={`−${money(toFixed(discount, 2))}`} />}
       {(net ? net.tax !== ZERO : nonZero(sale.tax_total)) && (
         <Row label={sale.prices_include_tax ? t('sales.receipt.vatIncluded') : t('sales.receipt.vat')} value={net ? dmoney(net.tax) : money(sale.tax_total)} />
@@ -151,6 +174,7 @@ export function SaleReceipt({ sale, net }: { sale: SaleDetail; net?: NetInvoice 
       {!net && nonZero(sale.returned_total) && <Row label={t('sales.receipt.returned')} value={money(sale.returned_total)} />}
       {net && net.returnNos.length > 0 && <div className="mt-1">{t('sales.receipt.returnsList', { list: net.returnNos.join(', ') })}</div>}
       {sale.note && <div className="mt-1 whitespace-pre-line">{sale.note}</div>}
+      {!net && saved > ZERO && <div className="mt-1 text-center font-semibold">{t('sales.receipt.youSaved', { amount: dmoney(saved) })}</div>}
     </ReceiptFrame>
   )
 }

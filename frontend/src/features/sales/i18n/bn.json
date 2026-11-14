@@ -149,7 +149,12 @@
       "rea": "REA {{office}} {{number}}",
       "sl": "ক্রম",
       "item": "পণ্য",
-      "total": "মোট"
+      "total": "মোট",
+      "freeUnits": "{{qty}}টি ফ্রি ({{name}})",
+      "couponLine": "কুপন {{code}}",
+      "promotions": "অফার",
+      "coupon": "কুপন {{code}}",
+      "youSaved": "আপনার সাশ্রয় {{amount}}"
     },
     "warrantyUntil": "ওয়ারেন্টি {{date}} পর্যন্ত",
     "warrantyExpired": "ওয়ারেন্টি শেষ {{date}}",
@@ -186,6 +191,9 @@
       "searchHint": "ইনভয়েস, ফোন, পণ্য, SKU বা বারকোড স্ক্যান করুন",
       "none": "এখনও ওয়ারেন্টিসহ কোনো পণ্য বিক্রি হয়নি।",
       "noMatch": "“{{q}}” এর সাথে মেলে এমন ওয়ারেন্টি পণ্য নেই।"
-    }
+    },
+    "promotions": "অফার",
+    "couponWithCode": "কুপন {{code}}",
+    "freeUnits": "{{qty}}টি ফ্রি"
   }
 }

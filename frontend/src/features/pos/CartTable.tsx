@@ -8,6 +8,8 @@ import { currencySymbol, formatMoney, formatQuantity } from '../../lib/format'
 import type { LineResult } from '../../lib/pricing'
 import { warrantyExpiresOn, warrantyTenure } from '../sales/warranty'
 import type { CartAction, CartLine, LineProblem } from './cart'
+import { promotionLabel } from './promotionLabel'
+import type { LineOut as PromoLine } from '../../lib/promotions'
 import { Icon } from '../../app/layouts/Icon'
 import { ProductThumb } from '../products/ProductThumb'
 
@@ -34,6 +36,8 @@ export function CartTable({
   businessDate,
   flash = null,
   showImages = true,
+  promotions = null,
+  canRemovePromotion = false,
 }: {
   lines: CartLine[]
   /** Priced lines in cart order; `null` while an input is invalid. */
@@ -49,6 +53,10 @@ export function CartTable({
   flash?: { id: string; n: number } | null
   /** Thumbnails on the lines (Settings → Invoice, tax & POS). */
   showImages?: boolean
+  /** Promotions on each line (engine result, cart order). */
+  promotions?: PromoLine[] | null
+  /** May take an automatic offer off a line (`pos.remove_promotion`). */
+  canRemovePromotion?: boolean
 }) {
   const { t, i18n } = useTranslation()
   const rows = useRef(new Map<string, HTMLLIElement>())
@@ -117,6 +125,8 @@ export function CartTable({
               const warrantyEnd = warrantyExpiresOn(businessDate, item)
               const isSelected = selected === id
               const priceChanged = dec(line.unitPrice) !== dec(item.selling_price)
+              const promo = promotions?.[i] ?? null
+              const offered = promo !== null && promo.amount > ZERO
               // A % discount also shows what it comes to in money.
               const percentOff = line.discountType === 'percent' && result !== undefined && result.lineDiscount > ZERO
               return (
@@ -160,6 +170,55 @@ export function CartTable({
                       </span>
                       {tenure && warrantyEnd && (
                         <span className="mt-0.5 block text-xs text-brand-700">{t('pos.warranty', { tenure, date: formatDate(warrantyEnd, lang) })}</span>
+                      )}
+                      {offered && (
+                        <span className="mt-1 flex flex-wrap gap-1">
+                          {promo.discounts.map((d) => (
+                            <span
+                              key={`${d.promotion.id}-${d.promotion.coupon_id ?? ''}`}
+                              className="inline-flex items-center gap-1 rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-700"
+                              title={promotionLabel(d.promotion, t, lang)}
+                            >
+                              <span aria-hidden="true">{d.promotion.kind === 'flash' ? '⚡' : d.promotion.kind === 'coupon' ? '🏷' : '%'}</span>
+                              {lang === 'bn' && d.promotion.name_bn ? d.promotion.name_bn : d.promotion.name}
+                              {d.freeQuantity > ZERO ? (
+                                <span className="rounded bg-brand-600 px-1 text-[0.625rem] font-bold text-white uppercase">
+                                  {t('pos.freeUnits', { qty: formatQuantity(toFixed(d.freeQuantity, 3), lang, item.allow_fraction) })}
+                                </span>
+                              ) : null}
+                              <span className="tabular-nums">−{formatMoney(toFixed(d.amount, 2), lang)}</span>
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                      {promo?.flashPartial && <span className="mt-0.5 block text-xs text-warning">{t('pos.flashPartial')}</span>}
+                      {promo?.cappedByMinPrice && <span className="mt-0.5 block text-xs text-ink-muted">{t('pos.promoCappedByMin')}</span>}
+                      {canRemovePromotion && offered && !line.promotionsOff && promo.discounts.some((d) => d.promotion.kind !== 'coupon') && (
+                        <button
+                          type="button"
+                          className="mt-0.5 min-h-8 text-xs font-medium text-danger hover:underline"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            dispatch({ type: 'promotionsOff', variantId: id, off: true })
+                          }}
+                        >
+                          {t('pos.removeOffer')}
+                        </button>
+                      )}
+                      {line.promotionsOff && (
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
+                          {t('pos.offerRemoved')}
+                          <button
+                            type="button"
+                            className="min-h-8 font-medium text-brand-700 hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              dispatch({ type: 'promotionsOff', variantId: id, off: false })
+                            }}
+                          >
+                            {t('pos.restoreOffer')}
+                          </button>
+                        </span>
                       )}
                       {overStock && <span className="mt-0.5 block text-xs font-medium text-warning">{t('pos.overStock')}</span>}
                       {problem && (
@@ -258,6 +317,12 @@ export function CartTable({
 
                   <span className="text-right text-base font-bold tabular-nums whitespace-nowrap [grid-area:total] @4xl:pt-2">
                     {result ? formatMoney(toFixed(result.lineTotal, 2), lang) : '—'}
+                    {result && result.promoDiscount > ZERO && (
+                      <span className="block text-xs font-normal text-ink-muted">
+                        <span className="sr-only">{t('pos.beforeOffers')} </span>
+                        <s>{formatMoney(toFixed(result.gross, 2), lang)}</s>
+                      </span>
+                    )}
                   </span>
 
                   <button

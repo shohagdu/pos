@@ -30,11 +30,15 @@ import { ShiftIndicator } from '../registers/ShiftIndicator'
 import { PrintOnly } from '../sales/print'
 import { SaleReceipt } from '../sales/Receipt'
 import { usePrint } from '../sales/usePrint'
-import { type Cart, cartReducer, deserializeCart, emptyCart, priceCart, refreshLine, saleInput, serializeCart } from './cart'
+import { type Cart, type PromoInput, cartReducer, deserializeCart, emptyCart, priceCart, refreshLine, saleInput, serializeCart } from './cart'
+import { CouponField } from './CouponField'
+import { OfferPrompts } from './OfferPrompts'
 import { CartTable } from './CartTable'
 import { CustomerPanel } from './CustomerPanel'
 import { NewCustomerDialog } from './CustomerDialog'
-import { useMediaQuery, useOnline } from './hooks'
+import { useLocalClock, useMediaQuery, useOnline } from './hooks'
+import { promotionKeys, promotionsApi, usePosPromotions } from '../../api/promotions'
+import { fieldErrors } from '../../lib/problem'
 import { HeldCartsDialog, HoldDialog } from './HoldDialogs'
 import { PaymentDialog } from './PaymentDialog'
 import { ProductGrid } from './ProductGrid'
@@ -132,13 +136,29 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
   const methods = usePaymentMethods(tenantId)
   const held = useHeldCarts(tenantId)
   const canDiscountOverLimit = can('pos.discount_over_limit')
+  const couponRef = useRef<HTMLInputElement>(null)
+  // A message about offers that changed (resumed cart, coupon refused at payment).
+  const [promoNotice, setPromoNotice] = useState<string | null>(null)
+  const localNow = useLocalClock(ctx.local_now)
+  const livePromos = usePosPromotions(tenantId, cart.customer?.id ?? null)
+  const promoInput: PromoInput = useMemo(
+    () => ({
+      live: livePromos.data ?? [],
+      now: localNow,
+      promotionsStack: ctx.promotions_stack === true,
+      couponStacks: ctx.coupon_stacks === true,
+      manualWithPromotions: ctx.manual_discount_with_promotions !== false,
+    }),
+    [livePromos.data, localNow, ctx.promotions_stack, ctx.coupon_stacks, ctx.manual_discount_with_promotions],
+  )
 
   // Off in Settings → Invoice, tax & POS; missing on older API builds = shown.
   const showProducts = ctx.show_product_panel !== false
   // Product photos on the cards, cart lines and search results; missing = shown.
   const showImages = ctx.show_product_images !== false
   const inCart = useMemo(() => Object.fromEntries(cart.lines.map((l) => [l.item.variant_id, l.quantity])), [cart.lines])
-  const priced = useMemo(() => priceCart(cart, ctx, canDiscountOverLimit), [cart, ctx, canDiscountOverLimit])
+  const priced = useMemo(() => priceCart(cart, ctx, canDiscountOverLimit, promoInput), [cart, ctx, canDiscountOverLimit, promoInput])
+  const couponApplied = priced.promotions?.coupon === 'applied'
   const activeMethods = useMemo(() => (methods.data ?? []).filter((m) => m.is_active).sort((a, b) => a.sort_order - b.sort_order), [methods.data])
   const canPay = cart.lines.length > 0 && priced.totals !== null && Object.keys(priced.lineProblems).length === 0 && priced.invoiceProblem === null
 
@@ -158,13 +178,29 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
       for (const key of ['sales', 'inventory', 'parties', 'money', 'reports']) void queryClient.invalidateQueries({ queryKey: [key, tenantId] })
     },
     onError: async (err) => {
-      // Prices changed on the server: show the current ones.
-      if (err instanceof ApiError && err.problem.code === 'TOTAL_MISMATCH') dispatch({ type: 'replace', cart: await refreshCart(cart) })
+      // Prices or offers changed on the server (flash units sold out, offer ended): show the current ones.
+      if (err instanceof ApiError && err.problem.code === 'TOTAL_MISMATCH') {
+        void queryClient.invalidateQueries({ queryKey: promotionKeys.all(tenantId) })
+        dispatch({ type: 'replace', cart: await refreshCart(cart) })
+      }
+      // The coupon was refused at completion (used up meanwhile, …): take it off and say why.
+      const couponError = fieldErrors(err, t).coupon_code
+      if (couponError) {
+        dispatch({ type: 'coupon', coupon: null })
+        setPromoNotice(couponError)
+        setDialog('none')
+      }
     },
   })
 
   const hold = useMutation({
-    mutationFn: (label: string) => salesApi.holdCart({ label: label || undefined, customer_id: cart.customer?.id, cart: serializeCart(cart) }),
+    mutationFn: (label: string) =>
+      salesApi.holdCart({
+        label: label || undefined,
+        customer_id: cart.customer?.id,
+        // What the offers came to, to tell the cashier if they changed by the time it is resumed.
+        cart: { ...serializeCart(cart), promotion_total: priced.totals ? toFixed(priced.totals.promotionTotal, 2) : null },
+      }),
     onSuccess: () => {
       dispatch({ type: 'clear' })
       setSelected(null)
@@ -175,8 +211,26 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
   })
 
   const resume = useMutation({
-    mutationFn: async (h: HeldCart) => refreshCart(deserializeCart((await salesApi.removeHeldCart(h.id)).cart)),
-    onSuccess: (restored) => {
+    mutationFn: async (h: HeldCart) => {
+      const raw = (await salesApi.removeHeldCart(h.id)).cart
+      let restored = await refreshCart(deserializeCart(raw))
+      let couponGone: string | null = null
+      // The coupon is checked again: it may have been used up or expired meanwhile.
+      if (restored.coupon?.coupon_code) {
+        try {
+          restored = { ...restored, coupon: await promotionsApi.validateCoupon(restored.coupon.coupon_code, restored.customer?.id ?? null) }
+        } catch (err) {
+          couponGone = fieldErrors(err, t).coupon_code ?? t('pos.coupon.gone')
+          restored = { ...restored, coupon: null }
+        }
+      }
+      return { restored, before: typeof raw.promotion_total === 'string' ? raw.promotion_total : null, couponGone }
+    },
+    onSuccess: ({ restored, before, couponGone }) => {
+      // Offers are recalculated (§6): say so when they no longer come to the same.
+      const after = priceCart(restored, ctx, canDiscountOverLimit, promoInput).totals
+      const changed = before !== null && after !== null && toFixed(after.promotionTotal, 2) !== before
+      setPromoNotice(couponGone ?? (changed ? t('pos.offerEnded') : null))
       dispatch({ type: 'replace', cart: restored })
       setSelected(restored.lines[0]?.item.variant_id ?? null)
       setSaleKey(newKey())
@@ -226,6 +280,11 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
         setView('cart')
         if (!wide) setSheetOpen(true)
         setTimeout(() => customerRef.current?.focus(), 0)
+      } else if (e.key === 'F6' && can('pos.apply_coupon')) {
+        handled()
+        setView('cart')
+        if (!wide) setSheetOpen(true)
+        setTimeout(() => couponRef.current?.focus(), 0)
       } else if (e.key === 'F7') {
         handled()
         setView('cart')
@@ -387,10 +446,27 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
             <div className={`flex flex-col gap-3 lg:min-h-0 lg:flex-1 ${showProducts ? 'xl:grid xl:grid-cols-[minmax(0,35fr)_minmax(0,65fr)]' : ''}`}>
               {showProducts && (
                 <div className={`flex flex-col lg:max-h-[45%] lg:min-h-0 xl:max-h-none ${view === 'products' ? '' : hideBelowLg}`}>
-                  <ProductGrid tenantId={tenantId} onAdd={addItem} inCart={inCart} allowNegativeStock={ctx.allow_negative_stock} showImages={showImages} />
+                  <ProductGrid
+                    tenantId={tenantId}
+                    onAdd={addItem}
+                    inCart={inCart}
+                    allowNegativeStock={ctx.allow_negative_stock}
+                    showImages={showImages}
+                    promotions={livePromos.data ?? []}
+                    now={localNow}
+                  />
                 </div>
               )}
-              <div className={`flex flex-col lg:min-h-0 lg:flex-1 ${onCartView ? '' : hideBelowLg}`}>
+              <div className={`flex flex-col gap-2 lg:min-h-0 lg:flex-1 ${onCartView ? '' : hideBelowLg}`}>
+                {promoNotice && (
+                  <div role="status" className="flex items-start justify-between gap-3 rounded-lg border border-warning bg-warning/10 px-3 py-2 text-sm">
+                    <span>{promoNotice}</span>
+                    <button type="button" className="min-h-8 shrink-0 font-medium text-brand-700 hover:underline" onClick={() => setPromoNotice(null)}>
+                      {t('common.close')}
+                    </button>
+                  </div>
+                )}
+                <OfferPrompts offers={priced.promotions?.offers ?? []} lines={cart.lines} dispatch={dispatch} onAdd={addItem} />
                 <CartTable
                   lines={cart.lines}
                   results={priced.totals?.lines ?? null}
@@ -402,6 +478,8 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
                   businessDate={ctx.business_date}
                   flash={flash}
                   showImages={showImages}
+                  promotions={priced.promotions?.lines ?? null}
+                  canRemovePromotion={can('pos.remove_promotion')}
                 />
               </div>
             </div>
@@ -481,6 +559,21 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
                 discountProblem={priced.invoiceProblem}
                 onDiscount={(discountType, value) => dispatch({ type: 'invoiceDiscount', discountType, value })}
                 discountRef={discountRef}
+                couponTotal={priced.promotions?.couponTotal}
+                couponCode={couponApplied ? (cart.coupon?.coupon_code ?? null) : null}
+                coupon={
+                  can('pos.apply_coupon') ? (
+                    <CouponField
+                      coupon={cart.coupon ?? null}
+                      outcome={priced.promotions?.coupon ?? null}
+                      saved={priced.promotions?.couponTotal ?? ZERO}
+                      customerId={cart.customer?.id ?? null}
+                      onApply={(coupon) => dispatch({ type: 'coupon', coupon })}
+                      onRemove={() => dispatch({ type: 'coupon', coupon: null })}
+                      inputRef={couponRef}
+                    />
+                  ) : null
+                }
               />
               <Button className="min-h-12 lg:hidden" onClick={closeSheet}>
                 {t('common.close')}
@@ -550,7 +643,7 @@ function PosScreen({ ctx, tenantId }: { ctx: PosContext; tenantId: string }) {
               error={sale.error}
               onClose={close}
               onConfirm={(payments, note) => {
-                if (priced.totals) sale.mutate({ input: saleInput(cart, priced.totals, payments, note), key: saleKey })
+                if (priced.totals) sale.mutate({ input: saleInput(cart, priced.totals, payments, note, couponApplied), key: saleKey })
               }}
             />
           ))}

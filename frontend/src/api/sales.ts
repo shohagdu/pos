@@ -202,6 +202,10 @@ export interface SaleItemDiscount {
   discount_value: string
   amount: string
   free_quantity: string
+  /** Buy X Get Y rule as sold (return estimates). */
+  bxgy_buy_quantity?: string | null
+  bxgy_get_quantity?: string | null
+  bxgy_get_target_type?: string | null
 }
 
 export interface SalePayment {

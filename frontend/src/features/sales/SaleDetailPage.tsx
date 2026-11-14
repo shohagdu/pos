@@ -99,6 +99,24 @@ export function SaleDetailPage() {
       <span className={`font-medium ${dec(i.returned_quantity) === ZERO ? '' : 'text-danger'}`}>{i.product_name}</span>
       <span className="block font-mono text-xs text-ink-muted">{i.sku}</span>
       {returnedNote(i) && <span className="block">{returnedNote(i)}</span>}
+      {(i.discounts ?? []).length > 0 && (
+        <span className="mt-0.5 flex flex-wrap gap-1">
+          {(i.discounts ?? []).map((d) => (
+            <span
+              key={`${d.promotion_id}-${d.coupon_code ?? ''}`}
+              className="inline-flex items-center gap-1 rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-700"
+            >
+              {d.coupon_code ? t('sales.couponWithCode', { code: d.coupon_code }) : lang === 'bn' && d.name_bn ? d.name_bn : d.name}
+              {dec(d.free_quantity) > ZERO && (
+                <span className="rounded bg-brand-600 px-1 text-[0.625rem] font-bold text-white uppercase">
+                  {t('sales.freeUnits', { qty: formatQuantity(d.free_quantity, lang, true) })}
+                </span>
+              )}
+              <span className="tabular-nums">−{money(d.amount)}</span>
+            </span>
+          ))}
+        </span>
+      )}
       {i.warranty_expires_on && (
         <span className={`block text-xs ${warrantyExpired(i.warranty_expires_on, today()) ? 'text-danger' : 'text-brand-700'}`}>
           {t(warrantyExpired(i.warranty_expires_on, today()) ? 'sales.warrantyExpired' : 'sales.warrantyUntil', {
@@ -110,7 +128,8 @@ export function SaleDetailPage() {
     </>
   )
   const quantity = (i: SaleItem) => `${formatQuantity(i.quantity, lang, true)} ${i.unit_short_name}`
-  const lineDiscount = (i: SaleItem) => dec(i.line_discount) + dec(i.invoice_discount_alloc)
+  // Promotions, the cashier's line discount and the invoice discount's share.
+  const lineDiscount = (i: SaleItem) => dec(i.promotion_discount) + dec(i.line_discount) + dec(i.invoice_discount_alloc)
   const price = (i: SaleItem) => (
     <>
       {money(i.unit_price)}

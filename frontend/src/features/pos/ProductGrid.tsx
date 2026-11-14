@@ -8,6 +8,8 @@ import { dec } from '../../lib/decimal'
 import { formatMoney, formatQuantity } from '../../lib/format'
 import { problemMessage } from '../../lib/problem'
 import { ProductThumb } from '../products/ProductThumb'
+import type { LivePromotion } from '../../api/promotions'
+import { cardOffer, countdown, promotionLabel } from './promotionLabel'
 import { useDebounced } from './hooks'
 
 type StockState = 'untracked' | 'out' | 'low' | 'ok'
@@ -39,6 +41,8 @@ export function ProductGrid({
   inCart,
   allowNegativeStock,
   showImages = true,
+  promotions = [],
+  now = null,
 }: {
   tenantId: string
   onAdd: (item: PosItem) => void
@@ -47,6 +51,10 @@ export function ProductGrid({
   allowNegativeStock: boolean
   /** Thumbnails on the cards (Settings → Invoice, tax & POS). */
   showImages?: boolean
+  /** Live promotions: cards show their offer (and a flash countdown). */
+  promotions?: LivePromotion[]
+  /** The business's local time now, for schedules and countdowns. */
+  now?: string | null
 }) {
   const { t, i18n } = useTranslation()
   const lang = i18n.language
@@ -199,6 +207,8 @@ export function ProductGrid({
                 const state = stockState(item)
                 const blocked = state === 'out' && !allowNegativeStock
                 const qty = inCart[item.variant_id]
+                const offer = promotions.length > 0 ? cardOffer(item, promotions, now) : null
+                const left = offer?.kind === 'flash' ? countdown(offer.ends_at, now) : null
                 return (
                   <li key={item.variant_id}>
                     <button
@@ -213,6 +223,24 @@ export function ProductGrid({
                     >
                       {/* Full width, so long names never squeeze the details. */}
                       <span className={`line-clamp-2 text-[0.8125rem] leading-tight font-medium ${qty ? 'pr-5' : ''}`}>{name}</span>
+                      {offer && (
+                        // The offer shows even when the product is out of stock (§13).
+                        <span className="flex flex-wrap items-center gap-1">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[0.6875rem] leading-none font-bold ${
+                              offer.kind === 'flash' ? 'bg-danger text-white' : 'bg-danger/10 text-danger'
+                            }`}
+                          >
+                            {promotionLabel(offer, t, lang)}
+                          </span>
+                          {left && (
+                            <span className="text-[0.6875rem] leading-none text-danger tabular-nums">
+                              <span className="sr-only">{t('pos.offer.endsIn')} </span>
+                              {left}
+                            </span>
+                          )}
+                        </span>
+                      )}
                       {qty && (
                         <span className="absolute top-1.5 right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1 text-[0.6875rem] font-bold text-white tabular-nums">
                           <span className="sr-only">{t('pos.inCart', { qty: formatQuantity(qty, lang, item.allow_fraction) })}</span>

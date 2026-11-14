@@ -11,6 +11,13 @@ export function SaleTotals({ sale }: { sale: SaleDetail }) {
   const money = (v: string) => formatMoney(v, i18n.language)
   const rows: { key: string; label: string; value: string; always?: boolean; strong?: boolean; negative?: boolean }[] = [
     { key: 'subtotal', label: t('sales.subtotal'), value: sale.subtotal, always: true },
+    { key: 'promotions', label: t('sales.promotions'), value: sale.promotion_discount_total ?? '0', negative: true },
+    {
+      key: 'coupon',
+      label: t('sales.couponWithCode', { code: sale.coupon_code ?? '' }),
+      value: sale.coupon_discount_total ?? '0',
+      negative: true,
+    },
     { key: 'itemDiscount', label: t('sales.itemDiscounts'), value: sale.item_discount_total, negative: true },
     { key: 'invoiceDiscount', label: t('sales.invoiceDiscount'), value: sale.invoice_discount_amount, negative: true },
     { key: 'vat', label: sale.prices_include_tax ? t('sales.vatIncluded') : t('sales.vat'), value: sale.tax_total },

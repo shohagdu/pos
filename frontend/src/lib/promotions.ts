@@ -229,7 +229,10 @@ export function applyPromotions(lines: EngineLine[], promotions: Promotion[], co
     const hits = out.flatMap((l) => l.discounts.filter((d) => d.promotion.id === p.id))
     const total = sum(hits.map((d) => d.amount))
     if (total > cap) {
-      allocate(r2(pos(cap)), hits.map((d) => d.amount)).forEach((share, i) => {
+      allocate(
+        r2(pos(cap)),
+        hits.map((d) => d.amount),
+      ).forEach((share, i) => {
         hits[i]!.amount = share
       })
     }
@@ -335,9 +338,7 @@ export function applyPromotions(lines: EngineLine[], promotions: Promotion[], co
           }
         }
         const shares =
-          coupon.discount_type === 'percent' && (cap === null || total < r2(cap))
-            ? bases.map((b) => r2(div(mul(b, value), HUNDRED)))
-            : allocate(total, bases)
+          coupon.discount_type === 'percent' && (cap === null || total < r2(cap)) ? bases.map((b) => r2(div(mul(b, value), HUNDRED))) : allocate(total, bases)
         qualifying.forEach((li, i) => {
           const share = shares[i]!
           if (share > ZERO) out[li]!.discounts.push({ promotion: coupon, amount: share, units: lines[li]!.quantity, freeQuantity: ZERO })

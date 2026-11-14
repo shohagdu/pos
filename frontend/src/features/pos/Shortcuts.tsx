@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 const KEYS = [
   ['F2', 'search'],
   ['F4', 'customer'],
+  ['F6', 'coupon'],
   ['F7', 'discount'],
   ['F8', 'pay'],
   ['F8 / Ctrl+Enter', 'confirm'],

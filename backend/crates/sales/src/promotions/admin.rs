@@ -172,6 +172,14 @@ pub struct PromotionSummary {
     #[schema(value_type = Option<String>)]
     pub quantity_limit: Option<Decimal>,
     pub coupon_count: i64,
+    /// Buy X Get Y rule (for the offer text).
+    #[schema(value_type = Option<String>)]
+    pub bxgy_buy_quantity: Option<Decimal>,
+    #[schema(value_type = Option<String>)]
+    pub bxgy_get_quantity: Option<Decimal>,
+    pub bxgy_get_discount_type: Option<String>,
+    #[schema(value_type = Option<String>)]
+    pub bxgy_get_discount_value: Option<Decimal>,
     /// Branch names; empty = every branch.
     #[sqlx(skip)]
     pub branches: Vec<String>,
@@ -514,6 +522,7 @@ async fn local_now(tx: &mut TenantTx) -> AppResult<NaiveDateTime> {
 const SUMMARY: &str = "SELECT p.id, p.name, p.name_bn, p.type, p.discount_type, p.discount_value, p.status, p.starts_at, \
      p.ends_at, p.priority, p.usage_count, p.total_usage_limit, p.quantity_used, p.quantity_limit, \
      (SELECT COUNT(*) FROM coupons c WHERE c.tenant_id = p.tenant_id AND c.promotion_id = p.id) AS coupon_count, \
+     p.bxgy_buy_quantity, p.bxgy_get_quantity, p.bxgy_get_discount_type, p.bxgy_get_discount_value, \
      p.first_used_at, p.created_at FROM promotions p WHERE p.tenant_id = ";
 
 pub async fn list(tx: &mut TenantTx, filter: &PromotionFilter) -> AppResult<PromotionPage> {
@@ -1207,7 +1216,7 @@ fn clean_code(code: &str) -> AppResult<String> {
     if !(3..=40).contains(&code.chars().count())
         || !code.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
     {
-        return Err(AppError::field("code", "INVALID_CODE", "3–40 letters, digits, - or _"));
+        return Err(AppError::field("code", "INVALID_COUPON_CODE", "3–40 letters, digits, - or _"));
     }
     Ok(code)
 }
@@ -1317,7 +1326,7 @@ pub async fn generate(
     }
     let prefix = input.prefix.as_deref().map(str::trim).unwrap_or("").to_uppercase();
     if prefix.chars().count() > 20 || !prefix.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_') {
-        return Err(AppError::field("prefix", "INVALID_CODE", "up to 20 letters, digits, - or _"));
+        return Err(AppError::field("prefix", "INVALID_COUPON_CODE", "up to 20 letters, digits, - or _"));
     }
     let usage_limit = input.usage_limit.unwrap_or(1);
     if usage_limit <= 0 {

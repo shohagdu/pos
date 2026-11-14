@@ -80,7 +80,8 @@
       "discount": "সঠিক ছাড় লিখুন (শতাংশ সর্বোচ্চ ১০০)।",
       "discountTooLarge": "ছাড় মোট টাকার চেয়ে বেশি।",
       "discountOverLimit": "এই ছাড় আপনার সীমার বেশি; ম্যানেজারকে জিজ্ঞাসা করুন।",
-      "amount": "সঠিক টাকার পরিমাণ লিখুন।"
+      "amount": "সঠিক টাকার পরিমাণ লিখুন।",
+      "invoiceWithPromotions": "অফারসহ কার্টে ইনভয়েস ছাড় দেওয়া যায় না (সেটিংস → ছাড়)।"
     },
     "shortcuts": {
       "title": "কিবোর্ড শর্টকাট",
@@ -92,7 +93,8 @@
       "hold": "হোল্ড",
       "held": "হোল্ড কার্ট",
       "removeLine": "লাইন সরান",
-      "close": "ডায়ালগ বন্ধ"
+      "close": "ডায়ালগ বন্ধ",
+      "coupon": "কুপন"
     },
     "noCustomerFound": "কোনো গ্রাহক পাওয়া যায়নি।",
     "addAsNew": "+ “{{text}}” কে নতুন গ্রাহক হিসেবে যোগ করুন",
@@ -127,6 +129,43 @@
     "noProductsFound": "কোনো পণ্য পাওয়া যায়নি",
     "regularPrice": "নিয়মিত দাম",
     "percentOff": "{{pct}}% ছাড়: −{{amount}}",
-    "sl": "ক্রম"
+    "sl": "ক্রম",
+    "promotions": "অফার",
+    "couponWithCode": "কুপন {{code}}",
+    "freeUnits": "{{qty}}টি ফ্রি",
+    "flashPartial": "ফ্ল্যাশ সীমা শেষ: পরিমাণের একাংশে ছাড় হয়েছে।",
+    "promoCappedByMin": "সর্বনিম্ন বিক্রয় মূল্য রাখতে অফার কমানো হয়েছে।",
+    "removeOffer": "অফার সরান",
+    "offerRemoved": "অফার সরানো হয়েছে।",
+    "restoreOffer": "ফিরিয়ে আনুন",
+    "beforeOffers": "অফারের আগে",
+    "offerEnded": "অফার শেষ — দাম হালনাগাদ হয়েছে।",
+    "offerPromptsLabel": "যে ফ্রি পণ্য যোগ করা যায়",
+    "offerPrompt": "{{promo}}: {{qty}}টি {{name}} ফ্রি যোগ করবেন?",
+    "offerPromptProduct": "{{promo}}: {{qty}}টি ফ্রি পণ্য যোগ করবেন?",
+    "offerPromptCategory": "{{promo}}: গ্রাহক অফারের আরও {{qty}}টি পণ্য ফ্রি নিতে পারেন।",
+    "addFree": "ফ্রি যোগ করুন",
+    "noThanks": "না, ধন্যবাদ",
+    "offerNotAvailable": "ফ্রি পণ্যটি যোগ করা যায়নি (পাওয়া যায়নি বা বিক্রয়ের জন্য নেই)।",
+    "coupon": {
+      "label": "কুপন",
+      "placeholder": "কোড",
+      "apply": "প্রয়োগ",
+      "remove": "সরান",
+      "saved": "প্রয়োগ হয়েছে: সাশ্রয় {{amount}}",
+      "notBetter": "প্রয়োগ হয়নি: স্বয়ংক্রিয় অফারে বেশি ছাড় আছে।",
+      "minPurchase": "প্রয়োগ হয়নি: কমপক্ষে {{amount}} কেনাকাটা লাগবে।",
+      "noItems": "প্রয়োগ হয়নি: কার্টের কোনো পণ্য যোগ্য নয়।",
+      "gone": "কুপনটি আর বৈধ নয়, সরানো হয়েছে।"
+    },
+    "offer": {
+      "percent": "-{{pct}}%",
+      "amount": "-{{amount}}",
+      "fixedPrice": "এখন {{price}}",
+      "flash": "ফ্ল্যাশ {{off}}",
+      "bxgy": "{{buy}}টি কিনলে {{get}}টি ফ্রি",
+      "bxgyPercent": "{{buy}}টি কিনলে {{get}}টিতে {{pct}}% ছাড়",
+      "endsIn": "শেষ হবে"
+    }
   }
 }

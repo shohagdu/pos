@@ -19,6 +19,7 @@ export const NAV: { section: string | null; items: NavItem[] }[] = [
       { to: '/sales', key: 'nav.sales', icon: 'sales', permission: 'sales.view' },
       { to: '/sales/warranties', key: 'nav.warranties', icon: 'shield', permission: 'sales.view' },
       { to: '/customers', key: 'nav.customers', icon: 'customers', permission: 'customers.view' },
+      { to: '/promotions', key: 'nav.promotions', icon: 'promotions', permission: 'promotions.view' },
       { to: '/shifts', key: 'nav.shifts', icon: 'shifts', permission: 'pos.sell' },
     ],
   },

@@ -264,6 +264,44 @@ struct ItemRow {
     allow_fraction: bool,
     returned_value: Decimal,
     returned_tax: Decimal,
+    /// Units given free under a same-product Buy X Get Y, with the rule (buy + get, get).
+    free_quantity: Decimal,
+    bxgy_group: Option<Decimal>,
+    bxgy_get: Option<Decimal>,
+}
+
+/// Refund and VAT for returning `qty` units of a line that had `free` units
+/// free under "buy X get Y" on the same product (§8): the units the customer
+/// keeps are charged as if bought alone, so returning the paid unit of a
+/// "buy 1 get 1" refunds nothing (the free one is now paid for), and
+/// returning both refunds the whole line.
+#[allow(clippy::too_many_arguments)]
+pub fn bogo_refund(
+    quantity: Decimal,
+    free: Decimal,
+    group: Decimal,
+    get: Decimal,
+    line_total: Decimal,
+    tax_amount: Decimal,
+    returned_value: Decimal,
+    returned_tax: Decimal,
+    returned_qty: Decimal,
+    qty: Decimal,
+) -> (Decimal, Decimal) {
+    let left = quantity - returned_qty;
+    let paid_left = line_total - returned_value;
+    if qty >= left {
+        return (paid_left, tax_amount - returned_tax);
+    }
+    let paid_units = quantity - free;
+    if paid_units <= Decimal::ZERO || line_total.is_zero() || group <= Decimal::ZERO {
+        return (Decimal::ZERO, Decimal::ZERO);
+    }
+    let kept = left - qty;
+    let entitled = free.min((kept / group).floor() * get);
+    let charge = round2((kept - entitled) * line_total / paid_units);
+    let refund = (paid_left - charge).max(Decimal::ZERO).min(paid_left);
+    (refund, round2(tax_amount * refund / line_total).min(tax_amount - returned_tax))
 }
 
 /// The method that pays out of the default (cash) account.
@@ -330,7 +368,12 @@ pub async fn create(
         "SELECT si.id, si.variant_id, si.product_name, si.quantity, si.base_quantity, si.returned_quantity, si.tax_amount, \
          si.line_total, si.unit_cost, si.track_inventory, COALESCE(u.allow_fraction, TRUE) AS allow_fraction, \
          COALESCE((SELECT SUM(ri.line_total) FROM sale_return_items ri WHERE ri.tenant_id = si.tenant_id AND ri.sale_item_id = si.id), 0) AS returned_value, \
-         COALESCE((SELECT SUM(ri.tax_amount) FROM sale_return_items ri WHERE ri.tenant_id = si.tenant_id AND ri.sale_item_id = si.id), 0) AS returned_tax \
+         COALESCE((SELECT SUM(ri.tax_amount) FROM sale_return_items ri WHERE ri.tenant_id = si.tenant_id AND ri.sale_item_id = si.id), 0) AS returned_tax, \
+         si.free_quantity, \
+         (SELECT MAX(d.bxgy_buy_quantity + d.bxgy_get_quantity) FROM sale_item_discounts d WHERE d.tenant_id = si.tenant_id \
+            AND d.sale_item_id = si.id AND d.promotion_type = 'bxgy' AND d.bxgy_get_target_type = 'same_product') AS bxgy_group, \
+         (SELECT MAX(d.bxgy_get_quantity) FROM sale_item_discounts d WHERE d.tenant_id = si.tenant_id \
+            AND d.sale_item_id = si.id AND d.promotion_type = 'bxgy' AND d.bxgy_get_target_type = 'same_product') AS bxgy_get \
          FROM sale_items si LEFT JOIN units u ON u.tenant_id = si.tenant_id AND u.id = si.unit_id \
          WHERE si.tenant_id = ? AND si.sale_id = ? ORDER BY si.id FOR UPDATE",
     )
@@ -376,7 +419,22 @@ pub async fn create(
             }
         };
         // The last units take whatever value is left, so rounding never drifts.
-        let (line_total, tax) = if qty == left {
+        let (line_total, tax) = if let (Some(group), Some(get)) = (item.bxgy_group, item.bxgy_get)
+            && item.free_quantity > Decimal::ZERO
+        {
+            bogo_refund(
+                item.quantity,
+                item.free_quantity,
+                group,
+                get,
+                item.line_total,
+                item.tax_amount,
+                item.returned_value,
+                item.returned_tax,
+                item.returned_quantity,
+                qty,
+            )
+        } else if qty == left {
             (item.line_total - item.returned_value, item.tax_amount - item.returned_tax)
         } else {
             (round2(item.line_total * qty / item.quantity), round2(item.tax_amount * qty / item.quantity))
@@ -564,6 +622,19 @@ pub async fn create(
     .await
     .map_err(map_db_error)?;
 
+    // Settings → Discounts: a fully returned sale can give its coupon use back.
+    if fully_returned {
+        let restore: bool =
+            sqlx::query_scalar("SELECT restore_coupon_on_full_return FROM tenant_settings WHERE tenant_id = ?")
+                .bind(tenant_id)
+                .fetch_one(&mut **tx)
+                .await
+                .map_err(map_db_error)?;
+        if restore {
+            crate::promotions::store::reverse_coupon(tx, input.sale_id).await?;
+        }
+    }
+
     if !walk_in {
         let entry = |entry_type, amount| PartyEntry {
             party_type: PartyType::Customer,
@@ -612,4 +683,28 @@ pub async fn create(
     )
     .await?;
     get(tx, return_id, can_view_cost).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn d(s: &str) -> Decimal {
+        s.parse().expect("decimal")
+    }
+
+    #[test]
+    fn buy_one_get_one_returns() {
+        let z = Decimal::ZERO;
+        // 2 units, 1 free, paid 100: returning one keeps one, which is now paid for.
+        assert_eq!(bogo_refund(d("2"), d("1"), d("2"), d("1"), d("100"), z, z, z, z, d("1")), (z, z));
+        // Returning both refunds what was paid.
+        assert_eq!(bogo_refund(d("2"), d("1"), d("2"), d("1"), d("100"), z, z, z, z, d("2")).0, d("100"));
+        // 4 units, 2 free, paid 200: keeping 2 keeps 1 free → refund 100; keeping 3 → refund 0.
+        assert_eq!(bogo_refund(d("4"), d("2"), d("2"), d("1"), d("200"), z, z, z, z, d("2")).0, d("100"));
+        assert_eq!(bogo_refund(d("4"), d("2"), d("2"), d("1"), d("200"), z, z, z, z, d("1")).0, z);
+        // VAT follows the refund: 3 units, 1 free (buy 2 get 1), paid 230 incl. 30 VAT; return 1 → keep 2, both paid.
+        let (refund, tax) = bogo_refund(d("3"), d("1"), d("3"), d("1"), d("230"), d("30"), z, z, z, d("1"));
+        assert_eq!((refund, tax), (z, z));
+    }
 }

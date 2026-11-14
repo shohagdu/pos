@@ -8,6 +8,7 @@ const ICONS = {
   purchases: 'M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2',
   suppliers: 'M3 6h11v10H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
   products: 'M3 12V4h8l9 9-8 8zM7.5 8.5h.01',
+  promotions: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9 15l6-6M9.5 9.5h.01M14.5 14.5h.01',
   inventory: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
   money: 'M3 7h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 7V6a2 2 0 0 1 2-2h11v3M16 13h2',
   expenses: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16V8M8.5 11.5 12 8l3.5 3.5',

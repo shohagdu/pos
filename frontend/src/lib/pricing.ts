@@ -15,6 +15,8 @@ export interface Discount {
 export interface LineInput {
   quantity: Dec
   unitPrice: Dec
+  /** Promotions and coupons on the line (amount, from `promotions.ts`), taken off before the line discount. */
+  promoDiscount?: Dec
   discount?: Discount | null
   /** Percent, e.g. 15. */
   taxRatePct: Dec
@@ -32,6 +34,7 @@ export interface CartInput {
 
 export interface LineResult {
   gross: Dec
+  promoDiscount: Dec
   lineDiscount: Dec
   netBeforeInvoice: Dec
   invoiceDiscount: Dec
@@ -43,6 +46,8 @@ export interface LineResult {
 export interface Totals {
   lines: LineResult[]
   subtotal: Dec
+  /** Promotions and coupons (sum of the lines' promoDiscount). */
+  promotionTotal: Dec
   itemDiscountTotal: Dec
   invoiceDiscount: Dec
   taxTotal: Dec
@@ -91,8 +96,12 @@ export function roundToStep(value: Dec, step: Dec): Dec {
 export function calculate(cart: CartInput): Totals {
   const lines: LineResult[] = cart.lines.map((line, i) => {
     const gross = r2(mul(line.quantity, line.unitPrice))
-    const lineDiscount = discountAmount(gross, line.discount, `lines[${i}].discount_value`)
-    return { gross, lineDiscount, netBeforeInvoice: gross - lineDiscount, invoiceDiscount: ZERO, taxable: ZERO, tax: ZERO, lineTotal: ZERO }
+    const promoDiscount = r2(line.promoDiscount ?? ZERO)
+    if (promoDiscount < ZERO || promoDiscount > gross) throw new PricingError('DISCOUNT_TOO_LARGE', `lines[${i}]`)
+    // A manual discount (and its percentage) applies to the price after promotions.
+    const afterPromo = gross - promoDiscount
+    const lineDiscount = discountAmount(afterPromo, line.discount, `lines[${i}].discount_value`)
+    return { gross, promoDiscount, lineDiscount, netBeforeInvoice: afterPromo - lineDiscount, invoiceDiscount: ZERO, taxable: ZERO, tax: ZERO, lineTotal: ZERO }
   })
   const netSum = sum(lines.map((l) => l.netBeforeInvoice))
   const invoiceDiscount = discountAmount(netSum, cart.invoiceDiscount, 'invoice_discount_value')
@@ -130,6 +139,7 @@ export function calculate(cart: CartInput): Totals {
   return {
     lines,
     subtotal: sum(lines.map((l) => l.gross)),
+    promotionTotal: sum(lines.map((l) => l.promoDiscount)),
     itemDiscountTotal: sum(lines.map((l) => l.lineDiscount)),
     invoiceDiscount,
     taxTotal: sum(lines.map((l) => l.tax)),

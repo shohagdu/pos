@@ -1,0 +1,1784 @@
+[
+  {
+    "name": "20% off a product",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "20",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "200.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "200.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "fixed amount is capped at the unit price",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "3",
+        "unit_price": "30"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "fixed_amount",
+        "discount_value": "50",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a2"
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "90.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "90.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "fixed price per unit",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "fixed_price",
+        "discount_value": "400",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "200.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "200.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "the offer best for the customer wins",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ]
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000e02",
+        "name": "Promo 2",
+        "kind": "product_discount",
+        "discount_type": "fixed_amount",
+        "discount_value": "60",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "60.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e02"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "60.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "a tie goes to the higher priority",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ],
+        "priority": 1
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000e02",
+        "name": "Promo 2",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ],
+        "priority": 5
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "50.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e02"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "50.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "stackable promotions chain when stacking is on",
+    "settings": {
+      "promotions_stack": true,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ],
+        "stackable": true,
+        "priority": 2
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000e02",
+        "name": "Promo 2",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ],
+        "stackable": true,
+        "priority": 1
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "95.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01", "00000000-0000-0000-0000-000000000e02"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "95.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "with stacking off only the best applies",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ],
+        "stackable": true,
+        "priority": 2
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000e02",
+        "name": "Promo 2",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ],
+        "stackable": true,
+        "priority": 1
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "50.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "50.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "flash limit runs out mid-cart",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "100",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "100"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "flash",
+        "discount_type": "percent",
+        "discount_value": "30",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ],
+        "quantity_remaining": "3"
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "60.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "30.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": true,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "90.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "per-invoice cap is split over the lines",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "20",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ],
+        "max_discount_amount": "100"
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "50.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "50.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "100.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "category target with an excluded product",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "200",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "200"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "category",
+            "target_id": "00000000-0000-0000-0000-0000000000c1"
+          },
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a2",
+            "is_exclusion": true
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "20.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "20.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "brand target",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "200",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "200"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "brand",
+            "target_id": "00000000-0000-0000-0000-0000000000d1"
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "20.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "20.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "buy 1 get 1 on the same product, repeating",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "100",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "3",
+        "unit_price": "50"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a3",
+        "product_id": "00000000-0000-0000-0000-0000000000a3",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c2"],
+        "quantity": "4",
+        "unit_price": "10"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a4",
+        "product_id": "00000000-0000-0000-0000-0000000000a4",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c2"],
+        "quantity": "1",
+        "unit_price": "80"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "1",
+          "get_quantity": "1",
+          "get_target_type": "same_product",
+          "get_target_id": null,
+          "get_discount_type": "free",
+          "get_discount_value": "0",
+          "repeat": true,
+          "auto_add_free_item": true
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "100.00",
+          "free_quantity": "1",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "50.00",
+          "free_quantity": "1",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "20.00",
+          "free_quantity": "2",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "170.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": [
+        {
+          "promotion_id": "00000000-0000-0000-0000-000000000e01",
+          "target_id": "00000000-0000-0000-0000-0000000001a2",
+          "quantity": "1"
+        },
+        {
+          "promotion_id": "00000000-0000-0000-0000-000000000e01",
+          "target_id": "00000000-0000-0000-0000-0000000001a4",
+          "quantity": "1"
+        }
+      ]
+    }
+  },
+  {
+    "name": "buy 1 get 1 once per invoice",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "4",
+        "unit_price": "100",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "1",
+          "get_quantity": "1",
+          "get_target_type": "same_product",
+          "get_target_id": null,
+          "get_discount_type": "free",
+          "get_discount_value": "0",
+          "repeat": false,
+          "auto_add_free_item": false
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "100.00",
+          "free_quantity": "1",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "100.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "category buy 1 get 1: the cheaper item is free",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "300"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "category",
+            "target_id": "00000000-0000-0000-0000-0000000000c1"
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "1",
+          "get_quantity": "1",
+          "get_target_type": "category",
+          "get_target_id": "00000000-0000-0000-0000-0000000000c1",
+          "get_discount_type": "free",
+          "get_discount_value": "0",
+          "repeat": true,
+          "auto_add_free_item": false
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "300.00",
+          "free_quantity": "1",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "300.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "buy 2 rice get oil free: oil not in the cart is offered",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a4",
+        "product_id": "00000000-0000-0000-0000-0000000000a4",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c2"],
+        "quantity": "2",
+        "unit_price": "80"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a4"
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "2",
+          "get_quantity": "1",
+          "get_target_type": "product",
+          "get_target_id": "00000000-0000-0000-0000-0000000000a3",
+          "get_discount_type": "free",
+          "get_discount_value": "0",
+          "repeat": false,
+          "auto_add_free_item": true
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": [
+        {
+          "promotion_id": "00000000-0000-0000-0000-000000000e01",
+          "target_id": "00000000-0000-0000-0000-0000000000a3",
+          "quantity": "1"
+        }
+      ]
+    }
+  },
+  {
+    "name": "buy 2 rice get oil free: oil in the cart is free",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a4",
+        "product_id": "00000000-0000-0000-0000-0000000000a4",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c2"],
+        "quantity": "2",
+        "unit_price": "80"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a3",
+        "product_id": "00000000-0000-0000-0000-0000000000a3",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c2"],
+        "quantity": "1",
+        "unit_price": "120"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a4"
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "2",
+          "get_quantity": "1",
+          "get_target_type": "product",
+          "get_target_id": "00000000-0000-0000-0000-0000000000a3",
+          "get_discount_type": "free",
+          "get_discount_value": "0",
+          "repeat": false,
+          "auto_add_free_item": true
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "120.00",
+          "free_quantity": "1",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "120.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "second item half price",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "100",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "1",
+          "get_quantity": "1",
+          "get_target_type": "same_product",
+          "get_target_id": null,
+          "get_discount_type": "percent",
+          "get_discount_value": "50",
+          "repeat": true,
+          "auto_add_free_item": false
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "50.00",
+          "free_quantity": "1",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "50.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon 20% with a cap, split by line value",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "1000",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "1000"
+      }
+    ],
+    "promotions": [],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "percent",
+      "discount_value": "20",
+      "targets": [
+        {
+          "target_type": "all_products",
+          "target_id": null
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9",
+      "max_discount_amount": "500"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "333.33",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e09"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "166.67",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e09"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "500.00",
+      "coupon": "applied",
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon below the minimum purchase",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "percent",
+      "discount_value": "10",
+      "targets": [
+        {
+          "target_type": "all_products",
+          "target_id": null
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9",
+      "min_purchase_amount": "1000"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "0.00",
+      "coupon": "min_purchase",
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon gives less than the automatic offer",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "1000",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "20",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "percent",
+      "discount_value": "10",
+      "targets": [
+        {
+          "target_type": "all_products",
+          "target_id": null
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "200.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "200.00",
+      "coupon_total": "0.00",
+      "coupon": "not_better",
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon gives more than the automatic offer",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "1000",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "5",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "percent",
+      "discount_value": "10",
+      "targets": [
+        {
+          "target_type": "all_products",
+          "target_id": null
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "100.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e09"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "100.00",
+      "coupon": "applied",
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon stacks on automatic offers when allowed",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": true
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "1000",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "20",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "percent",
+      "discount_value": "10",
+      "targets": [
+        {
+          "target_type": "all_products",
+          "target_id": null
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "280.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01", "00000000-0000-0000-0000-000000000e09"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "200.00",
+      "coupon_total": "80.00",
+      "coupon": "applied",
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon fixed amount split by line value",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "300",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "100"
+      }
+    ],
+    "promotions": [],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "fixed_amount",
+      "discount_value": "100",
+      "targets": [
+        {
+          "target_type": "all_products",
+          "target_id": null
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "75.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e09"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "25.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e09"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "100.00",
+      "coupon": "applied",
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon on selected products only",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "200",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      },
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "200"
+      }
+    ],
+    "promotions": [],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "percent",
+      "discount_value": "10",
+      "targets": [
+        {
+          "target_type": "product",
+          "target_id": "00000000-0000-0000-0000-0000000000a1"
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "20.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e09"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        },
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "20.00",
+      "coupon": "applied",
+      "offers": []
+    }
+  },
+  {
+    "name": "coupon with no qualifying items",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a2",
+        "product_id": "00000000-0000-0000-0000-0000000000a2",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "200"
+      }
+    ],
+    "promotions": [],
+    "coupon": {
+      "id": "00000000-0000-0000-0000-000000000e09",
+      "name": "Promo 9",
+      "kind": "coupon",
+      "discount_type": "percent",
+      "discount_value": "10",
+      "targets": [
+        {
+          "target_type": "product",
+          "target_id": "00000000-0000-0000-0000-0000000000a1"
+        }
+      ],
+      "coupon_id": "00000000-0000-0000-0000-000000000f09",
+      "coupon_code": "CODE9"
+    },
+    "expected": {
+      "lines": [
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "0.00",
+      "coupon": "no_qualifying_items",
+      "offers": []
+    }
+  },
+  {
+    "name": "minimum selling price caps the promotion",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1",
+        "min_unit_price": "450"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "20",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "50.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": true
+        }
+      ],
+      "promotion_total": "50.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "free units are not held to the minimum price",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "100",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1",
+        "min_unit_price": "90"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "1",
+          "get_quantity": "1",
+          "get_target_type": "same_product",
+          "get_target_id": null,
+          "get_discount_type": "free",
+          "get_discount_value": "0",
+          "repeat": true,
+          "auto_add_free_item": false
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "100.00",
+          "free_quantity": "1",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "100.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "cashier removed promotions from the line",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "1",
+        "unit_price": "500",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1",
+        "promotions_off": true
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "20",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "0.00",
+          "free_quantity": "0",
+          "promotions": [],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "0.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  },
+  {
+    "name": "a line promotion keeps the line out of buy x get y",
+    "settings": {
+      "promotions_stack": false,
+      "coupon_stacks": false
+    },
+    "lines": [
+      {
+        "variant_id": "00000000-0000-0000-0000-0000000001a1",
+        "product_id": "00000000-0000-0000-0000-0000000000a1",
+        "category_ids": ["00000000-0000-0000-0000-0000000000c1"],
+        "quantity": "2",
+        "unit_price": "100",
+        "brand_id": "00000000-0000-0000-0000-0000000000d1"
+      }
+    ],
+    "promotions": [
+      {
+        "id": "00000000-0000-0000-0000-000000000e01",
+        "name": "Promo 1",
+        "kind": "product_discount",
+        "discount_type": "percent",
+        "discount_value": "10",
+        "targets": [
+          {
+            "target_type": "product",
+            "target_id": "00000000-0000-0000-0000-0000000000a1"
+          }
+        ]
+      },
+      {
+        "id": "00000000-0000-0000-0000-000000000e02",
+        "name": "Promo 2",
+        "kind": "bxgy",
+        "discount_type": "free",
+        "discount_value": "0",
+        "targets": [
+          {
+            "target_type": "all_products",
+            "target_id": null
+          }
+        ],
+        "bxgy": {
+          "buy_quantity": "1",
+          "get_quantity": "1",
+          "get_target_type": "same_product",
+          "get_target_id": null,
+          "get_discount_type": "free",
+          "get_discount_value": "0",
+          "repeat": true,
+          "auto_add_free_item": false
+        }
+      }
+    ],
+    "coupon": null,
+    "expected": {
+      "lines": [
+        {
+          "amount": "20.00",
+          "free_quantity": "0",
+          "promotions": ["00000000-0000-0000-0000-000000000e01"],
+          "flash_partial": false,
+          "capped_by_min_price": false
+        }
+      ],
+      "promotion_total": "20.00",
+      "coupon_total": "0.00",
+      "coupon": null,
+      "offers": []
+    }
+  }
+]

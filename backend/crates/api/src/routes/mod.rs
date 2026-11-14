@@ -10,6 +10,7 @@ pub mod meta;
 pub mod money;
 pub mod notifications;
 pub mod parties;
+pub mod promotions;
 pub mod purchasing;
 pub mod registers;
 pub mod reports;

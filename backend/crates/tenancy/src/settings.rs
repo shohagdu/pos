@@ -4,6 +4,7 @@
 use pos_audit::AuditEntry;
 use pos_core::{AppError, AppResult, RequestMeta};
 use pos_db::{TenantTx, map_db_error};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::provisioning::{clean, validate_business_type, validate_contact, validate_name};
@@ -58,8 +59,19 @@ pub struct BusinessSettings {
     pub auto_print_receipt: bool,
     /// Show the product grid beside the cart on the POS screen.
     pub show_product_panel: bool,
-    /// Show photos on the POS product cards (only matters with the panel on).
+    /// Show photos on the POS product cards, cart lines and search results.
     pub show_product_images: bool,
+    /// Discounts: stackable automatic promotions combine on a line.
+    pub promotions_stack: bool,
+    /// Discounts: a coupon combines with automatic promotions (else the better one wins).
+    pub coupon_stacks: bool,
+    /// Discounts: the cashier's invoice discount is allowed on top of promotions.
+    pub manual_discount_with_promotions: bool,
+    /// Discounts: a fully returned sale gives its coupon use back.
+    pub restore_coupon_on_full_return: bool,
+    /// Discounts: the largest manual discount (%) a role without its own limit may give.
+    #[schema(value_type = String)]
+    pub cashier_max_discount_pct: Decimal,
     pub is_vat_registered: bool,
     pub prices_include_tax: bool,
     /// Send back in `If-Match` when updating.
@@ -98,6 +110,12 @@ pub struct SettingsPatch {
     pub auto_print_receipt: Option<bool>,
     pub show_product_panel: Option<bool>,
     pub show_product_images: Option<bool>,
+    pub promotions_stack: Option<bool>,
+    pub coupon_stacks: Option<bool>,
+    pub manual_discount_with_promotions: Option<bool>,
+    pub restore_coupon_on_full_return: Option<bool>,
+    #[schema(value_type = Option<String>)]
+    pub cashier_max_discount_pct: Option<Decimal>,
     pub is_vat_registered: Option<bool>,
     pub prices_include_tax: Option<bool>,
 }
@@ -127,6 +145,11 @@ struct Row {
     auto_print_receipt: bool,
     show_product_panel: bool,
     show_product_images: bool,
+    promotions_stack: bool,
+    coupon_stacks: bool,
+    manual_discount_with_promotions: bool,
+    restore_coupon_on_full_return: bool,
+    cashier_max_discount_pct: Decimal,
     is_vat_registered: bool,
     prices_include_tax: bool,
     version: i32,
@@ -137,12 +160,14 @@ async fn load(tx: &mut TenantTx, lock: bool) -> AppResult<BusinessSettings> {
     let sql = if lock {
         "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.country_code, \
          t.bin_number, t.trade_license_no, t.tax_code, t.rea_number, t.registry_office, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
-         s.receipt_footer, s.auto_print_receipt, s.show_product_panel, s.show_product_images, s.is_vat_registered, s.prices_include_tax, s.version \
+         s.receipt_footer, s.auto_print_receipt, s.show_product_panel, s.show_product_images, s.promotions_stack, s.coupon_stacks, \
+         s.manual_discount_with_promotions, s.restore_coupon_on_full_return, s.cashier_max_discount_pct, s.is_vat_registered, s.prices_include_tax, s.version \
          FROM tenant_settings s JOIN tenants t ON t.id = s.tenant_id WHERE s.tenant_id = ? FOR UPDATE"
     } else {
         "SELECT t.name, t.slug, t.legal_name, t.business_type, t.phone, t.email, t.address, t.district, t.country_code, \
          t.bin_number, t.trade_license_no, t.tax_code, t.rea_number, t.registry_office, t.currency_code, t.timezone, t.locale, s.fiscal_year_start_month, s.receipt_paper, \
-         s.receipt_footer, s.auto_print_receipt, s.show_product_panel, s.show_product_images, s.is_vat_registered, s.prices_include_tax, s.version \
+         s.receipt_footer, s.auto_print_receipt, s.show_product_panel, s.show_product_images, s.promotions_stack, s.coupon_stacks, \
+         s.manual_discount_with_promotions, s.restore_coupon_on_full_return, s.cashier_max_discount_pct, s.is_vat_registered, s.prices_include_tax, s.version \
          FROM tenant_settings s JOIN tenants t ON t.id = s.tenant_id WHERE s.tenant_id = ?"
     };
     let row: Row = sqlx::query_as(sql).bind(tenant_id).fetch_one(&mut **tx).await.map_err(map_db_error)?;
@@ -186,6 +211,11 @@ async fn load(tx: &mut TenantTx, lock: bool) -> AppResult<BusinessSettings> {
         auto_print_receipt: row.auto_print_receipt,
         show_product_panel: row.show_product_panel,
         show_product_images: row.show_product_images,
+        promotions_stack: row.promotions_stack,
+        coupon_stacks: row.coupon_stacks,
+        manual_discount_with_promotions: row.manual_discount_with_promotions,
+        restore_coupon_on_full_return: row.restore_coupon_on_full_return,
+        cashier_max_discount_pct: row.cashier_max_discount_pct,
         is_vat_registered: row.is_vat_registered,
         prices_include_tax: row.prices_include_tax,
         version: row.version,
@@ -348,6 +378,28 @@ fn apply(current: &BusinessSettings, patch: SettingsPatch) -> AppResult<Business
     if let Some(v) = patch.show_product_images {
         next.show_product_images = v;
     }
+    if let Some(v) = patch.promotions_stack {
+        next.promotions_stack = v;
+    }
+    if let Some(v) = patch.coupon_stacks {
+        next.coupon_stacks = v;
+    }
+    if let Some(v) = patch.manual_discount_with_promotions {
+        next.manual_discount_with_promotions = v;
+    }
+    if let Some(v) = patch.restore_coupon_on_full_return {
+        next.restore_coupon_on_full_return = v;
+    }
+    if let Some(v) = patch.cashier_max_discount_pct {
+        if v < Decimal::ZERO || v > Decimal::ONE_HUNDRED || v.round_dp(2) != v {
+            return Err(AppError::field(
+                "cashier_max_discount_pct",
+                "OUT_OF_RANGE",
+                "between 0 and 100, two decimals at most",
+            ));
+        }
+        next.cashier_max_discount_pct = v;
+    }
     if let Some(v) = patch.is_vat_registered {
         next.is_vat_registered = v;
     }
@@ -478,7 +530,9 @@ pub async fn update(
     .map_err(map_db_error)?;
     sqlx::query(
         "UPDATE tenant_settings SET fiscal_year_start_month = ?, receipt_paper = ?, receipt_footer = ?, \
-         auto_print_receipt = ?, show_product_panel = ?, show_product_images = ?, is_vat_registered = ?, prices_include_tax = ?, version = version + 1, updated_by = ? \
+         auto_print_receipt = ?, show_product_panel = ?, show_product_images = ?, \
+         promotions_stack = ?, coupon_stacks = ?, manual_discount_with_promotions = ?, restore_coupon_on_full_return = ?, \
+         cashier_max_discount_pct = ?, is_vat_registered = ?, prices_include_tax = ?, version = version + 1, updated_by = ? \
          WHERE tenant_id = ?",
     )
     .bind(next.fiscal_year_start_month)
@@ -487,6 +541,11 @@ pub async fn update(
     .bind(next.auto_print_receipt)
     .bind(next.show_product_panel)
     .bind(next.show_product_images)
+    .bind(next.promotions_stack)
+    .bind(next.coupon_stacks)
+    .bind(next.manual_discount_with_promotions)
+    .bind(next.restore_coupon_on_full_return)
+    .bind(next.cashier_max_discount_pct)
     .bind(next.is_vat_registered)
     .bind(next.prices_include_tax)
     .bind(user_id)
@@ -565,6 +624,11 @@ mod tests {
             auto_print_receipt: true,
             show_product_panel: true,
             show_product_images: true,
+            promotions_stack: false,
+            coupon_stacks: false,
+            manual_discount_with_promotions: true,
+            restore_coupon_on_full_return: false,
+            cashier_max_discount_pct: Decimal::TEN,
             is_vat_registered: false,
             prices_include_tax: false,
             version: 1,

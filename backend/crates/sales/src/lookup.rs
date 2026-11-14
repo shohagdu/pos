@@ -53,6 +53,11 @@ pub struct PosItem {
     pub image_file_id: Option<Uuid>,
     /// The search text matched a barcode or SKU exactly (scan → add to cart).
     pub exact: bool,
+    /// For promotion targets: the brand and the category with its ancestors.
+    pub brand_id: Option<Uuid>,
+    pub category_id: Option<Uuid>,
+    pub category_parent_id: Option<Uuid>,
+    pub category_grandparent_id: Option<Uuid>,
 }
 
 pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -> AppResult<Vec<PosItem>> {
@@ -76,7 +81,8 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
          u.short_name AS unit_short_name, u.allow_fraction, p.track_inventory, p.warranty_period, p.warranty_unit, \
          v.selling_price, v.min_selling_price, \
          COALESCE(t.rate_pct, 0) AS tax_rate_pct, \
-         IF(p.track_inventory, COALESCE(sb.quantity, 0), NULL) AS stock, v.reorder_level, p.image_file_id, ",
+         IF(p.track_inventory, COALESCE(sb.quantity, 0), NULL) AS stock, v.reorder_level, p.image_file_id, \
+         p.brand_id, p.category_id, pc.parent_id AS category_parent_id, gc.parent_id AS category_grandparent_id, ",
     );
     q.push("(v.sku = ").push_bind(text.to_owned());
     q.push(" OR EXISTS (SELECT 1 FROM product_barcodes x WHERE x.tenant_id = v.tenant_id AND x.variant_id = v.id AND x.barcode = ")
@@ -87,6 +93,8 @@ pub async fn search(tx: &mut TenantTx, location_id: Uuid, query: &LookupQuery) -
          JOIN products p ON p.tenant_id = v.tenant_id AND p.id = v.product_id \
          JOIN units u ON u.tenant_id = p.tenant_id AND u.id = p.base_unit_id \
          LEFT JOIN tax_rates t ON t.tenant_id = p.tenant_id AND t.id = p.tax_rate_id \
+         LEFT JOIN categories pc ON pc.tenant_id = p.tenant_id AND pc.id = p.category_id \
+         LEFT JOIN categories gc ON gc.tenant_id = pc.tenant_id AND gc.id = pc.parent_id \
          LEFT JOIN stock_balances sb ON sb.tenant_id = v.tenant_id AND sb.variant_id = v.id AND sb.location_id = ",
     );
     q.push_bind(location_id);
@@ -171,19 +179,38 @@ pub struct PosContext {
     pub show_product_panel: bool,
     /// Show photos on the product cards.
     pub show_product_images: bool,
+    /// Discounts: stackable automatic promotions combine on a line.
+    pub promotions_stack: bool,
+    /// Discounts: a coupon combines with automatic promotions.
+    pub coupon_stacks: bool,
+    /// Discounts: the invoice discount (F7) is allowed on top of promotions.
+    pub manual_discount_with_promotions: bool,
+    /// The business's local date and time now: promotion schedules are
+    /// checked against it, not the device clock.
+    #[schema(value_type = String)]
+    pub local_now: chrono::NaiveDateTime,
     pub receipt: crate::sales::ReceiptInfo,
 }
 
 pub async fn pos_context(tx: &mut TenantTx) -> AppResult<PosContext> {
     let ctx = context::load(tx).await?;
     let tenant_id = tx.tenant_id();
-    let (max_discount, show_product_panel, show_product_images): (Decimal, bool, bool) = sqlx::query_as(
-        "SELECT cashier_max_discount_pct, show_product_panel, show_product_images FROM tenant_settings WHERE tenant_id = ?",
+    #[allow(clippy::type_complexity)]
+    let (
+        max_discount,
+        show_product_panel,
+        show_product_images,
+        promotions_stack,
+        coupon_stacks,
+        manual_with_promotions,
+    ): (Decimal, bool, bool, bool, bool, bool) = sqlx::query_as(
+        "SELECT cashier_max_discount_pct, show_product_panel, show_product_images, promotions_stack, coupon_stacks, \
+         manual_discount_with_promotions FROM tenant_settings WHERE tenant_id = ?",
     )
-            .bind(tenant_id)
-            .fetch_one(&mut **tx)
-            .await
-            .map_err(map_db_error)?;
+    .bind(tenant_id)
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
     let walk_in = pos_parties::customers::walk_in(tx).await?;
     let receipt = crate::sales::receipt_info(tx, ctx.branch_id).await?;
     Ok(PosContext {
@@ -197,6 +224,10 @@ pub async fn pos_context(tx: &mut TenantTx) -> AppResult<PosContext> {
         business_date: ctx.business_date,
         show_product_panel,
         show_product_images,
+        promotions_stack,
+        coupon_stacks,
+        manual_discount_with_promotions: manual_with_promotions,
+        local_now: ctx.now.with_timezone(&ctx.timezone).naive_local(),
         receipt,
     })
 }

@@ -2166,6 +2166,7 @@ name = "pos-sales"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "getrandom 0.4.3",
  "pos-accounting",
  "pos-audit",
  "pos-catalog",

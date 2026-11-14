@@ -6,6 +6,7 @@ pub mod collections;
 pub mod held;
 pub mod lookup;
 pub mod pricing;
+pub mod promotions;
 pub mod returns;
 pub mod sales;
 pub mod shifts;

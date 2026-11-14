@@ -16,7 +16,7 @@ describe('pricing engine (shared vectors)', () => {
   for (const v of vectors) {
     it(v.name, () => {
       const input = v.input as {
-        lines: { quantity: string; unit_price: string; tax_rate_pct: string; discount?: RawDiscount }[]
+        lines: { quantity: string; unit_price: string; tax_rate_pct: string; promo_discount?: string; discount?: RawDiscount }[]
         invoice_discount?: RawDiscount
         shipping?: string
         other?: string
@@ -28,6 +28,7 @@ describe('pricing engine (shared vectors)', () => {
           lines: input.lines.map((l) => ({
             quantity: dec(l.quantity),
             unitPrice: dec(l.unit_price),
+            promoDiscount: dec(l.promo_discount ?? '0'),
             taxRatePct: dec(l.tax_rate_pct),
             discount: discount(l.discount),
           })),
@@ -49,6 +50,7 @@ describe('pricing engine (shared vectors)', () => {
       }
       const t = run()
       expect(toFixed(t.subtotal)).toBe(expected.subtotal)
+      expect(toFixed(t.promotionTotal)).toBe(expected.promotion_total ?? '0.00')
       expect(toFixed(t.itemDiscountTotal)).toBe(expected.item_discount_total)
       expect(toFixed(t.invoiceDiscount)).toBe(expected.invoice_discount)
       expect(toFixed(t.taxTotal)).toBe(expected.tax_total)

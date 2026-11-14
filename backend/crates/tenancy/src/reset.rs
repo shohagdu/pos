@@ -43,6 +43,8 @@ pub const TRANSACTION_TABLES: &[&str] = &[
     "party_ledger_entries",
     "sales",
     "sale_items",
+    "sale_item_discounts",
+    "coupon_redemptions",
     "held_carts",
     "sale_returns",
     "sale_return_items",
@@ -111,6 +113,10 @@ pub const KEPT_TABLES: &[&str] = &[
     "notification_deliveries",
     "files",
     "background_jobs",
+    "promotions",
+    "promotion_targets",
+    "promotion_branches",
+    "coupons",
 ];
 
 /// Where the archives themselves live.
@@ -122,6 +128,9 @@ const CACHED: &[(&str, &[&str], &str, &str)] = &[
     ("customers", &["current_balance", "opening_balance"], "0", ""),
     ("suppliers", &["current_balance", "opening_balance"], "0", ""),
     ("payment_accounts", &["current_balance", "opening_balance"], "0", ""),
+    // Promotion and coupon counters come from sales.
+    ("promotions", &["usage_count", "quantity_used", "first_used_at"], "0", ""),
+    ("coupons", &["used_count", "status"], "0", ""),
     (
         "product_variants",
         &[
@@ -473,6 +482,9 @@ async fn wipe_live(tx: &mut TenantTx) -> AppResult<()> {
             .map(|c| match (*table, *c) {
                 ("document_sequences", "next_value") => "next_value = 1".to_owned(),
                 ("document_sequences", _) => format!("`{c}` = NULL"),
+                ("promotions", "first_used_at") => "first_used_at = NULL".to_owned(),
+                // Single-use codes used by a cleared sale can be used again.
+                ("coupons", "status") => "status = IF(status = 'used', 'active', status)".to_owned(),
                 _ => format!("`{c}` = {reset_to}"),
             })
             .collect();

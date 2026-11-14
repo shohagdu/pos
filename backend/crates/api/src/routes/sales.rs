@@ -65,6 +65,8 @@ fn seller(auth: &TenantAuth) -> Seller {
         can_override_credit_limit: can("sales.override_credit_limit"),
         can_view_cost: can("products.view_cost"),
         can_view_all: can("sales.view_all_users"),
+        can_apply_coupon: can("pos.apply_coupon"),
+        can_remove_promotion: can("pos.remove_promotion"),
     }
 }
 

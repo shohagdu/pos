@@ -31,6 +31,11 @@ export interface PosItem {
   image_file_id?: string | null
   /** The search text matched a barcode or SKU exactly (scan → add). */
   exact: boolean
+  /** For promotion targets (missing on carts held before promotions). */
+  brand_id?: string | null
+  category_id?: string | null
+  category_parent_id?: string | null
+  category_grandparent_id?: string | null
 }
 
 /** A top-level category for the POS grid filter (`GET /pos/categories`). */
@@ -56,6 +61,14 @@ export interface PosContext {
   branch_id: string
   location_id: string
   business_date: string
+  /** Discounts: stackable automatic promotions combine (missing on older API builds = off). */
+  promotions_stack?: boolean
+  /** Discounts: a coupon combines with automatic promotions. */
+  coupon_stacks?: boolean
+  /** Discounts: the invoice discount (F7) is allowed on top of promotions (missing = allowed). */
+  manual_discount_with_promotions?: boolean
+  /** The business's local date-time now (`YYYY-MM-DDTHH:MM:SS`): schedules use it, not the device clock. */
+  local_now?: string
   receipt: ReceiptInfo
 }
 
@@ -66,6 +79,8 @@ export interface SaleLineInput {
   unit_price?: string
   discount_type?: DiscountType
   discount_value?: string
+  /** The cashier removed automatic promotions from this line (`pos.remove_promotion`). */
+  no_promotions?: boolean
 }
 
 export interface SalePaymentInput {
@@ -85,6 +100,8 @@ export interface SaleInput {
   other_charge?: string
   payments: SalePaymentInput[]
   note?: string
+  /** A coupon the POS found applicable (`pos.apply_coupon`). */
+  coupon_code?: string
   /** What the POS showed; the server refuses a mismatch over 0.01. */
   expected_total?: string
 }
@@ -108,6 +125,10 @@ export interface Sale {
   prices_include_tax: boolean
   subtotal: string
   item_discount_total: string
+  /** Automatic promotions (missing on older API builds). */
+  promotion_discount_total?: string
+  coupon_discount_total?: string
+  coupon_code?: string | null
   invoice_discount_type: DiscountType | null
   invoice_discount_value: string | null
   invoice_discount_amount: string
@@ -153,6 +174,10 @@ export interface SaleItem {
   unit_price: string
   price_overridden: boolean
   gross_amount: string
+  /** Promotions and coupon on this line (before the line discount). */
+  promotion_discount?: string
+  /** Units given free (Buy X Get Y). */
+  free_quantity?: string
   discount_type: DiscountType | null
   discount_value: string | null
   line_discount: string
@@ -163,6 +188,20 @@ export interface SaleItem {
   line_total: string
   unit_cost: string | null
   cost_total: string | null
+  /** Promotions and coupon this line got, as at the sale. */
+  discounts?: SaleItemDiscount[]
+}
+
+export interface SaleItemDiscount {
+  promotion_id: string
+  coupon_code: string | null
+  promotion_type: 'product_discount' | 'flash' | 'bxgy' | 'coupon'
+  name: string
+  name_bn: string | null
+  discount_type: string
+  discount_value: string
+  amount: string
+  free_quantity: string
 }
 
 export interface SalePayment {

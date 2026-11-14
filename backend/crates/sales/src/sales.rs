@@ -6,6 +6,8 @@
 //! Lock order (DB design §10): sale number → stock balances → payment numbers
 //! and accounts → customer → journal number.
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, NaiveDate, Utc};
 use pos_accounting::{JournalLine, NewJournal, SystemAccounts, journal};
 use pos_audit::AuditEntry;
@@ -30,6 +32,7 @@ use sqlx::{MySql, QueryBuilder};
 use uuid::Uuid;
 
 use crate::pricing::{self, CartInput, Discount, DiscountType, LineInput};
+use crate::promotions::{engine, store as promo_store};
 
 pub const MAX_LINES: usize = 300;
 
@@ -50,6 +53,10 @@ pub struct SaleLineInput {
     #[serde(default)]
     #[schema(value_type = Option<String>)]
     pub discount_value: Option<Decimal>,
+    /// The cashier removed automatic promotions from this line (needs
+    /// `pos.remove_promotion` when one would have applied).
+    #[serde(default)]
+    pub no_promotions: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
@@ -89,6 +96,9 @@ pub struct SaleInput {
     pub payments: Vec<SalePaymentInput>,
     #[serde(default)]
     pub note: Option<String>,
+    /// A coupon code (needs `pos.apply_coupon`); refused unless it applies.
+    #[serde(default)]
+    pub coupon_code: Option<String>,
     /// The total the POS showed; a difference of more than 0.01 is refused
     /// with `422 TOTAL_MISMATCH` (POS-R01).
     #[serde(default)]
@@ -105,6 +115,8 @@ pub struct Seller {
     pub can_override_credit_limit: bool,
     pub can_view_cost: bool,
     pub can_view_all: bool,
+    pub can_apply_coupon: bool,
+    pub can_remove_promotion: bool,
 }
 
 // -------------------------------------------------------------------- output
@@ -130,6 +142,12 @@ pub struct Sale {
     pub subtotal: Decimal,
     #[schema(value_type = String)]
     pub item_discount_total: Decimal,
+    /// Automatic promotions (product discounts, flash, Buy X Get Y).
+    #[schema(value_type = String)]
+    pub promotion_discount_total: Decimal,
+    #[schema(value_type = String)]
+    pub coupon_discount_total: Decimal,
+    pub coupon_code: Option<String>,
     pub invoice_discount_type: Option<String>,
     #[schema(value_type = Option<String>)]
     pub invoice_discount_value: Option<Decimal>,
@@ -193,6 +211,12 @@ pub struct SaleItem {
     pub price_overridden: bool,
     #[schema(value_type = String)]
     pub gross_amount: Decimal,
+    /// Promotions and coupon on this line (before the line discount).
+    #[schema(value_type = String)]
+    pub promotion_discount: Decimal,
+    /// Units given free (Buy X Get Y).
+    #[schema(value_type = String)]
+    pub free_quantity: Decimal,
     pub discount_type: Option<String>,
     #[schema(value_type = Option<String>)]
     pub discount_value: Option<Decimal>,
@@ -213,6 +237,29 @@ pub struct SaleItem {
     pub unit_cost: Option<Decimal>,
     #[schema(value_type = Option<String>)]
     pub cost_total: Option<Decimal>,
+    /// The promotions and coupon this line got (snapshots).
+    #[sqlx(skip)]
+    pub discounts: Vec<SaleItemDiscount>,
+}
+
+/// One promotion or coupon applied to a sale line, as it was at the sale.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
+pub struct SaleItemDiscount {
+    #[serde(skip)]
+    pub sale_item_id: Uuid,
+    pub promotion_id: Uuid,
+    pub coupon_code: Option<String>,
+    /// `product_discount`, `flash`, `bxgy` or `coupon`.
+    pub promotion_type: String,
+    pub name: String,
+    pub name_bn: Option<String>,
+    pub discount_type: String,
+    #[schema(value_type = String)]
+    pub discount_value: Decimal,
+    #[schema(value_type = String)]
+    pub amount: Decimal,
+    #[schema(value_type = String)]
+    pub free_quantity: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow, utoipa::ToSchema)]
@@ -277,7 +324,8 @@ pub struct SaleDetail {
 
 const SALE_SELECT: &str = "SELECT s.id, s.invoice_no, s.sale_date, s.business_date, s.customer_id, c.name AS customer_name, \
      c.phone AS customer_phone, c.is_walk_in, s.cashier_id, (SELECT u.full_name FROM users u WHERE u.id = s.cashier_id) AS cashier_name, \
-     s.status, s.payment_status, s.prices_include_tax, s.subtotal, s.item_discount_total, s.invoice_discount_type, \
+     s.status, s.payment_status, s.prices_include_tax, s.subtotal, s.item_discount_total, s.promotion_discount_total, \
+     s.coupon_discount_total, s.coupon_code, s.invoice_discount_type, \
      s.invoice_discount_value, s.invoice_discount_amount, s.tax_total, s.shipping_charge, s.other_charge, \
      s.rounding_adjustment, s.grand_total, s.paid_total, s.returned_total, s.due_total, s.change_given, s.cost_total, \
      s.note, s.reprint_count, s.cancelled_at, s.cancel_reason, \
@@ -466,7 +514,8 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, seller: Seller) -> AppResult<SaleD
         .map_err(map_db_error)?;
     let mut items: Vec<SaleItem> = sqlx::query_as(
         "SELECT id, line_no, variant_id, product_name, sku, unit_short_name, track_inventory, warranty_period, \
-         warranty_unit, warranty_expires_on, quantity, returned_quantity, list_price, unit_price, price_overridden, gross_amount, discount_type, discount_value, line_discount, \
+         warranty_unit, warranty_expires_on, quantity, returned_quantity, list_price, unit_price, price_overridden, gross_amount, \
+         promotion_discount, free_quantity, discount_type, discount_value, line_discount, \
          invoice_discount_alloc, taxable_amount, tax_rate_pct, tax_amount, line_total, unit_cost, cost_total \
          FROM sale_items WHERE tenant_id = ? AND sale_id = ? ORDER BY line_no",
     )
@@ -480,6 +529,21 @@ pub async fn get(tx: &mut TenantTx, id: Uuid, seller: Seller) -> AppResult<SaleD
         for item in &mut items {
             item.unit_cost = None;
             item.cost_total = None;
+        }
+    }
+    let discounts: Vec<SaleItemDiscount> = sqlx::query_as(
+        "SELECT sale_item_id, promotion_id, coupon_code, promotion_type, promotion_name_snapshot AS name, \
+         promotion_name_bn AS name_bn, discount_type, discount_value, discount_amount AS amount, free_quantity \
+         FROM sale_item_discounts WHERE tenant_id = ? AND sale_id = ? ORDER BY created_at, id",
+    )
+    .bind(tenant_id)
+    .bind(id)
+    .fetch_all(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    for d in discounts {
+        if let Some(item) = items.iter_mut().find(|i| i.id == d.sale_item_id) {
+            item.discounts.push(d);
         }
     }
     let payments = sqlx::query_as(
@@ -628,12 +692,113 @@ pub async fn create(
     let shipping = amount(input.shipping_charge.unwrap_or_default(), "shipping_charge", false)?;
     let other = amount(input.other_charge.unwrap_or_default(), "other_charge", false)?;
 
+    // The customer comes first: promotions can be for registered customers only.
+    let customer = match input.customer_id {
+        Some(id) => customers::get(tx, id).await.map_err(|e| match e {
+            AppError::NotFound => AppError::field("customer_id", "NOT_FOUND", "choose a customer"),
+            other => other,
+        })?,
+        None => customers::walk_in(tx).await?,
+    };
+    if customer.status != "active" {
+        return Err(AppError::field("customer_id", "INACTIVE", "the customer is inactive"));
+    }
+
+    // Promotions and coupon (Final_docs/05 §5), on the server clock in the
+    // business's time zone. Live promotion rows stay locked to the end of the
+    // transaction (flash quantity, usage limits).
+    let local_now = ctx.now.with_timezone(&ctx.timezone).naive_local();
+    let buyer = promo_store::Buyer { customer_id: customer.id, is_walk_in: customer.is_walk_in };
+    let live: Vec<engine::Promotion> =
+        promo_store::live(tx, ctx.branch_id, local_now, buyer, true).await?.into_iter().map(|l| l.promotion).collect();
+    let coupon = match input.coupon_code.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
+        Some(code) => {
+            if !seller.can_apply_coupon {
+                return Err(AppError::Denied { code: "COUPON_DENIED", message: "you may not apply coupons".into() });
+            }
+            Some(promo_store::validate_coupon(tx, code, ctx.branch_id, local_now, buyer, true).await?)
+        }
+        None => None,
+    };
+    let (promotions_stack, coupon_stacks, manual_with_promotions): (bool, bool, bool) = sqlx::query_as(
+        "SELECT promotions_stack, coupon_stacks, manual_discount_with_promotions FROM tenant_settings WHERE tenant_id = ?",
+    )
+    .bind(tx.tenant_id())
+    .fetch_one(&mut **tx)
+    .await
+    .map_err(map_db_error)?;
+    let settings = engine::Settings { promotions_stack, coupon_stacks };
+    let chains = promo_store::line_targets(tx, &ids).await?;
+    let mut engine_lines: Vec<engine::Line> = lines
+        .iter()
+        .zip(&input.lines)
+        .map(|(l, raw)| {
+            let (brand_id, category_ids) = chains.get(&l.info.variant_id).cloned().unwrap_or_default();
+            engine::Line {
+                variant_id: l.info.variant_id,
+                product_id: l.info.product_id,
+                category_ids,
+                brand_id,
+                quantity: l.quantity,
+                unit_price: l.unit_price,
+                min_unit_price: l.info.min_selling_price,
+                promotions_off: raw.no_promotions,
+            }
+        })
+        .collect();
+    let applied = engine::apply(&engine_lines, &live, coupon.as_ref(), settings);
+    let removed: Vec<usize> = input.lines.iter().enumerate().filter(|(_, l)| l.no_promotions).map(|(i, _)| i).collect();
+    let mut removed_offers = Vec::new();
+    if !removed.is_empty() {
+        // What those lines would have got: removing it needs the permission and is audited.
+        for l in &mut engine_lines {
+            l.promotions_off = false;
+        }
+        let without = engine::apply(&engine_lines, &live, None, settings);
+        for i in removed {
+            if without.lines[i].amount > Decimal::ZERO {
+                if !seller.can_remove_promotion {
+                    return Err(AppError::Denied {
+                        code: "PROMOTION_REMOVAL_DENIED",
+                        message: format!("you may not remove the offer on {}", lines[i].info.product_name),
+                    });
+                }
+                removed_offers.push(serde_json::json!({
+                    "product": lines[i].info.product_name,
+                    "promotions": without.lines[i].discounts.iter().map(|d| d.name.clone()).collect::<Vec<_>>(),
+                    "amount": without.lines[i].amount,
+                }));
+            }
+        }
+    }
+    if coupon.is_some() && applied.coupon != Some(engine::CouponOutcome::Applied) {
+        let (code, message) = match applied.coupon {
+            Some(engine::CouponOutcome::MinPurchase) => {
+                ("COUPON_MIN_PURCHASE", "the cart is below the coupon's minimum purchase")
+            }
+            Some(engine::CouponOutcome::NotBetter) => {
+                ("COUPON_NOT_BETTER", "the automatic offers already give more than this coupon")
+            }
+            _ => ("COUPON_NO_ITEMS", "no item in the cart qualifies for this coupon"),
+        };
+        return Err(AppError::field("coupon_code", code, message));
+    }
+    if !manual_with_promotions && invoice_discount.is_some() && applied.lines.iter().any(|l| l.amount > Decimal::ZERO) {
+        return Err(AppError::field(
+            "invoice_discount_value",
+            "INVOICE_DISCOUNT_WITH_PROMOTIONS",
+            "an invoice discount cannot be added to a cart with promotions",
+        ));
+    }
+
     let totals = pricing::calculate(&CartInput {
         lines: lines
             .iter()
-            .map(|l| LineInput {
+            .zip(&applied.lines)
+            .map(|(l, promo)| LineInput {
                 quantity: l.quantity,
                 unit_price: l.unit_price,
+                promo_discount: promo.amount,
                 discount: l.discount,
                 tax_rate_pct: l.info.tax_rate_pct,
             })
@@ -656,9 +821,12 @@ pub async fn create(
     // only the unit price, so a line or invoice discount could otherwise take
     // the line below its minimum.
     if !seller.can_sell_below_min {
-        for (l, t) in lines.iter().zip(&totals.lines) {
+        for ((l, t), promo) in lines.iter().zip(&totals.lines).zip(&applied.lines) {
             let Some(min) = l.info.min_selling_price else { continue };
-            if t.net_before_invoice - t.invoice_discount < round2(min * l.quantity) {
+            // Free units (Buy X Get Y) are not held to the minimum.
+            if t.net_before_invoice - t.invoice_discount
+                < round2(min * (l.quantity - promo.free_quantity).max(Decimal::ZERO))
+            {
                 return Err(AppError::Denied {
                     code: "BELOW_MIN_PRICE",
                     message: format!("discounts would sell {} below its minimum price", l.info.product_name),
@@ -671,12 +839,14 @@ pub async fn create(
         let over = |disc: Decimal, base: Decimal| {
             base > Decimal::ZERO && disc * Decimal::ONE_HUNDRED > max_discount_pct * base
         };
-        let line_over = totals.lines.iter().any(|l| over(l.line_discount, l.gross));
+        // Promotions are the business's own offers: the limit is on what the
+        // cashier gives on top, measured on the price after promotions.
+        let line_over = totals.lines.iter().any(|l| over(l.line_discount, l.gross - l.promo_discount));
         let net: Decimal = totals.lines.iter().map(|l| l.net_before_invoice).sum();
         // Each discount alone may be within the limit while both together are
         // not (10% on the line + 10% on the invoice = 19% off), so the total
         // given away is checked against the whole cart as well.
-        let gross: Decimal = totals.lines.iter().map(|l| l.gross).sum();
+        let gross: Decimal = totals.lines.iter().map(|l| l.gross - l.promo_discount).sum();
         let given: Decimal = totals.lines.iter().map(|l| l.line_discount).sum::<Decimal>() + totals.invoice_discount;
         if line_over || over(totals.invoice_discount, net) || over(given, gross) {
             return Err(AppError::Denied {
@@ -686,17 +856,7 @@ pub async fn create(
         }
     }
 
-    // Customer and payments.
-    let customer = match input.customer_id {
-        Some(id) => customers::get(tx, id).await.map_err(|e| match e {
-            AppError::NotFound => AppError::field("customer_id", "NOT_FOUND", "choose a customer"),
-            other => other,
-        })?,
-        None => customers::walk_in(tx).await?,
-    };
-    if customer.status != "active" {
-        return Err(AppError::field("customer_id", "INACTIVE", "the customer is inactive"));
-    }
+    // Payments.
     let grand = totals.grand_total;
     let mut tendered: Vec<(usize, &SalePaymentInput, Decimal, bool)> = Vec::new();
     for (i, p) in input.payments.iter().enumerate() {
@@ -787,10 +947,11 @@ pub async fn create(
 
     sqlx::query(
         "INSERT INTO sales (tenant_id, id, branch_id, location_id, invoice_no, sale_date, business_date, customer_id, \
-         cashier_id, status, payment_status, prices_include_tax, subtotal, item_discount_total, invoice_discount_type, \
+         cashier_id, status, payment_status, prices_include_tax, subtotal, item_discount_total, promotion_discount_total, \
+         coupon_discount_total, coupon_code, invoice_discount_type, \
          invoice_discount_value, invoice_discount_amount, tax_total, shipping_charge, other_charge, rounding_adjustment, \
          grand_total, paid_total, due_total, change_given, cost_total, note, idempotency_key, register_shift_id) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \
            (SELECT s.id FROM register_shifts s WHERE s.tenant_id = ? AND s.branch_id = ? AND s.opened_by = ? \
               AND s.status = 'open' ORDER BY s.opened_at DESC LIMIT 1))",
     )
@@ -807,6 +968,9 @@ pub async fn create(
     .bind(ctx.prices_include_tax)
     .bind(totals.subtotal)
     .bind(totals.item_discount_total)
+    .bind(applied.promotion_total)
+    .bind(applied.coupon_total)
+    .bind(coupon.as_ref().and_then(|c| c.coupon_code.clone()))
     .bind(invoice_discount.map(|d| d.kind.as_str()))
     .bind(invoice_discount.map(|d| d.value))
     .bind(totals.invoice_discount)
@@ -830,12 +994,14 @@ pub async fn create(
 
     let mut q: QueryBuilder<MySql> = QueryBuilder::new(
         "INSERT INTO sale_items (tenant_id, id, sale_id, line_no, variant_id, product_name, sku, unit_id, unit_short_name, \
-         track_inventory, quantity, base_quantity, list_price, unit_price, price_overridden, gross_amount, discount_type, \
+         track_inventory, quantity, base_quantity, list_price, unit_price, price_overridden, gross_amount, promotion_discount, \
+         free_quantity, discount_type, \
          discount_value, line_discount, invoice_discount_alloc, taxable_amount, tax_rate_id, tax_rate_pct, tax_amount, \
          line_total, unit_cost, cost_total, warranty_period, warranty_unit, warranty_expires_on) ",
     );
-    let rows: Vec<_> = lines.iter().zip(&totals.lines).zip(&item_ids).zip(&line_costs).enumerate().collect();
-    q.push_values(rows, |mut row, (i, (((l, t), item_id), cost))| {
+    let rows: Vec<_> =
+        lines.iter().zip(&totals.lines).zip(&item_ids).zip(&line_costs).zip(&applied.lines).enumerate().collect();
+    q.push_values(rows, |mut row, (i, ((((l, t), item_id), cost), promo))| {
         row.push_bind(tenant_id)
             .push_bind(*item_id)
             .push_bind(sale_id)
@@ -852,6 +1018,8 @@ pub async fn create(
             .push_bind(l.unit_price)
             .push_bind(l.overridden)
             .push_bind(t.gross)
+            .push_bind(t.promo_discount)
+            .push_bind(promo.free_quantity)
             .push_bind(l.discount.map(|d| d.kind.as_str()))
             .push_bind(l.discount.map(|d| d.value))
             .push_bind(t.line_discount)
@@ -872,6 +1040,23 @@ pub async fn create(
             ));
     });
     q.build().execute(&mut **tx).await.map_err(map_db_error)?;
+
+    let mut used: BTreeMap<Uuid, &engine::Promotion> = live.iter().map(|p| (p.id, p)).collect();
+    if let Some(c) = &coupon {
+        used.insert(c.id, c);
+    }
+    promo_store::record_sale(
+        tx,
+        &promo_store::SaleUse {
+            sale_id,
+            branch_id: ctx.branch_id,
+            customer_id: customer.id,
+            lines: item_ids.iter().copied().zip(&applied.lines).collect(),
+            promotions: used,
+            coupon_total: applied.coupon_total,
+        },
+    )
+    .await?;
 
     // Payments, in account order so concurrent sales lock accounts alike.
     tendered.sort_by_key(|t| (t.1.account_id, t.1.method_id));
@@ -959,11 +1144,25 @@ pub async fn create(
             None,
             Some(serde_json::json!({
                 "invoice_no": invoice_no, "customer": customer.name, "grand_total": grand, "paid_total": paid,
-                "due_total": due, "lines": lines.len(),
+                "due_total": due, "lines": lines.len(), "promotion_discount_total": applied.promotion_total,
+                "coupon_discount_total": applied.coupon_total,
+                "coupon_code": coupon.as_ref().and_then(|c| c.coupon_code.clone()),
             })),
         ),
     )
     .await?;
+    if !removed_offers.is_empty() {
+        // Every promotion removal at the POS is in the audit log (§11).
+        pos_audit::record(
+            tx,
+            meta,
+            AuditEntry::new("promotion.removed_at_pos")
+                .entity("sale", sale_id)
+                .branch(ctx.branch_id)
+                .change(Some(serde_json::json!({ "lines": removed_offers })), None),
+        )
+        .await?;
+    }
     get(tx, sale_id, Seller { can_view_all: true, ..seller }).await
 }
 
@@ -1129,6 +1328,8 @@ pub async fn cancel(
     .execute(&mut **tx)
     .await
     .map_err(map_db_error)?;
+    // Promotion uses, flash units and the coupon go back.
+    promo_store::reverse_sale(tx, id).await?;
     pos_audit::record(tx, meta, AuditEntry::new("sale.cancelled").entity("sale", id).branch(branch_id).reason(reason))
         .await?;
     get(tx, id, Seller { can_view_all: true, ..seller }).await

@@ -37,6 +37,9 @@ pub struct Discount {
 pub struct LineInput {
     pub quantity: Decimal,
     pub unit_price: Decimal,
+    /// Promotions and coupons on this line (amount, from `promotions::engine`),
+    /// taken off before the cashier's line discount.
+    pub promo_discount: Decimal,
     pub discount: Option<Discount>,
     /// Percent, e.g. 15.
     pub tax_rate_pct: Decimal,
@@ -56,6 +59,7 @@ pub struct CartInput {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct LineResult {
     pub gross: Decimal,
+    pub promo_discount: Decimal,
     pub line_discount: Decimal,
     pub net_before_invoice: Decimal,
     pub invoice_discount: Decimal,
@@ -76,6 +80,8 @@ impl LineResult {
 pub struct Totals {
     pub lines: Vec<LineResult>,
     pub subtotal: Decimal,
+    /// Promotions and coupons (sum of the lines' `promo_discount`).
+    pub promotion_total: Decimal,
     pub item_discount_total: Decimal,
     pub invoice_discount: Decimal,
     pub tax_total: Decimal,
@@ -110,11 +116,22 @@ pub fn calculate(cart: &CartInput) -> AppResult<Totals> {
     let mut lines = Vec::with_capacity(cart.lines.len());
     for (i, line) in cart.lines.iter().enumerate() {
         let gross = round2(line.quantity * line.unit_price);
-        let line_discount = discount_amount(gross, line.discount, &format!("lines[{i}].discount_value"))?;
+        let promo_discount = round2(line.promo_discount);
+        if promo_discount < Decimal::ZERO || promo_discount > gross {
+            return Err(AppError::field(
+                &format!("lines[{i}]"),
+                "DISCOUNT_TOO_LARGE",
+                "the promotion is more than the amount",
+            ));
+        }
+        // A manual discount (and its percentage) applies to the price after promotions.
+        let after_promo = gross - promo_discount;
+        let line_discount = discount_amount(after_promo, line.discount, &format!("lines[{i}].discount_value"))?;
         lines.push(LineResult {
             gross,
+            promo_discount,
             line_discount,
-            net_before_invoice: gross - line_discount,
+            net_before_invoice: after_promo - line_discount,
             invoice_discount: Decimal::ZERO,
             taxable: Decimal::ZERO,
             tax: Decimal::ZERO,
@@ -164,6 +181,7 @@ pub fn calculate(cart: &CartInput) -> AppResult<Totals> {
     let rounded = round_to_step(pre_round_total, cart.cash_rounding);
     Ok(Totals {
         subtotal: lines.iter().map(|l| l.gross).sum(),
+        promotion_total: lines.iter().map(|l| l.promo_discount).sum(),
         item_discount_total: lines.iter().map(|l| l.line_discount).sum(),
         invoice_discount,
         tax_total: lines.iter().map(|l| l.tax).sum(),
@@ -211,6 +229,7 @@ mod tests {
                     .map(|l| LineInput {
                         quantity: d(l["quantity"].as_str().expect("qty")),
                         unit_price: d(l["unit_price"].as_str().expect("price")),
+                        promo_discount: d(l["promo_discount"].as_str().unwrap_or("0")),
                         discount: l.get("discount").and_then(discount),
                         tax_rate_pct: d(l["tax_rate_pct"].as_str().expect("rate")),
                     })
@@ -230,6 +249,7 @@ mod tests {
             let t = calculate(&cart).unwrap_or_else(|e| panic!("{name}: {e}"));
             for key in [
                 "subtotal",
+                "promotion_total",
                 "item_discount_total",
                 "invoice_discount",
                 "tax_total",
@@ -238,13 +258,14 @@ mod tests {
             ] {
                 let got = match key {
                     "subtotal" => t.subtotal,
+                    "promotion_total" => t.promotion_total,
                     "item_discount_total" => t.item_discount_total,
                     "invoice_discount" => t.invoice_discount,
                     "tax_total" => t.tax_total,
                     "rounding_adjustment" => t.rounding_adjustment,
                     _ => t.grand_total,
                 };
-                assert_eq!(got, d(expected[key].as_str().expect(key)), "{name}: {key}");
+                assert_eq!(got, d(expected[key].as_str().unwrap_or("0")), "{name}: {key}");
             }
             for (i, line) in expected["lines"].as_array().into_iter().flatten().enumerate() {
                 for key in ["invoice_discount", "tax", "line_total"] {
@@ -264,6 +285,7 @@ mod tests {
         let line = |q: &str, p: &str, disc: Option<Discount>| LineInput {
             quantity: d(q),
             unit_price: d(p),
+            promo_discount: Decimal::ZERO,
             discount: disc,
             tax_rate_pct: d("15"),
         };

@@ -67,7 +67,7 @@ async fn warranty_is_kept_on_the_sale_line(pool: MySqlPool) {
         (json!({ "warranty_period": 2, "warranty_unit": "week" }), "warranty_unit"),
     ] {
         let mut input = json!({ "name": "Bad", "unit_id": pcs, "selling_price": "1" });
-        input.as_object_mut().unwrap().extend(body.as_object().unwrap().clone());
+        input.as_object_mut().expect("object").extend(body.as_object().expect("object").clone());
         let res = send(&srv, &owner, post().uri("/api/v1/products"), input).await;
         assert_eq!(res.status, StatusCode::BAD_REQUEST, "{}", res.body);
         assert_eq!(res.body["errors"][0]["field"], field, "{}", res.body);
@@ -103,7 +103,7 @@ async fn warranty_is_kept_on_the_sale_line(pool: MySqlPool) {
     )
     .await;
     assert_eq!(sale.status, StatusCode::CREATED, "{}", sale.body);
-    let day: NaiveDate = s(&sale.body, "business_date").parse().unwrap();
+    let day: NaiveDate = s(&sale.body, "business_date").parse().expect("date");
     let expires = (day + Months::new(3)).to_string();
     let line = &sale.body["items"][0];
     assert_eq!((&line["warranty_period"], &line["warranty_unit"]), (&json!(3), &json!("month")), "{line}");
@@ -122,13 +122,14 @@ async fn warranty_is_kept_on_the_sale_line(pool: MySqlPool) {
     .await;
     assert_eq!(plain_sale.status, StatusCode::CREATED, "{}", plain_sale.body);
     let list = get(&srv, &owner, "/api/v1/sales").await;
-    let row = |id: &str| list.body["data"].as_array().unwrap().iter().find(|r| r["id"] == id).cloned().unwrap();
+    let row =
+        |id: &str| list.body["data"].as_array().expect("data").iter().find(|r| r["id"] == id).cloned().expect("row");
     let with = row(&s(&sale.body, "id"));
     assert_eq!((&with["warranty_items"], &with["warranty_until"]), (&json!(1), &json!(expires)), "{with}");
     let without = row(&s(&plain_sale.body, "id"));
     assert_eq!((&without["warranty_items"], &without["warranty_until"]), (&json!(0), &Value::Null), "{without}");
     let only = get(&srv, &owner, "/api/v1/sales?with_warranty=true").await;
-    let ids: Vec<String> = only.body["data"].as_array().unwrap().iter().map(|r| s(r, "id")).collect();
+    let ids: Vec<String> = only.body["data"].as_array().expect("data").iter().map(|r| s(r, "id")).collect();
     assert_eq!(ids, [s(&sale.body, "id")], "{}", only.body);
     assert_eq!(only.body["summary"]["count"], 1);
 
@@ -137,7 +138,7 @@ async fn warranty_is_kept_on_the_sale_line(pool: MySqlPool) {
     let items = get(&srv, &owner, &format!("/api/v1/sale-warranties?customer_id={customer}")).await;
     assert_eq!(items.status, StatusCode::OK, "{}", items.body);
     assert_eq!(items.body["today"], s(&sale.body, "business_date"));
-    let rows = items.body["data"].as_array().unwrap();
+    let rows = items.body["data"].as_array().expect("data");
     assert_eq!(rows.len(), 1, "{}", items.body);
     assert_eq!(rows[0]["product_name"], "Power Bank");
     assert_eq!(rows[0]["invoice_no"], sale.body["invoice_no"]);

@@ -347,8 +347,8 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
 
     // --- returns to the supplier stay in the member's branches: a buyer
     // limited to the main branch cannot return a Mirpur bill.
-    let supplier = send(&srv, &owner, "post", "/api/v1/suppliers", Some(json!({ "name": "Mirpur Wholesale" })), None)
-        .await;
+    let supplier =
+        send(&srv, &owner, "post", "/api/v1/suppliers", Some(json!({ "name": "Mirpur Wholesale" })), None).await;
     assert_eq!(supplier.status, StatusCode::CREATED, "{}", supplier.body);
     let mir_bill = send(
         &srv,
@@ -464,7 +464,9 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
     // permission would reach branches outside the editor's own.
     let floor = call(
         &srv,
-        Req::post("/api/v1/roles", json!({ "name": "Floor", "permissions": ["sales.view"] })).bearer(&owner.token).build(),
+        Req::post("/api/v1/roles", json!({ "name": "Floor", "permissions": ["sales.view"] }))
+            .bearer(&owner.token)
+            .build(),
     )
     .await;
     assert_eq!(floor.status, StatusCode::CREATED, "{}", floor.body);
@@ -488,26 +490,17 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
             .build()
     };
     let widened = call(&srv, widen(json!(["sales.view", "users.view"]))).await;
-    assert_eq!(
-        (widened.status, widened.code()),
-        (StatusCode::FORBIDDEN, "BRANCH_ESCALATION"),
-        "{}",
-        widened.body
-    );
+    assert_eq!((widened.status, widened.code()), (StatusCode::FORBIDDEN, "BRANCH_ESCALATION"), "{}", widened.body);
     // ...or suspend a member who works in other branches.
     let floor_member = s(&floor_staff.body["member"], "id");
-    let suspended = call(
-        &srv,
-        Req::post(&format!("/api/v1/members/{floor_member}/suspend"), json!({})).bearer(&hr.token).build(),
-    )
-    .await;
+    let suspended =
+        call(&srv, Req::post(&format!("/api/v1/members/{floor_member}/suspend"), json!({})).bearer(&hr.token).build())
+            .await;
     assert_eq!(suspended.code(), "BRANCH_ESCALATION", "{}", suspended.body);
     let own_member = s(&own_branch.body["member"], "id");
-    let own_suspended = call(
-        &srv,
-        Req::post(&format!("/api/v1/members/{own_member}/suspend"), json!({})).bearer(&hr.token).build(),
-    )
-    .await;
+    let own_suspended =
+        call(&srv, Req::post(&format!("/api/v1/members/{own_member}/suspend"), json!({})).bearer(&hr.token).build())
+            .await;
     assert_eq!(own_suspended.status, StatusCode::OK, "{}", own_suspended.body);
 
     // --- per-branch permissions: "Floor everywhere" + "Branch HR in main".
@@ -529,7 +522,8 @@ async fn branches_transfers_counts_shifts_and_income(pool: MySqlPool) {
         Req::post("/api/v1/auth/login", json!({ "identifier": "01711000984", "password": "Shop-pass-2026" })).build(),
     )
     .await;
-    let mut floor_user = Session { token: floor_login.token(), cookie: floor_login.cookie(), phone: "01711000984".into() };
+    let mut floor_user =
+        Session { token: floor_login.token(), cookie: floor_login.cookie(), phone: "01711000984".into() };
     switch(&srv, &mut floor_user, Some(&tenant_id)).await;
     let in_main = send(&srv, &floor_user, "get", "/api/v1/members", None, Some(&main)).await;
     assert_eq!(in_main.status, StatusCode::OK, "{}", in_main.body);

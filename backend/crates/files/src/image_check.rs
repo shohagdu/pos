@@ -25,8 +25,10 @@ pub enum ImageProblem {
 
 /// HTML tags that have no place in a photo, matched as `<tag` or `</tag`
 /// followed by a space, `>` or `/` (so random image data does not match).
-const UNSAFE_TAGS: &[&[u8]] =
-    &[b"script", b"html", b"body", b"head", b"svg", b"iframe", b"object", b"embed", b"form", b"meta", b"link", b"style", b"img"];
+const UNSAFE_TAGS: &[&[u8]] = &[
+    b"script", b"html", b"body", b"head", b"svg", b"iframe", b"object", b"embed", b"form", b"meta", b"link", b"style",
+    b"img",
+];
 /// Script openers matched anywhere (long enough not to occur by chance).
 const UNSAFE_TEXT: &[&[u8]] = &[b"<?php", b"javascript:", b"vbscript:", b"onerror=", b"onload="];
 

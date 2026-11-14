@@ -45,7 +45,7 @@ mod tests {
     use super::*;
 
     fn d(s: &str) -> NaiveDate {
-        s.parse().unwrap()
+        s.parse().expect("date")
     }
 
     #[test]
@@ -60,8 +60,8 @@ mod tests {
 
     #[test]
     fn validation() {
-        assert_eq!(validate(None, Some(" ".into())).unwrap(), (None, None));
-        assert_eq!(validate(Some(2), Some("Month".into())).unwrap(), (Some(2), Some("month".into())));
+        assert_eq!(validate(None, Some(" ".into())).expect("valid"), (None, None));
+        assert_eq!(validate(Some(2), Some("Month".into())).expect("valid"), (Some(2), Some("month".into())));
         assert!(validate(Some(0), Some("month".into())).is_err());
         assert!(validate(Some(121), Some("month".into())).is_err());
         assert!(validate(Some(1), Some("week".into())).is_err());
